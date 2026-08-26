@@ -284,7 +284,65 @@ codex plugin marketplace add Mineru98/samsara
 codex plugin add samsara@samsara
 ```
 
-Claude Code와 Codex 플러그인 버전은 모두 `v0.1.0`입니다.
+### Grok Build
+
+SAMSARA는 Grok Build 공식 플러그인 형식인 `.grok-plugin/plugin.json`을 제공합니다. Grok은
+플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 8개 스킬과 4개 에이전트를
+읽습니다. 이 저장소에는 현재 Grok 전용 commands, hooks, MCP servers, LSP servers는 없습니다.
+
+SAMSARA의 플러그인 원본 저장소와 xAI 공식 marketplace 카탈로그 등록은 별개입니다. 이 이슈
+범위에서는 `xai-org/plugin-marketplace`에 등록하는 외부 PR을 제출하지 않으므로, 카탈로그에
+`samsara` 항목이 있을 때만 marketplace 이름으로 설치합니다.
+
+```sh
+grok plugin marketplace list
+grok plugin marketplace update
+grok plugin install samsara
+grok plugin update samsara
+```
+
+카탈로그에 아직 항목이 없거나 이 저장소 원본을 직접 설치하려면 GitHub shorthand와 고정된
+commit ref를 source로 넘깁니다. 아래 SHA는 이 README의 문서 보정 커밋과 분리된, manifest를
+포함한 검증된 기준 커밋입니다. 문서가 자기 자신을 가리키는 순환을 피하기 위해 이전 커밋을
+의도적으로 고정하며, 새 버전으로 갱신할 때는 새로 검증한 전체 SHA로 교체합니다.
+
+```sh
+grok plugin install Mineru98/samsara@fac10ac385f41c217f94d9565e0cec416288d37e
+```
+
+`--trust`는 manifest와 구성 요소를 검토한 뒤 비대화식 설치가 필요할 때만 선택적으로 추가하세요.
+marketplace source를 새로 고칠 때는 `grok plugin marketplace update`를 먼저 실행하고, 설치된
+플러그인의 이름이 `samsara`인 경우 `grok plugin update samsara`로 업데이트합니다.
+
+별도 marketplace 카탈로그 source를 운영하는 경우에는 먼저 `grok plugin marketplace add <catalog-source>`
+를 실행한 뒤 위의 `marketplace update`와 플러그인 설치 절차를 따릅니다. 이 저장소 자체는
+카탈로그가 아니라 Grok plugin source입니다.
+
+Grok Build 안에서는 `/marketplace`를 입력해 카탈로그를 열고 `i`로 플러그인을 설치할 수도
+있습니다. 저장소에서 manifest와 컴포넌트 구성을 확인할 때는 다음 검증 명령을 실행합니다.
+
+```sh
+grok plugin validate .
+grok inspect --json
+```
+
+`grok plugin validate .`는 현재 폴더의 manifest와 컴포넌트를 검사하고, `grok inspect --json`는
+현재 활성화된 Grok 실행 환경을 진단합니다. 로컬 원본의 유효성은 첫 명령과 저장소의 JSON/path
+검사 결과를 기준으로 확인하세요.
+
+Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기본 컴포넌트 디렉터리를
+사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
+원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
+설치 시 고정된 커밋을 다시 확인합니다. SHA는 전체 소문자 40자여야 하며, 예시는
+`fac10ac385f41c217f94d9565e0cec416288d37e`이며 위 직접 설치 명령과 같은 기준 ref입니다.
+marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
+PR 규칙을 따릅니다.
+
+Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.1.0`입니다.
+
+공식 안내: [Grok Build Plugin Marketplace](https://x.ai/news/grok-plugin-marketplace),
+[Skills, Plugins & Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces),
+[CLI Reference](https://docs.x.ai/build/cli/reference).
 
 `.issue/graph.json`은 GitHub에서 다시 만들 수 있는 캐시입니다. 상태 전환 뒤 수행되는 best-effort 노드 갱신이 V2 필수 문맥을 보존하지 못하면 다음 검증에서 추천을 중단하며, 이 경우 `issue-sync`로 완전 스냅샷을 다시 생성해야 합니다. v0.1.0의 phase capability bundle도 과거 `.claude`·`.codex` mirror 경로를 담고 있으므로, 루트형 플러그인 설치의 파일 목록 정본으로 사용하지 않습니다.
 
