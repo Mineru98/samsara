@@ -290,13 +290,24 @@ SAMSARA는 Grok Build 공식 플러그인 형식인 `.grok-plugin/plugin.json`�
 플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 8개 스킬과 4개 에이전트를
 읽습니다. 이 저장소에는 현재 Grok 전용 commands, hooks, MCP servers, LSP servers는 없습니다.
 
-공식 marketplace에 등록된 버전을 Grok Build에서 설치·업데이트하려면 다음 명령을 사용합니다.
+SAMSARA의 플러그인 원본 저장소와 xAI 공식 marketplace 카탈로그 등록은 별개입니다. 이 이슈
+범위에서는 `xai-org/plugin-marketplace`에 등록하는 외부 PR을 제출하지 않으므로, 카탈로그에
+`samsara` 항목이 있을 때만 marketplace 이름으로 설치합니다.
 
 ```sh
 grok plugin marketplace list
-grok plugin install samsara --trust
+grok plugin install samsara
 grok plugin update samsara
 ```
+
+카탈로그에 아직 항목이 없거나 이 저장소 원본을 직접 설치하려면 GitHub URL을 source로 넘깁니다.
+
+```sh
+grok plugin install https://github.com/Mineru98/samsara
+```
+
+`--trust`는 manifest와 구성 요소를 검토한 뒤 비대화식 설치가 필요할 때만 선택적으로 추가하세요.
+설치된 플러그인의 이름이 `samsara`인 경우 `grok plugin update samsara`로 업데이트합니다.
 
 Grok Build 안에서는 `/marketplace`를 입력해 카탈로그를 열고 `i`로 플러그인을 설치할 수도
 있습니다. 저장소에서 manifest와 컴포넌트 구성을 확인할 때는 다음 검증 명령을 실행합니다.

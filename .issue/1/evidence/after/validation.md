@@ -94,8 +94,9 @@ grok inspect --json
 
 ## README 점검
 
-`README.md:287-323`을 수동 검토해 Grok Build 설치·업데이트 명령, TUI marketplace 흐름,
-`validate`/`inspect`의 역할, 전체 SHA 고정 안내와 xAI 공식 링크가 모두 포함된 것을 확인했습니다.
+`README.md:287-334`을 수동 검토해 Grok Build 설치·업데이트 명령, marketplace 등록 범위,
+저장소 직접 설치, trust 선택 기준, TUI marketplace 흐름, `validate`/`inspect`의 역할,
+전체 SHA 고정 안내와 xAI 공식 링크가 모두 포함된 것을 확인했습니다.
 
 ## Validator 요약 차이
 
