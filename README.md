@@ -284,7 +284,39 @@ codex plugin marketplace add Mineru98/samsara
 codex plugin add samsara@samsara
 ```
 
-Claude Code와 Codex 플러그인 버전은 모두 `v0.1.0`입니다.
+### Grok Build
+
+SAMSARA는 Grok Build 공식 플러그인 형식인 `.grok-plugin/plugin.json`을 제공합니다. Grok은
+플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 8개 스킬과 4개 에이전트를
+읽습니다. 이 저장소에는 현재 Grok 전용 commands, hooks, MCP servers, LSP servers는 없습니다.
+
+공식 marketplace에 등록된 버전을 Grok Build에서 설치·업데이트하려면 다음 명령을 사용합니다.
+
+```sh
+grok plugin marketplace list
+grok plugin install samsara --trust
+grok plugin update samsara
+```
+
+Grok Build 안에서는 `/marketplace`를 입력해 카탈로그를 열고 `i`로 플러그인을 설치할 수도
+있습니다. 저장소에서 manifest와 컴포넌트 구성을 확인할 때는 다음 검증 명령을 실행합니다.
+
+```sh
+grok plugin validate .
+grok inspect --json
+```
+
+Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기본 컴포넌트 디렉터리를
+사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
+원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
+설치 시 고정된 커밋을 다시 확인합니다. marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
+PR 규칙을 따릅니다.
+
+Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.1.0`입니다.
+
+공식 안내: [Grok Build Plugin Marketplace](https://x.ai/news/grok-plugin-marketplace),
+[Skills, Plugins & Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces),
+[CLI Reference](https://docs.x.ai/build/cli/reference).
 
 `.issue/graph.json`은 GitHub에서 다시 만들 수 있는 캐시입니다. 상태 전환 뒤 수행되는 best-effort 노드 갱신이 V2 필수 문맥을 보존하지 못하면 다음 검증에서 추천을 중단하며, 이 경우 `issue-sync`로 완전 스냅샷을 다시 생성해야 합니다. v0.1.0의 phase capability bundle도 과거 `.claude`·`.codex` mirror 경로를 담고 있으므로, 루트형 플러그인 설치의 파일 목록 정본으로 사용하지 않습니다.
 
