@@ -94,8 +94,30 @@ grok inspect --json
 
 ## README 점검
 
-`README.md:287-323`을 수동 검토해 Grok Build 설치·업데이트 명령, TUI marketplace 흐름,
-`validate`/`inspect`의 역할, 전체 SHA 고정 안내와 xAI 공식 링크가 모두 포함된 것을 확인했습니다.
+`README.md:287-344`을 수동 검토해 Grok Build 설치·업데이트 명령, marketplace 등록 범위,
+고정 commit ref를 사용한 저장소 직접 설치, marketplace refresh, trust 선택 기준, TUI marketplace 흐름, `validate`/`inspect`의 역할,
+전체 소문자 40자 SHA 고정 안내와 xAI 공식 링크가 모두 포함된 것을 확인했습니다.
+
+CLI help 확인:
+
+```text
+grok plugin install: Git URL, GitHub shorthand, @ref suffix 지원
+grok plugin marketplace update: source refresh 지원
+```
+
+실제 install/update는 전역 Grok 상태를 변경하므로 QA에서는 실행하지 않았습니다.
+
+## 최종 커밋·직접 설치 기준
+
+- 최종 검토 커밋: `c33d03fae7efe04130d4f21e22f494d0d1e8517f`
+- 원격 feature 브랜치: `feat/1-grok-build-plugin-support`가 위 SHA로 push됨
+- README 직접 설치 기준: `Mineru98/samsara@fac10ac385f41c217f94d9565e0cec416288d37e`
+- `fac10ac385f41c217f94d9565e0cec416288d37e`는 최종 커밋의 공개된 manifest 포함 ancestor이며,
+  GitHub commit API와 raw `.grok-plugin/plugin.json` 조회가 HTTP 200으로 확인되었습니다.
+
+README는 자기 참조 순환을 피하기 위해 문서 보정 커밋 이전의 검증된 manifest 기준을 의도적으로
+고정하고, 새 버전 검증 시 전체 40자 SHA로 교체하도록 설명합니다. 직접 설치용 source와
+marketplace 등록용 source 모두 mutable branch가 아닌 이 고정 ref를 사용합니다.
 
 ## Validator 요약 차이
 
