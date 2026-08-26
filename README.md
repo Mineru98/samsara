@@ -297,17 +297,24 @@ SAMSARA의 플러그인 원본 저장소와 xAI 공식 marketplace 카탈로그 
 ```sh
 grok plugin marketplace list
 grok plugin install samsara
+grok plugin marketplace update
 grok plugin update samsara
 ```
 
-카탈로그에 아직 항목이 없거나 이 저장소 원본을 직접 설치하려면 GitHub URL을 source로 넘깁니다.
+카탈로그에 아직 항목이 없거나 이 저장소 원본을 직접 설치하려면 GitHub shorthand와 고정된
+commit ref를 source로 넘깁니다. 아래 SHA는 이 문서를 검증한 현재 커밋의 예시입니다.
 
 ```sh
-grok plugin install https://github.com/Mineru98/samsara
+grok plugin install Mineru98/samsara@fac10ac385f41c217f94d9565e0cec416288d37e
 ```
 
 `--trust`는 manifest와 구성 요소를 검토한 뒤 비대화식 설치가 필요할 때만 선택적으로 추가하세요.
-설치된 플러그인의 이름이 `samsara`인 경우 `grok plugin update samsara`로 업데이트합니다.
+marketplace source를 새로 고칠 때는 `grok plugin marketplace update`를 먼저 실행하고, 설치된
+플러그인의 이름이 `samsara`인 경우 `grok plugin update samsara`로 업데이트합니다.
+
+별도 marketplace 카탈로그 source를 운영하는 경우에는 먼저 `grok plugin marketplace add <catalog-source>`
+를 실행한 뒤 위의 `marketplace update`와 플러그인 설치 절차를 따릅니다. 이 저장소 자체는
+카탈로그가 아니라 Grok plugin source입니다.
 
 Grok Build 안에서는 `/marketplace`를 입력해 카탈로그를 열고 `i`로 플러그인을 설치할 수도
 있습니다. 저장소에서 manifest와 컴포넌트 구성을 확인할 때는 다음 검증 명령을 실행합니다.
@@ -325,7 +332,7 @@ Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기
 사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
 원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
 설치 시 고정된 커밋을 다시 확인합니다. SHA는 전체 소문자 40자여야 하며, 예시는
-`e9a3c49c6f8edde9fd8d6eec826e7d72d250332d`입니다. marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
+`fac10ac385f41c217f94d9565e0cec416288d37e`입니다. marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
 PR 규칙을 따릅니다.
 
 Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.1.0`입니다.

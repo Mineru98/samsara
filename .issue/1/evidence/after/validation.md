@@ -94,9 +94,18 @@ grok inspect --json
 
 ## README 점검
 
-`README.md:287-334`을 수동 검토해 Grok Build 설치·업데이트 명령, marketplace 등록 범위,
-저장소 직접 설치, trust 선택 기준, TUI marketplace 흐름, `validate`/`inspect`의 역할,
+`README.md:287-342`을 수동 검토해 Grok Build 설치·업데이트 명령, marketplace 등록 범위,
+고정 commit ref를 사용한 저장소 직접 설치, marketplace refresh, trust 선택 기준, TUI marketplace 흐름, `validate`/`inspect`의 역할,
 전체 소문자 40자 SHA 고정 안내와 xAI 공식 링크가 모두 포함된 것을 확인했습니다.
+
+CLI help 확인:
+
+```text
+grok plugin install: Git URL, GitHub shorthand, @ref suffix 지원
+grok plugin marketplace update: source refresh 지원
+```
+
+실제 install/update는 전역 Grok 상태를 변경하므로 QA에서는 실행하지 않았습니다.
 
 ## Validator 요약 차이
 
