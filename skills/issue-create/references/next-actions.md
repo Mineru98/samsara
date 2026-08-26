@@ -28,6 +28,40 @@ AskUserQuestion 으로 제시한다. 바로 착수하는 쪽이 기본값이다.
 이런 후보가 하나도 없으면 "이슈 더 등록" 은 물어볼 것이 없는 질문이다. 등록할 내용이 없는데 매번 등록을 권하지 않는다.
 후보가 있으면 무엇을 더 등록할지 한 줄로 함께 제시한다.
 
+## AskUserQuestion 도구로 출력한다
+
+이 선택지는 **반드시 AskUserQuestion 도구 호출로 낸다.** 선택지를 평문으로 늘어놓고 질문으로 끝내지 않는다 — 그러면 사용자가 클릭으로 고를 수 없다.
+
+- `.claude/` 런타임: 위 텍스트 블록을 먼저 출력한 뒤, **같은 라벨·같은 순서로 AskUserQuestion 을 이어 호출한다.**
+- `.codex/` 런타임: AskUserQuestion 이 없으므로 텍스트 블록만 출력하고 답을 기다린다.
+
+도구 호출은 아래 JSON 형태를 그대로 따른다. 텍스트 블록의 각 줄이 그대로 매핑된다.
+
+- `questions[0].question` — 머리표기(현재 단계) + 질문 문장 한 줄
+- `questions[0].header` — 12자 이내 짧은 라벨 (예: "다음 행동")
+- `questions[0].multiSelect` — `false` (하나만 고른다)
+- `questions[0].options[]` — 텍스트 블록의 선택지마다 `{ label, description }`. 권장안은 label 끝에 " (권장)". 자유 입력이 필요하면 description 에 "직접 알려주세요"
+
+```json
+{
+  "questions": [
+    {
+      "question": "다음으로 무엇을 할까요?",
+      "header": "다음 행동",
+      "multiSelect": false,
+      "options": [
+        { "label": "바로 착수 (권장)", "description": "$issue-start #<번호> — 분석하고 워크트리까지 만듭니다" },
+        { "label": "이슈 더 등록", "description": "$issue-create — 더 등록할 후보가 있을 때만 넣는다" },
+        { "label": "라벨 정리", "description": "라벨이 없는 기존 이슈에 라벨을 붙입니다" },
+        { "label": "여기서 종료", "description": "번호만 기억해 두고 나중에 시작합니다" }
+      ]
+    }
+  ]
+}
+```
+
+조건에 따라 뺀 선택지(후보 없을 때의 이슈 더 등록 등)는 `options` 에서도 뺀다. 텍스트 블록과 도구 호출의 선택지가 어긋나지 않게 한다.
+
 선택지를 제시하기 전에 재료를 모아 함께 보여준다.
 
 ```bash
