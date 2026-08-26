@@ -128,6 +128,40 @@ issue-merge 5단계(충돌 해소 → 비판 서브에이전트로 모호성 검
 본문    머리표기 + 질문 문장. 선택지에 단계 표기를 반복하지 않는다
 ```
 
+## JSON 도구 호출 형태
+
+`.claude/` 계열에서 `AskUserQuestion` 을 호출할 때는 아래 JSON 스키마를 그대로 따른다.
+평문으로 선택지를 늘어놓고 질문으로 끝내지 않는다 — 텍스트 블록을 출력한 **뒤 반드시 도구를 호출한다.**
+텍스트 블록의 각 줄이 JSON 필드로 그대로 매핑된다.
+
+```text
+questions[0].question    머리표기(현재 단계) + 질문 문장 한 줄
+questions[0].header      12자 이내 짧은 라벨 (예: "다음 행동")
+questions[0].multiSelect false (하나만 고른다)
+questions[0].options[]   블록의 선택지마다 { label, description }
+                         권장안은 label 끝에 " (권장)", 자유 입력은 description 에 "직접 알려주세요"
+```
+
+```json
+{
+  "questions": [
+    {
+      "question": "issue-merge 6단계(merge · 통합 테스트)입니다. 아래 순서로 3개를 merge 할까요?",
+      "header": "merge 순서",
+      "multiSelect": false,
+      "options": [
+        { "label": "이대로 진행 (권장)", "description": "계획의 순서대로 #53 → #16 → #21 을 merge 합니다" },
+        { "label": "순서 조정", "description": "원하는 순서를 직접 알려주세요" },
+        { "label": "일부만 merge", "description": "뺄 대상을 직접 알려주세요" },
+        { "label": "중단", "description": "여기서 멈춥니다. 이미 merge 된 것은 그대로 남습니다" }
+      ]
+    }
+  ]
+}
+```
+
+`options` 는 텍스트 블록과 라벨·순서·개수가 정확히 일치해야 한다. 조건에 따라 뺀 선택지는 `options` 에서도 뺀다.
+
 ## 답변 해석
 
 번호로 답하는 것을 기본으로 보되, 아래는 모두 같은 선택으로 받는다.
