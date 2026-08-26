@@ -353,7 +353,10 @@ node <skill>/scripts/issue-end.mjs status {issue_number} review
 
 ## 11단계 — 다음 행동
 
-`references/next-actions.md` 의 4지선다를 그대로 제시한다.
+`references/next-actions.md` 를 따른다. **4지선다 AskUserQuestion 을 묻기 직전에, 방금 마친 작업의
+전모를 항목/내용 2열 완료 브리핑 요약표로 먼저 렌더링한다.** 표 값은 새로 조회하지 않고 `context` /
+`urls` 출력과 status 라벨·PR 정보를 그대로 쓴다. 브리핑표는 선택지를 대체하지 않는다 — 표를 낸 뒤
+이어서 4지선다를 제시한다. 표 구성은 `references/next-actions.md` 의 `완료 브리핑` 을 따른다.
 
 ## 마무리 보고
 
