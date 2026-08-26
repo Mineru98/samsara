@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "samsara",
+  "version": "0.1.0",
+  "description": "Issue ontology harness for disciplined, evidence-backed software changes.",
+  "author": {
+    "name": "Mineru98",
+    "url": "https://github.com/Mineru98"
+  },
+  "homepage": "https://github.com/Mineru98/samsara",
+  "repository": "https://github.com/Mineru98/samsara",
+  "license": "MIT",
+  "keywords": [
+    "issues",
+    "ontology",
+    "workflow",
+    "github",
+    "agents"
+  ],
+  "skills": "./skills/",
+  "agents": [
+    "./agents/itachi-merge-critic.md",
+    "./agents/neji-verifier.md",
+    "./agents/shikamaru-merge-analyst.md",
+    "./agents/yamato-merge-resolver.md"
+  ]
+}

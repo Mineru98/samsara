@@ -1,0 +1,30 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "samsara",
+  "description": "Issue ontology and evidence workflow for Claude Code and Codex.",
+  "owner": {
+    "name": "Mineru98"
+  },
+  "plugins": [
+    {
+      "name": "samsara",
+      "description": "Manage software changes as linked issues with ontology-aware planning, evidence capture, verification, and merge orchestration.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Mineru98"
+      },
+      "source": "./",
+      "category": "development",
+      "homepage": "https://github.com/Mineru98/samsara",
+      "repository": "https://github.com/Mineru98/samsara",
+      "license": "MIT",
+      "keywords": [
+        "issues",
+        "ontology",
+        "workflow",
+        "github",
+        "agents"
+      ]
+    }
+  ]
+}
