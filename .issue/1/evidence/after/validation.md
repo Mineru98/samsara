@@ -94,7 +94,7 @@ grok inspect --json
 
 ## README 점검
 
-`README.md:287-344`을 수동 검토해 Grok Build 설치·업데이트 명령, marketplace 등록 범위,
+`README.md:287-345`을 수동 검토해 Grok Build 설치·업데이트 명령, marketplace 등록 범위,
 고정 commit ref를 사용한 저장소 직접 설치, marketplace refresh, trust 선택 기준, TUI marketplace 흐름, `validate`/`inspect`의 역할,
 전체 소문자 40자 SHA 고정 안내와 xAI 공식 링크가 모두 포함된 것을 확인했습니다.
 
@@ -107,12 +107,14 @@ grok plugin marketplace update: source refresh 지원
 
 실제 install/update는 전역 Grok 상태를 변경하므로 QA에서는 실행하지 않았습니다.
 
-## 최종 커밋·직접 설치 기준
+## 소스 검토 기준·직접 설치 기준
 
-- 최종 검토 커밋: `c33d03fae7efe04130d4f21e22f494d0d1e8517f`
-- 원격 feature 브랜치: `feat/1-grok-build-plugin-support`가 위 SHA로 push됨
+- 소스 구현 검토 기준 커밋: `c33d03fae7efe04130d4f21e22f494d0d1e8517f`
+- 직전 evidence-only 동기화 부모: `649c2f319be0266c31876ecfcb8603c9420dc9dc`
+- 이 증거 동기화 계열은 Grok manifest/README 소스 동작을 변경하지 않으며, 최종 branch tip은
+  Git/PR metadata에서 확인합니다.
 - README 직접 설치 기준: `Mineru98/samsara@fac10ac385f41c217f94d9565e0cec416288d37e`
-- `fac10ac385f41c217f94d9565e0cec416288d37e`는 최종 커밋의 공개된 manifest 포함 ancestor이며,
+- `fac10ac385f41c217f94d9565e0cec416288d37e`는 소스 검토 기준의 공개된 manifest 포함 ancestor이며,
   GitHub commit API와 raw `.grok-plugin/plugin.json` 조회가 HTTP 200으로 확인되었습니다.
 
 README는 자기 참조 순환을 피하기 위해 문서 보정 커밋 이전의 검증된 manifest 기준을 의도적으로
