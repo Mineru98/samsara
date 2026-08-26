@@ -3,7 +3,8 @@
 Grok Build 공식 플러그인 원본 형식에 맞춰 `.grok-plugin/plugin.json`을 추가했습니다.
 기존 `skills/`와 `agents/` 경로는 유지하고, README에 Grok Build의 설치·업데이트·검증 절차와
 marketplace 원격 소스의 SHA 고정 주의사항을 문서화했습니다.
-최종 검토 커밋은 `c33d03fae7efe04130d4f21e22f494d0d1e8517f`입니다.
+소스 구현 검토 기준 커밋은 `c33d03fae7efe04130d4f21e22f494d0d1e8517f`이며, 직전
+evidence-only 동기화 부모는 `649c2f319be0266c31876ecfcb8603c9420dc9dc`입니다.
 
 ## 변경 파일
 
@@ -19,7 +20,7 @@ marketplace 원격 소스의 SHA 고정 주의사항을 문서화했습니다.
 - 8개 `skills/*/SKILL.md`, 4개 `agents/*.md` 존재 확인
 - `node --test tools/issue-ontology/ontology.test.mjs` 통과 (10/10)
 - `git diff origin/main...HEAD --check` 통과
-- `README.md:287-344` 수동 검토: marketplace 등록 범위, 고정 commit ref 저장소 직접 설치,
+- `README.md:287-345` 수동 검토: marketplace 등록 범위, 고정 commit ref 저장소 직접 설치,
   marketplace refresh, trust 선택 기준, Grok 설치·업데이트·검증·전체 소문자 40자 SHA 안내와
   xAI 공식 링크 확인
 - `grok plugin install/update` 및 `grok plugin marketplace update/add --help`에서 source/ref와
@@ -27,7 +28,6 @@ marketplace 원격 소스의 SHA 고정 주의사항을 문서화했습니다.
 - 직접 설치 기준 `Mineru98/samsara@fac10ac385f41c217f94d9565e0cec416288d37e`가 GitHub commit API와
   raw manifest에서 HTTP 200으로 확인됨. README는 자기 참조를 피하기 위해 이 이전 manifest 기준
   커밋을 의도적으로 고정하고, 새 버전에서는 새 전체 SHA로 교체하도록 설명함
-- 최종 SHA 기준 5개 리뷰 게이트(목표·QA·코드·보안·맥락) 모두 통과
 
 ## 증거
 
