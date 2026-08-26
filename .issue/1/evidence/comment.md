@@ -19,7 +19,7 @@ marketplace 원격 소스의 SHA 고정 주의사항을 문서화했습니다.
 - `node --test tools/issue-ontology/ontology.test.mjs` 통과 (10/10)
 - `git diff origin/main...HEAD --check` 통과
 - `README.md:287-334` 수동 검토: marketplace 등록 범위, 저장소 직접 설치, trust 선택 기준,
-  Grok 설치·업데이트·검증·SHA 안내와 xAI 공식 링크 확인
+  Grok 설치·업데이트·검증·전체 소문자 40자 SHA 안내와 xAI 공식 링크 확인
 
 ## 증거
 

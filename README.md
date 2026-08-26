@@ -324,7 +324,8 @@ grok inspect --json
 Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기본 컴포넌트 디렉터리를
 사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
 원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
-설치 시 고정된 커밋을 다시 확인합니다. marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
+설치 시 고정된 커밋을 다시 확인합니다. SHA는 전체 소문자 40자여야 하며, 예시는
+`e9a3c49c6f8edde9fd8d6eec826e7d72d250332d`입니다. marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
 PR 규칙을 따릅니다.
 
 Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.1.0`입니다.
