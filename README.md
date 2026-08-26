@@ -306,6 +306,10 @@ grok plugin validate .
 grok inspect --json
 ```
 
+`grok plugin validate .`는 현재 폴더의 manifest와 컴포넌트를 검사하고, `grok inspect --json`는
+현재 활성화된 Grok 실행 환경을 진단합니다. 로컬 원본의 유효성은 첫 명령과 저장소의 JSON/path
+검사 결과를 기준으로 확인하세요.
+
 Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기본 컴포넌트 디렉터리를
 사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
 원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
