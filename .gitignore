@@ -2,7 +2,7 @@
 # Project
 # =============================================================================
 .om*
-.issue/
+.issue/*
 .claude/worktrees/
 /AGENTS.local.md
 /CLAUDE.local.md
