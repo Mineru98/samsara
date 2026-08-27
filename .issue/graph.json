@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": null,
-  "updatedAt": "2026-08-27T14:39:54.645Z",
+  "updatedAt": "2026-08-27T15:28:45.021Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-27T14:39:54.645Z",
@@ -365,6 +365,15 @@
         "revision": "2026-08-26T13:50:51Z",
         "observedAt": "2026-08-27T14:39:54.645Z"
       }
+    },
+    "11": {
+      "number": 11,
+      "title": "issue-board: 데이터를 인라인한 self-contained board.standalone.html 을 항상 함께 생성",
+      "status": "in-process",
+      "labels": [
+        "enhancement"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/11"
     }
   },
   "edges": [],
