@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이슈 경락도 · Board 시안 — samsara</title>
+<!--
+  DESIGN MOCKUP (시안) — issue-onboard board.  session interview_20260827_113337 요구 시각화.
+  실제 산출물 아님(디자인 프로토타입). 외부 라이브러리·웹폰트 0, file:// 로 동작.
+  개선판: 엣지 hover-only · 드래그 범례 · 테마-세이프 색 · 완결 클러스터 숨김 + Network 뷰 ·
+          좌측 색바 제거 · 컬럼별 독립 스크롤 · 증거 라이트박스 · samsara(윤회·경락·차크라) 모티프.
+-->
+<style>
+  :root{
+    /* ── DARK (기본) : 대비 사전 검증된 조합 ── */
+    --bg:#0e1218; --bg-2:#090c11; --surface:#161d27; --surface-2:#1e2733; --surface-3:#28323f;
+    --line:#2b3542; --line-soft:#212a35;
+    --ink:#e9eef5;      /* 본문 — 어느 surface 위에서도 AA */
+    --muted:#9aa8bb;    /* 보조 */
+    --faint:#66768c;    /* 3차 */
+    --on-tint:#eef2f7;  /* 틴트 배지 위 글자(항상 밝게) */
+    /* 관계(경락) — dark 캔버스에서 선명 */
+    --e-depends:#f0b24a; --e-parent:#7ea2ff; --e-dup:#b58cf0; --e-relates:#4fc7b8; --e-super:#f2879f; --e-stale:#5a6a7d;
+    /* 분류/상태 */
+    --ready:#52c98a; --blocked:#e0637a; --inprog:#e9a23b; --done:#7c8aa0;
+    --accent:#f0b24a;        /* 사프란(에너지) */
+    --accent-num:#f2b957;    /* #번호 텍스트 — dark 에서 밝게 */
+    --focus:#8fd0ff;
+    --tint:16%;              /* 배지 틴트 강도 */
+    --shadow:0 12px 34px -14px rgba(0,0,0,.62), 0 2px 8px -4px rgba(0,0,0,.5);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    --r:13px;
+  }
+  html[data-theme="light"]{
+    /* ── LIGHT : 라이트 표면에서 대비 확보(관계색을 진하게 재정의) ── */
+    --bg:#eceff4; --bg-2:#e3e8ee; --surface:#ffffff; --surface-2:#f2f6fa; --surface-3:#e7edf4;
+    --line:#d5dee8; --line-soft:#e3e9f0;
+    --ink:#18222e; --muted:#4f6076; --faint:#7d8da2;
+    --on-tint:#18222e;   /* 라이트에선 틴트 배지 글자도 어둡게 */
+    --e-depends:#c67f16; --e-parent:#3660cf; --e-dup:#7f45cf; --e-relates:#0f9484; --e-super:#cf4a6e; --e-stale:#93a1b2;
+    --ready:#1c9a61; --blocked:#cd3a58; --inprog:#b0761c; --done:#66768c;
+    --accent:#c67f16; --accent-num:#a9670f;
+    --focus:#2f7fd6;
+    --tint:14%;
+    --shadow:0 14px 30px -16px rgba(26,44,70,.26), 0 2px 6px -3px rgba(26,44,70,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.45;
+    -webkit-font-smoothing:antialiased; overflow:hidden; background:var(--bg); position:relative}
+
+  /* samsara 배경 모티프(만다라/경락 워터마크) */
+  .bg-motif{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
+  .bg-motif .glow{position:absolute; inset:0; background:
+    radial-gradient(900px 520px at 88% -8%, color-mix(in srgb,var(--accent) 9%,transparent), transparent 60%),
+    radial-gradient(760px 460px at -6% 108%, color-mix(in srgb,var(--e-parent) 9%,transparent), transparent 58%)}
+  .bg-motif svg{position:absolute; right:-160px; top:50%; transform:translateY(-50%); opacity:.06; color:var(--accent)}
+  html[data-theme="light"] .bg-motif svg{opacity:.09}
+
+  .app{position:relative; z-index:1; display:flex; flex-direction:column; height:100vh}
+
+  /* ── Topbar ── */
+  .topbar{display:flex; align-items:center; gap:16px; padding:12px 20px; border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 78%,transparent); backdrop-filter:blur(9px); position:relative; z-index:6}
+  .brand{display:flex; align-items:center; gap:12px; min-width:0}
+  .enso{width:30px;height:30px;flex:none}
+  .brand h1{font-size:15px; font-weight:680; letter-spacing:-.01em; margin:0; white-space:nowrap}
+  .brand h1 .sep{color:var(--faint); font-weight:400}
+  .brand .repo{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.02em}
+  .spacer{flex:1}
+  .toggle{display:inline-flex; padding:3px; gap:2px; background:var(--surface-2); border:1px solid var(--line); border-radius:11px}
+  .toggle button{appearance:none; border:0; background:transparent; color:var(--muted); font:inherit; font-size:12.5px;
+    font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:.15s}
+  .toggle button .k{font-family:var(--mono); font-size:10px; color:var(--faint)}
+  .toggle button[aria-pressed="true"]{background:var(--surface-3); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line)}
+  .toggle button[aria-pressed="true"] .k{color:var(--accent)}
+  .meta{display:flex; align-items:center; gap:12px}
+  .sync{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted)}
+  .sync .dot{width:7px;height:7px;border-radius:50%; background:var(--ready); box-shadow:0 0 0 3px color-mix(in srgb,var(--ready) 22%,transparent)}
+  .sync time{font-family:var(--mono); color:var(--ink)}
+  .iconbtn{appearance:none; border:1px solid var(--line); background:var(--surface-2); color:var(--muted);
+    width:32px;height:32px;border-radius:9px; cursor:pointer; display:grid; place-items:center; transition:.15s}
+  .iconbtn:hover{color:var(--ink); border-color:var(--faint)}
+  .iconbtn:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+
+  /* ── Board ── */
+  .board{position:relative; flex:1; display:flex; overflow:hidden}
+  /* 컬럼을 화면 양 끝단으로 벌림: 첫 컬럼=왼쪽 끝·마지막 컬럼=오른쪽 끝, 남는 폭은 사이로 분배.
+     gap 은 최소 간격(floor). 넓을수록 무제한으로 벌어지고, 좁으면 최소 간격 유지하며 가로 스크롤. */
+  .columns{display:flex; justify-content:space-between; gap:24px; padding:18px 20px; overflow-x:auto; overflow-y:hidden; flex:1}
+  .board[data-view="network"] .columns{display:none}
+  .board:not([data-view="network"]) .network{display:none}
+
+  .col{width:298px; flex:none; display:flex; flex-direction:column; min-height:0}
+  .col-head{display:flex; align-items:center; gap:9px; padding:0 6px 10px; flex:none}
+  .col-head .tick{width:9px;height:9px;border-radius:50%; box-shadow:0 0 0 3px color-mix(in srgb,var(--tk) 24%,transparent); background:var(--tk)}
+  .col-head h2{margin:0; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
+  .col-head .count{font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--surface-2);
+    border:1px solid var(--line); border-radius:999px; padding:1px 8px}
+  .col-head .desc{font-size:11px; color:var(--faint); margin-left:auto}
+  .col-body{flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:11px;
+    padding:3px 6px 22px; scroll-behavior:smooth}
+  .col-empty{color:var(--faint); font-size:12px; padding:10px 6px}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:12px 13px 11px;
+    cursor:pointer; position:relative; box-shadow:var(--shadow); transition:transform .14s,border-color .14s,box-shadow .14s,opacity .18s}
+  .card:hover{transform:translateY(-2px); border-color:var(--faint)}
+  .card:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+  .card.dim{opacity:.26; filter:saturate(.55)}
+  .card.linked{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+  .card.active{border-color:var(--focus); box-shadow:0 0 0 1px var(--focus),var(--shadow)}
+  .row1{display:flex; align-items:center; gap:8px; margin-bottom:6px}
+  /* 차크라 노드 마커(좌측 색바 대신 상태 표시) */
+  .chakra{width:12px;height:12px;flex:none;border-radius:50%; position:relative; background:radial-gradient(circle at 50% 50%, var(--tk) 0 33%, transparent 40%);
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--tk) 55%,transparent), 0 0 0 4px color-mix(in srgb,var(--tk) 16%,transparent)}
+  .num{font-family:var(--mono); font-size:12px; color:var(--accent-num); font-weight:600}
+  .prio{font-family:var(--mono); font-size:10px; font-weight:700; padding:1px 6px; border-radius:5px; color:var(--on-tint)}
+  .prio.p0{background:color-mix(in srgb,var(--blocked) var(--tint),var(--surface))}
+  .prio.p1{background:color-mix(in srgb,var(--inprog) var(--tint),var(--surface))}
+  .prio.p2{background:color-mix(in srgb,var(--e-parent) var(--tint),var(--surface))}
+  .prio.p3{background:var(--surface-2); color:var(--muted)}
+  .gh{margin-left:auto; color:var(--faint); width:24px;height:24px;border-radius:7px; display:grid; place-items:center; transition:.14s}
+  .gh:hover{color:var(--ink); background:var(--surface-2)}
+  .title{font-size:13.5px; font-weight:560; letter-spacing:-.006em; margin:0 0 9px; line-height:1.34}
+  .labels{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:9px}
+  .lbl{font-size:10.5px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:1px 8px; background:var(--surface-2)}
+  .cardfoot{display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:10.5px; color:var(--muted); flex-wrap:wrap}
+  .rel{display:inline-flex; align-items:center; gap:3px}
+  .rel .a{color:var(--faint)} .rel b{color:var(--accent-num); font-weight:600}
+  .files-chip{display:inline-flex; align-items:center; gap:4px}
+  .files-chip svg{opacity:.7}
+  .wait{color:var(--blocked)} .wait b{color:var(--blocked)}
+
+  /* ── Network 뷰 ── */
+  .network{position:absolute; inset:0; z-index:2}
+  .network svg{width:100%;height:100%; display:block}
+  .network .nnode{cursor:pointer}
+  .network .nnode circle{transition:opacity .16s, stroke-width .16s}
+  .network .nlabel{font-family:var(--mono); font-size:10px; fill:var(--ink); pointer-events:none; user-select:none}
+  .network .nedge{transition:opacity .16s, stroke-width .16s}
+  .net-hint{position:absolute; left:20px; top:16px; font-size:12px; color:var(--muted); background:color-mix(in srgb,var(--surface) 80%,transparent);
+    border:1px solid var(--line); border-radius:10px; padding:8px 12px; backdrop-filter:blur(6px); max-width:340px; line-height:1.5}
+  .net-hint b{color:var(--ink)}
+  .ntips{position:absolute; inset:0; pointer-events:none; z-index:3}
+  .ntip{position:absolute; transform:translate(-50%,-155%); white-space:nowrap; max-width:260px; overflow:hidden; text-overflow:ellipsis;
+    font-size:11px; line-height:1.25; color:var(--ink); background:color-mix(in srgb,var(--surface) 95%,transparent);
+    border:1px solid var(--line); border-radius:8px; padding:4px 9px; box-shadow:var(--shadow)}
+  .ntip .h{font-family:var(--mono); color:var(--accent-num); margin-right:6px}
+  .ntip.me{border-color:var(--accent); font-weight:600}
+  .ntip.me .h{color:var(--accent)}
+
+  /* ── hover 엣지 오버레이(fixed, viewport 좌표) ── */
+  svg.edges{position:fixed; inset:0; width:100vw;height:100vh; pointer-events:none; z-index:4; overflow:visible}
+  svg.edges path{fill:none}
+  svg.edges path.flow{stroke-dasharray:2 9; animation:flow 1.05s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-11}}
+
+  /* ── 드래그 가능한 범례(기본 우하단) ── */
+  .legend{position:absolute; right:20px; bottom:18px; z-index:5; width:236px; background:color-mix(in srgb,var(--surface) 90%,transparent);
+    border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); backdrop-filter:blur(9px); user-select:none}
+  .legend .lg-head{display:flex; align-items:center; gap:8px; padding:9px 11px 7px; cursor:grab; border-bottom:1px solid var(--line-soft)}
+  .legend .lg-head:active{cursor:grabbing}
+  .legend .grip{color:var(--faint); display:flex}
+  .legend h3{margin:0; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+  .legend .lg-collapse{margin-left:auto; background:none;border:0;color:var(--faint); cursor:pointer; font-size:14px; line-height:1; padding:2px 4px}
+  .legend.hide .lg-body{display:none}
+  .lg-body{display:grid; gap:6px; padding:9px 12px 11px}
+  .lg{display:flex; align-items:center; gap:9px; font-size:11.5px; color:var(--ink)}
+  .lg .ln{width:26px;height:0; border-top:2.5px solid var(--c); flex:none; border-radius:2px}
+  .lg .ln.dash{border-top-style:dashed}
+  .lg small{color:var(--faint); font-family:var(--mono); font-size:10px; margin-left:auto}
+
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:var(--surface-3); border-radius:8px; border:3px solid transparent; background-clip:padding-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+
+  /* ── 상세 패널 ── */
+  .scrim{position:fixed; inset:0; background:rgba(6,10,16,.5); opacity:0; pointer-events:none; transition:opacity .22s; z-index:8}
+  .scrim.open{opacity:1; pointer-events:auto}
+  .panel{position:fixed; top:0; right:0; height:100%; width:min(440px,93vw); background:var(--bg-2); border-left:1px solid var(--line);
+    z-index:9; transform:translateX(103%); transition:transform .26s cubic-bezier(.22,.61,.36,1); display:flex; flex-direction:column;
+    box-shadow:-26px 0 60px -30px rgba(0,0,0,.7)}
+  .panel.open{transform:none}
+  .panel-head{padding:18px 20px 14px; border-bottom:1px solid var(--line); position:relative}
+  .panel-head .close{position:absolute; top:14px; right:16px}
+  .ph-top{display:flex; align-items:center; gap:9px; margin-bottom:8px; flex-wrap:wrap}
+  .ph-num{font-family:var(--mono); font-size:13px; color:var(--accent-num); font-weight:600}
+  .tag{display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--on-tint); background:var(--surface-2); border:1px solid var(--line); padding:2px 9px 2px 7px; border-radius:7px}
+  .tag .d{width:7px;height:7px;border-radius:50%; background:var(--tk)}
+  .panel h2{margin:2px 0 10px; font-size:17px; font-weight:640; letter-spacing:-.01em; line-height:1.28}
+  .ph-labels{display:flex; gap:6px; flex-wrap:wrap}
+  .panel-body{overflow:auto; padding:16px 20px 40px; display:grid; gap:20px}
+  section.blk h4{margin:0 0 9px; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:8px}
+  section.blk h4 .n{font-family:var(--mono); color:var(--faint); font-weight:500; text-transform:none; letter-spacing:0}
+  .classline{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted)}
+  .chips{display:flex; flex-wrap:wrap; gap:6px}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:4px 9px; cursor:pointer; transition:.14s}
+  .chip:hover{border-color:var(--accent); color:var(--accent)}
+  .chip .dir{color:var(--faint)}
+  .chip.empty{color:var(--faint); cursor:default; font-family:var(--sans)}
+  .filelist{display:grid; gap:2px; font-family:var(--mono); font-size:11.5px}
+  .filelist a{color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:7px; display:flex; align-items:center; gap:8px; border:1px solid transparent}
+  .filelist a:hover{background:var(--surface-2); border-color:var(--line); color:var(--accent)}
+  .filelist a svg{color:var(--faint); flex:none}
+  .filelist a .arr{margin-left:auto; opacity:0; color:var(--faint)}
+  .filelist a:hover .arr{opacity:1}
+  .ctx{display:grid; gap:9px}
+  .ctx .kv{display:grid; grid-template-columns:92px 1fr; gap:12px; align-items:baseline}
+  .ctx .k{font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em}
+  .ctx .v{font-size:12.5px; color:var(--ink)}
+  .ctx .v.unknown{color:var(--faint); font-style:italic}
+  .ctx .v .src{display:block; font-family:var(--mono); font-size:10px; color:var(--faint); margin-top:2px; font-style:normal}
+  .evi{display:flex; gap:9px; overflow:auto; padding-bottom:4px}
+  .thumb{flex:none; width:116px; cursor:pointer}
+  .thumb .img{height:72px; border-radius:8px; border:1px solid var(--line); overflow:hidden; transition:.14s}
+  .thumb:hover .img{border-color:var(--accent); transform:translateY(-1px)}
+  .thumb .cap{font-size:10px; color:var(--muted); margin-top:5px; font-family:var(--mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .planbox{font-size:12px; color:var(--muted); background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--e-parent);
+    border-radius:8px; padding:10px 12px; line-height:1.5}
+  .ghlink{display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); text-decoration:none; border:1px solid var(--line);
+    background:var(--surface-2); border-radius:8px; padding:7px 11px; transition:.14s}
+  .ghlink:hover{color:var(--ink); border-color:var(--faint)}
+  .readonly-note{font-size:11px; color:var(--faint); display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+
+  /* ── 증거 라이트박스 ── */
+  .lightbox{position:fixed; inset:0; z-index:12; display:none; place-items:center; background:rgba(5,8,13,.72); backdrop-filter:blur(4px); padding:5vh 5vw}
+  .lightbox.open{display:grid}
+  .lb-card{max-width:820px; width:100%; background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:var(--shadow)}
+  .lb-img{height:min(62vh,520px); background-size:cover; background-position:center}
+  .lb-bar{display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--line)}
+  .lb-cap{font-family:var(--mono); font-size:12px; color:var(--muted)}
+  .lb-close{margin-left:auto}
+
+  /* ── 반응형: 태블릿 (≤1024) ── */
+  @media (max-width:1024px){
+    .col{width:270px}
+    .panel{width:min(400px,92vw)}
+    .topbar{gap:12px}
+    .toggle button .k{display:none}
+    .brand .repo{display:none}
+    .legend{width:210px}
+  }
+  /* ── 반응형: 모바일 (≤680) — 한 컬럼씩 스와이프, 패널 풀스크린 ── */
+  @media (max-width:680px){
+    body{font-size:13px}
+    .topbar{flex-wrap:wrap; row-gap:8px; gap:10px; padding:10px 13px}
+    .brand h1{font-size:14px}
+    .brand .enso{width:26px;height:26px}
+    .spacer{display:none}
+    .meta{margin-left:auto}
+    .sync .ago{display:none}
+    .toggle{order:5; flex:1 1 100%; justify-content:space-between}
+    .toggle button{flex:1; justify-content:center; padding:8px 6px}
+    .columns{padding:12px; gap:12px; scroll-snap-type:x proximity}
+    .col{width:88vw; scroll-snap-align:center}
+    svg.edges{display:none}          /* 모바일: 연결선 대신 카드 하이라이트+패널 칩으로 관계 전달 */
+    .legend{display:none}
+    .net-hint{max-width:min(88vw,340px); font-size:11px; left:12px; top:12px; padding:7px 10px}
+    .panel{width:100vw; border-left:0}
+    .panel-body{padding:14px 16px 40px}
+    .ctx .kv{grid-template-columns:78px 1fr; gap:8px}
+    .lb-img{height:46vh}
+  }
+  @media (prefers-reduced-motion:reduce){ svg.edges path.flow{animation:none} *{transition-duration:.01ms !important} }
+</style>
+</head>
+<body>
+<div class="bg-motif" aria-hidden="true">
+  <div class="glow"></div>
+  <!-- samsara 만다라·엔소·경락 워터마크 (테마 반응형 → 다크/라이트 쌍) -->
+  <svg width="880" height="880" viewBox="0 0 240 240" fill="none" stroke="currentColor">
+    <defs>
+      <radialGradient id="mand-g" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity=".95"/>
+        <stop offset="58%" stop-color="var(--e-parent)" stop-opacity=".55"/>
+        <stop offset="100%" stop-color="var(--e-relates)" stop-opacity=".25"/>
+      </radialGradient>
+    </defs>
+    <g transform="translate(120 120)">
+      <circle r="112" stroke-width=".4"/><circle r="96" stroke-width=".4"/>
+      <circle r="72" stroke-width=".7"/><circle r="46" stroke-width=".9"/><circle r="22" stroke-width="1.1"/>
+      <g id="mandala" stroke-width=".5"></g>
+      <path d="M96 -40 A104 104 0 1 0 104 58" stroke="url(#mand-g)" stroke-width="3.2" stroke-linecap="round"/>
+    </g>
+  </svg>
+</div>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="enso" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 40 40" fill="none">
+          <path d="M31 9 A15.5 15.5 0 1 0 33.4 24.5" stroke="var(--accent)" stroke-width="3.2" stroke-linecap="round"/>
+          <circle cx="20" cy="20" r="2.1" fill="var(--e-relates)"/>
+          <circle cx="20" cy="9.5" r="1.7" fill="var(--e-depends)"/>
+          <circle cx="30.5" cy="26" r="1.7" fill="var(--e-parent)"/>
+          <circle cx="10" cy="26" r="1.7" fill="var(--e-dup)"/>
+        </svg>
+      </span>
+      <div style="min-width:0">
+        <h1>이슈 경락도 <span class="sep">·</span> Board</h1>
+        <div class="repo">Mineru98/samsara</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="toggle" role="group" aria-label="뷰 전환">
+      <button data-view="classify" aria-pressed="true" onclick="setView('classify')">착수 가능성 <span class="k">classify</span></button>
+      <button data-view="status" aria-pressed="false" onclick="setView('status')">이슈 상태 <span class="k">status</span></button>
+      <button data-view="network" aria-pressed="false" onclick="setView('network')">연관도 <span class="k">network</span></button>
+    </div>
+    <div class="meta">
+      <div class="sync"><span class="dot"></span><span>마지막 동기화 <time>11:33</time><span class="ago"> · 방금</span></span></div>
+      <button class="iconbtn" title="테마 전환" onclick="toggleTheme()" aria-label="테마 전환">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M19.5 19.5 18 18M18 6l1.5-1.5M4.5 19.5 6 18"/><circle cx="12" cy="12" r="4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="board" id="board" data-view="classify">
+    <div class="columns" id="columns"></div>
+    <div class="network" id="network" aria-hidden="true">
+      <div class="net-hint"><b>전체 연관도</b> — 완결된 이슈까지 포함한 관계망. 노드=이슈(색=분류), 선=관계. 노드에 마우스를 올리면 이웃과 함께 제목이 뜨고, 클릭하면 상세가 열립니다.</div>
+      <svg id="netsvg" aria-label="이슈 연관 네트워크"></svg>
+      <div class="ntips" id="ntips" aria-hidden="true"></div>
+    </div>
+
+    <aside class="legend" id="legend" aria-label="관계 범례">
+      <div class="lg-head" id="lgHead">
+        <span class="grip" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><circle cx="3" cy="2.5" r="1"/><circle cx="9" cy="2.5" r="1"/><circle cx="3" cy="6" r="1"/><circle cx="9" cy="6" r="1"/><circle cx="3" cy="9.5" r="1"/><circle cx="9" cy="9.5" r="1"/></svg></span>
+        <h3>경락 · 관계</h3>
+        <button class="lg-collapse" title="접기/펼치기" onclick="document.getElementById('legend').classList.toggle('hide')">–</button>
+      </div>
+      <div class="lg-body">
+        <div class="lg" style="--c:var(--e-depends)"><span class="ln"></span> 의존 <small>depends-on · 선수→후속</small></div>
+        <div class="lg" style="--c:var(--e-parent)"><span class="ln"></span> 상위 <small>parent-of · 계층</small></div>
+        <div class="lg" style="--c:var(--e-dup)"><span class="ln"></span> 중복 <small>duplicate-of</small></div>
+        <div class="lg" style="--c:var(--e-relates)"><span class="ln"></span> 연관 <small>relates-to</small></div>
+        <div class="lg" style="--c:var(--e-super)"><span class="ln"></span> 대체 <small>supersedes</small></div>
+        <div class="lg" style="--c:var(--e-stale)"><span class="ln dash"></span> 철 지난 관계 <small>staleEdges</small></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<svg class="edges" id="edges" aria-hidden="true"></svg>
+
+<!-- 상세 패널 -->
+<div class="scrim" id="scrim" onclick="closePanel()"></div>
+<aside class="panel" id="panel" aria-hidden="true" aria-label="이슈 상세">
+  <div class="panel-head">
+    <button class="iconbtn close" onclick="closePanel()" aria-label="닫기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="ph-top" id="ph-top"></div>
+    <h2 id="ph-title"></h2>
+    <div class="ph-labels" id="ph-labels"></div>
+  </div>
+  <div class="panel-body" id="ph-body"></div>
+</aside>
+
+<!-- 증거 라이트박스 -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <div class="lb-card">
+    <div class="lb-img" id="lbImg"></div>
+    <div class="lb-bar"><span class="lb-cap" id="lbCap"></span>
+      <button class="iconbtn lb-close" onclick="closeLightbox()" aria-label="닫기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const REPO="Mineru98/samsara";
+const gh=n=>`https://github.com/${REPO}/issues/${n}`;
+const blob=p=>`https://github.com/${REPO}/blob/main/${p}`;
+const cv=(value,reason,source)=>({value,reason:reason||null,source:source||null});
+const U=f=>cv("unknown",`GitHub 본문에 구조화된 ${f} 필드가 없음`,"sync");
+function node(number,title,status,priority,labels,files,context,evidence,plan){
+  return {number,title,status,priority,labels:labels||[],files:files||[],context:context||{},evidence:evidence||[],plan:plan||null}; }
+const N={};
+[
+  node(100,"이슈 보드 (epic) — graph.json 칸반 렌더링","open","p0",["epic","enhancement"],[],
+    {problem:cv("graph.json 을 사람이 한눈에 볼 방법이 없다","인터뷰","interview"),outcome:cv("이슈 경락도 board.html","인터뷰","interview"),
+     scope:cv("board 하위명령 + 사이드카 + 렌더러","seed","seed"),acceptance:U("acceptance"),result:U("result"),
+     components:cv(["issue-onboard","board"],"인터뷰","interview"),decisions:cv("정적 HTML + graph-data.js 사이드카","인터뷰","interview"),evidence:U("evidence")},
+    [],"인터뷰(session interview_20260827_113337)로 요구 확정. seed → run 대기."),
+  node(101,"그래프 온톨로지 v2 스키마","close","p1",["enhancement"],
+    ["tools/issue-ontology/schemas/graph-v2.schema.json","tools/issue-ontology/validate.mjs"],
+    {problem:cv("graph shape 가 명시되지 않았다","fixture","code"),outcome:cv("Ajv 로 검증 가능","code","code"),scope:cv("graph-v2","code","code"),
+     acceptance:cv("valid graph 통과","code","code"),result:cv("스키마 정합화 완료","code","code"),components:cv(["issue-ontology"],"code","code"),
+     decisions:cv("Ajv island","code","code"),evidence:cv("ontology.test.mjs 13 pass","test","code")},
+    [{cap:"ajv-valid.png"},{cap:"tests-13pass.png"}],"graph-v2 스키마·fixture·walker 정합화. edges 리치 필드 편입."),
+  node(102,"issue-onboard sync 엔진","close","p0",["enhancement"],
+    ["skills/issue-onboard/scripts/issue-onboard.mjs","skills/issue-sync/scripts/issue-sync.mjs"],
+    {problem:U("problem"),outcome:cv("본문 마커·결정 코멘트·네이티브 의존성 병합","code","code"),scope:U("scope"),acceptance:U("acceptance"),
+     result:cv("sync/plan/next 동작","code","code"),components:cv(["issue-onboard"],"code","code"),decisions:U("decisions"),evidence:U("evidence")},
+    [{cap:"sync-complete.png"}],"GitHub 정본에서 노드·엣지 재생성. classify/prereqMap 로 ready 판정."),
+  node(105,"Grok Build 호환 플러그인 지원","close","p2",["enhancement"],[".grok-plugin/plugin.json","README.md"],
+    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:cv("Grok 플러그인 등록","code","code"),
+     components:U("components"),decisions:U("decisions"),evidence:U("evidence")},
+    [],"독립 완결(엣지 없음) — 완결 클러스터라 보드 기본 렌더에서 숨김, Network 에서 확인."),
+  node(110,"board 사이드카 생성기 (graph-data.js)","in-process","p1",["enhancement"],["skills/issue-onboard/scripts/board-sidecar.mjs"],
+    {problem:cv("board.html 이 규칙을 복제하면 드리프트","인터뷰","interview"),outcome:cv("classify()/prereqMap() 재사용해 사전 계산","인터뷰","interview"),
+     scope:cv("window.__ISSUE_GRAPH__ 구움","seed","seed"),acceptance:U("acceptance"),result:U("result"),components:cv(["board"],"seed","seed"),
+     decisions:cv("board.html 은 순수 렌더러","인터뷰","interview"),evidence:U("evidence")},
+    [{cap:"sidecar-shape.png"}],"graph.json → 분류·엣지 좌표·node.files 를 사이드카에 구움."),
+  node(120,"node.files git log 수집","plan","p1",["enhancement"],["skills/issue-onboard/scripts/board-files.mjs"],
+    {problem:cv("이슈-코드 추적성 없음","인터뷰","interview"),outcome:cv("오프라인 git log 우선 수집","인터뷰","interview"),
+     scope:cv("node.files 스키마 편입","seed","seed"),acceptance:U("acceptance"),result:U("result"),components:cv(["issue-ontology","board"],"seed","seed"),
+     decisions:cv("온라인 gh 는 --online 옵션","인터뷰","interview"),evidence:U("evidence")},
+    [],"머지 커밋/브랜치명(feat/6-issue-6)의 #N 참조로 이슈↔파일 매핑."),
+  node(140,"검증 줄번호 매핑 (validate)","review","p1",["enhancement"],["skills/issue-onboard/scripts/issue-onboard.mjs"],
+    {problem:cv("검증 실패 위치를 못 짚음","인터뷰","interview"),outcome:cv("Ajv instancePath → graph.json:줄 매핑","인터뷰","interview"),
+     scope:U("scope"),acceptance:cv("전 문제 나열","인터뷰","interview"),result:U("result"),components:cv(["issue-ontology"],"seed","seed"),
+     decisions:U("decisions"),evidence:cv("before/after 캡처","evidence","code")},
+    [{cap:"before-noloc.png"},{cap:"after-lineno.png"}],"실패 시 CLI+오버레이에 .issue/graph.json:<줄> 로 전 문제 나열."),
+  node(111,"board.html 렌더러","open","p1",["enhancement"],[],
+    {problem:U("problem"),outcome:cv("status↔classify 토글·카드·패널","seed","seed"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),
+     components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+  node(112,"SVG 연결선 오버레이","open","p2",["enhancement"],[],
+    {problem:U("problem"),outcome:cv("5종 관계 연결선 + 범례","seed","seed"),scope:cv("결정론 레이아웃 + 단일 SVG","seed","seed"),
+     acceptance:U("acceptance"),result:U("result"),components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+  node(113,"카드 상세 패널","open","p2",["enhancement"],[],
+    {problem:U("problem"),outcome:cv("우측 패널: 선수/후속·파일·context·증거","seed","seed"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),
+     components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+  node(121,"파일 경로 GitHub blob 링크","open","p3",["enhancement"],[],
+    {problem:U("problem"),outcome:cv("node.files → blob URL 클릭 이동","seed","seed"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),
+     components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+  node(130,"Playwright 성능 하네스 (dev 전용)","open","p2",["enhancement","test"],["tests/board.perf.spec.ts","scripts/gen-fixture.mjs"],
+    {problem:cv("500+ 끊김 없음을 무엇으로 판정?","인터뷰","interview"),outcome:cv("렌더≤2s·프레임 p95≤33ms·상호작용≤100ms 강제","인터뷰","interview"),
+     scope:cv("500노드/1000엣지 픽스처","seed","seed"),acceptance:U("acceptance"),result:U("result"),components:cv(["board","test"],"seed","seed"),
+     decisions:cv("Playwright 는 devDependency 만","인터뷰","interview"),evidence:U("evidence")},
+    [],"런타임 산출물은 무의존 유지. 헤드리스로 임계치 자동 측정·강제."),
+  node(150,"README 경락도 문서","open","p3",["docs"],["README.md"],
+    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),components:U("components"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+  node(151,"경락도 용어집 (중복 후보)","open","p3",["docs"],[],
+    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),components:U("components"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+  node(160,"구 board POC (대체됨)","close","p3",["enhancement"],["skills/issue-onboard/scripts/board-poc.mjs"],
+    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:cv("110 이 대체","code","code"),
+     components:U("components"),decisions:U("decisions"),evidence:U("evidence")},[],null),
+].forEach(n=>N[n.number]=n);
+
+const EDGES=[
+  {from:102,to:101,type:"depends-on"},{from:110,to:102,type:"depends-on"},{from:120,to:102,type:"depends-on"},
+  {from:140,to:101,type:"depends-on"},{from:111,to:110,type:"depends-on"},{from:112,to:111,type:"depends-on"},
+  {from:113,to:111,type:"depends-on"},{from:130,to:111,type:"depends-on"},{from:121,to:120,type:"depends-on"},
+  {from:100,to:110,type:"parent-of"},{from:100,to:111,type:"parent-of"},{from:100,to:112,type:"parent-of"},
+  {from:100,to:113,type:"parent-of"},{from:100,to:120,type:"parent-of"},{from:100,to:130,type:"parent-of"},
+  {from:110,to:112,type:"relates-to"},{from:110,to:160,type:"supersedes"},{from:151,to:150,type:"duplicate-of"},
+  {from:150,to:160,type:"relates-to",stale:true},
+];
+window.__ISSUE_GRAPH__={version:2,provider:"github",repository:REPO,nodes:N,edges:EDGES,
+  snapshot:{status:"complete",fetchedAt:"2026-08-27T11:33:00Z"}};
+
+/* ── classify / prereqMap ── */
+const DONE="close", INPROG=new Set(["plan","in-process","review"]);
+const PRE=(()=>{const m=new Map();for(const k in N)m.set(+k,new Set());for(const e of EDGES)if(e.type==="depends-on"&&!e.stale)m.get(e.from)?.add(e.to);return m;})();
+const prioRank=n=>{const p=(n.priority||"").match(/p([0-3])/);return p?+p[1]:9;};
+const blockersOf=num=>[...(PRE.get(num)||[])].filter(d=>N[d]&&N[d].status!==DONE);
+const classifyOf=num=>{const n=N[num];if(n.status===DONE)return "done";if(blockersOf(num).length)return "blocked";return INPROG.has(n.status)?"inprog":"ready";};
+const predecessorsOf=num=>[...(PRE.get(num)||[])];
+const successorsOf=num=>{const o=[];for(const e of EDGES)if(e.type==="depends-on"&&!e.stale&&e.to===num)o.push(e.from);return o;};
+
+/* ── 완결(all-close) 클러스터 계산 (task4) ── */
+const {hiddenNodes, hiddenClusters, hiddenCount}=(()=>{
+  const adj=new Map(); for(const k in N)adj.set(+k,new Set());
+  for(const e of EDGES){ adj.get(e.from)?.add(e.to); adj.get(e.to)?.add(e.from); }
+  const seen=new Set(), hidden=new Set(); let clusters=0, count=0;
+  for(const k in N){ const s=+k; if(seen.has(s))continue;
+    const comp=[], stack=[s]; seen.add(s);
+    while(stack.length){ const x=stack.pop(); comp.push(x); for(const y of adj.get(x)||[])if(!seen.has(y)){seen.add(y);stack.push(y);} }
+    if(comp.every(x=>N[x].status===DONE)){ clusters++; comp.forEach(x=>{hidden.add(x);count++;}); }
+  }
+  return {hiddenNodes:hidden, hiddenClusters:clusters, hiddenCount:count};
+})();
+
+const CLS_TK={ready:"var(--ready)",blocked:"var(--blocked)",inprog:"var(--inprog)",done:"var(--done)"};
+const STATUS_TK={open:"var(--ready)",plan:"var(--e-parent)","in-process":"var(--inprog)",review:"var(--e-dup)",close:"var(--done)"};
+const CLS_LABEL={ready:"착수 가능",blocked:"막힘",inprog:"진행 중",done:"완료"};        // 한글 순화(task5)
+const CLS_EN={ready:"ready",blocked:"blocked",inprog:"in-progress",done:"done"};       // 원어(부가 표기)
+const ST_LABEL={open:"열림",plan:"계획","in-process":"진행",review:"검토",close:"닫힘"}; // 상태 한글화
+const CLASSIFY_COLS=[
+  {key:"ready",label:"착수 가능",desc:"선수 완료"},{key:"blocked",label:"막힘",desc:"선수 미완"},
+  {key:"inprog",label:"진행 중",desc:"plan·review"},{key:"done",label:"완료",desc:"close"}];
+const STATUS_COLS=[
+  {key:"open",label:"열림",desc:"open"},{key:"plan",label:"계획",desc:"plan"},
+  {key:"in-process",label:"진행",desc:"in-process"},{key:"review",label:"검토",desc:"review"},
+  {key:"close",label:"닫힘",desc:"close"}];
+
+let VIEW="classify";
+const $=id=>document.getElementById(id);
+const board=$("board"), columns=$("columns"), svg=$("edges");
+const SVGNS="http://www.w3.org/2000/svg";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const icoFile=()=>'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v5h5M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>';
+const icoGh=()=>'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.1-1.47-1.1-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>';
+const eviBg=i=>`linear-gradient(135deg, color-mix(in srgb,var(--e-parent) ${18+i*10}%,var(--surface)), color-mix(in srgb,var(--accent) ${14+i*8}%,var(--surface)))`;
+
+function cardHTML(num){
+  const n=N[num], cls=classifyOf(num), tk=(VIEW==="classify")?CLS_TK[cls]:STATUS_TK[n.status];
+  const preds=predecessorsOf(num), succ=successorsOf(num), wait=blockersOf(num);
+  const foot=[];
+  if(preds.length)foot.push(`<span class="rel" title="선수(먼저 close)"><span class="a">선수 ←</span> ${preds.map(p=>`<b>#${p}</b>`).join(" ")}</span>`);
+  if(succ.length)foot.push(`<span class="rel" title="후속(이 이슈에 의존)"><span class="a">후속 →</span> ${succ.map(s=>`<b>#${s}</b>`).join(" ")}</span>`);
+  if(n.files.length)foot.push(`<span class="files-chip" title="수정 파일 ${n.files.length}">${icoFile()} ${n.files.length}</span>`);
+  const waitHTML=(cls==="blocked"&&wait.length)?`<span class="wait" title="대기 선수">⛔ ${wait.map(w=>`<b>#${w}</b>`).join(", ")}</span>`:"";
+  return `<article class="card" data-num="${num}" tabindex="0" role="button"
+    onclick="openPanel(${num})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPanel(${num})}"
+    onpointerenter="hoverCard(${num})" onpointerleave="clearHover()" onfocus="hoverCard(${num})" onblur="clearHover()">
+    <div class="row1">
+      <span class="chakra" style="--tk:${tk}" title="${VIEW==='classify'?CLS_LABEL[cls]:ST_LABEL[n.status]}"></span>
+      <span class="num">#${num}</span>
+      ${prioRank(n)<9?`<span class="prio ${n.priority}">${n.priority.toUpperCase()}</span>`:""}
+      <a class="gh" href="${gh(num)}" target="_blank" rel="noopener" title="GitHub 에서 열기" onclick="event.stopPropagation()">${icoGh()}</a>
+    </div>
+    <p class="title">${esc(n.title)}</p>
+    ${n.labels.length?`<div class="labels">${n.labels.map(l=>`<span class="lbl">${esc(l)}</span>`).join("")}</div>`:""}
+    <div class="cardfoot">${foot.join("")}${waitHTML}</div>
+  </article>`;
+}
+
+function render(){
+  columns.innerHTML="";
+  const cols=VIEW==="classify"?CLASSIFY_COLS:STATUS_COLS;
+  const buckets={}; cols.forEach(c=>buckets[c.key]=[]);
+  for(const k in N){ const num=+k; if(hiddenNodes.has(num))continue;   // 완결 클러스터 숨김(task4)
+    const key=VIEW==="classify"?classifyOf(num):N[num].status; if(buckets[key])buckets[key].push(num); }
+  const byPrio=(a,b)=>prioRank(N[a])-prioRank(N[b])||a-b;
+  cols.forEach(col=>{
+    const list=(buckets[col.key]||[]).sort(byPrio);
+    const tk=VIEW==="classify"?CLS_TK[col.key]:STATUS_TK[col.key];
+    const el=document.createElement("div"); el.className="col"; el.dataset.col=col.key;
+    el.innerHTML=`<div class="col-head"><span class="tick" style="--tk:${tk}"></span><h2>${col.label}</h2>
+        <span class="count">${list.length}</span>${col.desc?`<span class="desc">${col.desc}</span>`:""}</div>
+      <div class="col-body">${list.map(cardHTML).join("")||`<div class="col-empty">(없음)</div>`}</div>`;
+    columns.appendChild(el);
+  });
+  // 컬럼별 독립 스크롤(task6) 중 hover 엣지 좌표 갱신
+  columns.querySelectorAll(".col-body").forEach(b=>b.addEventListener("scroll",()=>{ const n=curRel(); if(n!=null) drawHoverEdges(n); },{passive:true}));
+}
+
+/* ── hover 엣지(오직 hover 시) task2 ── */
+const TYPE_COLOR={"depends-on":"var(--e-depends)","parent-of":"var(--e-parent)","duplicate-of":"var(--e-dup)","relates-to":"var(--e-relates)","supersedes":"var(--e-super)"};
+const DIRECTED=new Set(["depends-on","parent-of","duplicate-of","supersedes"]);
+let hoverNum=null, pinnedNum=null;              // pinnedNum: 클릭으로 고정된 노드(패널 열림 동안 연관 유지, task2)
+const curRel=()=>hoverNum!=null?hoverNum:pinnedNum;
+const RM=(typeof matchMedia==="function")&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+const REL_KO={"depends-on":"의존","parent-of":"상위","duplicate-of":"중복","relates-to":"연관","supersedes":"대체"};
+// 화살촉(꼬리 오목) + 출발점 점 마커. pfx 로 board('h')·network('n') 구분.
+function markerDefs(pfx){ return `<defs>${Object.entries(TYPE_COLOR).map(([t,c])=>
+  `<marker id="${pfx}arw-${t}" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1 L11 6 L1 11 L4.2 6 Z" fill="${c}"/></marker>`+
+  `<marker id="${pfx}dot-${t}" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6.5" markerHeight="6.5"><circle cx="4" cy="4" r="3" fill="${c}"/></marker>`
+).join("")}</defs>`; }
+const cardRect=num=>{ const el=columns.querySelector(`.card[data-num="${num}"]`); return el?el.getBoundingClientRect():null; };
+function applyHighlight(num){
+  const linked=new Set([num]);
+  for(const e of EDGES) if(e.from===num||e.to===num){ linked.add(e.from); linked.add(e.to); }
+  columns.querySelectorAll(".card").forEach(c=>{ const n=+c.dataset.num; c.classList.remove("dim","linked","active");
+    if(n===num)c.classList.add("active"); else if(linked.has(n))c.classList.add("linked"); else c.classList.add("dim"); });
+}
+function showRelations(num){ drawHoverEdges(num); applyHighlight(num); }
+function clearRelationsDom(){ svg.innerHTML="";   // path·라벨 g·파티클·defs 전부 제거(task1: 라벨 뱃지 잔상 방지)
+  columns.querySelectorAll(".card").forEach(c=>c.classList.remove("dim","linked","active")); }
+function hoverCard(num){ hoverNum=num; showRelations(num); }
+function clearHover(){ hoverNum=null; if(pinnedNum!=null) showRelations(pinnedNum); else clearRelationsDom(); }
+function drawHoverEdges(num){
+  svg.setAttribute("width",innerWidth); svg.setAttribute("height",innerHeight);
+  const mine=EDGES.filter(e=>e.from===num||e.to===num);
+  let s=markerDefs("h"), i=0;
+  for(const e of mine){
+    const directed=DIRECTED.has(e.type);
+    const srcNum=(e.type==="depends-on")?e.to:e.from, dstNum=(e.type==="depends-on")?e.from:e.to;   // depends-on: 선수→후속
+    const A=cardRect(srcNum), B=cardRect(dstNum); if(!A||!B)continue;
+    const a={x:A.left,y:A.top+A.height/2,w:A.width}, b={x:B.left,y:B.top+B.height/2,w:B.width};
+    let x1,x2; if(a.x<=b.x){x1=a.x+a.w;x2=b.x;}else{x1=a.x;x2=b.x+b.w;}
+    const dx=Math.max(46,Math.abs(x2-x1)*0.5), c1x=x1+(a.x<=b.x?dx:-dx), c2x=x2+(a.x<=b.x?-dx:dx);
+    const d=`M${x1},${a.y} C${c1x},${a.y} ${c2x},${b.y} ${x2},${b.y}`;
+    const col=TYPE_COLOR[e.type]||"var(--e-relates)", id=`he${i++}`;
+    const markers=directed?`marker-start="url(#hdot-${e.type})" marker-end="url(#harw-${e.type})"`:`marker-start="url(#hdot-${e.type})" marker-end="url(#hdot-${e.type})"`;
+    s+=`<path id="${id}" d="${d}" fill="none" stroke="${col}" stroke-width="${e.type==="depends-on"?2.6:2}" stroke-opacity="${e.stale?0.55:0.95}" stroke-linecap="round" ${e.stale?'stroke-dasharray="6 6"':''} ${markers}/>`;
+    if(directed && !RM && !e.stale) s+=`<circle r="3.4" fill="${col}"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`;
+    const mx=0.125*x1+0.375*c1x+0.375*c2x+0.125*x2, my=(a.y+b.y)/2;      // 베지어 중점
+    const label=(directed?"▸ ":"↔ ")+REL_KO[e.type], w=label.length*8.5+14;
+    s+=`<g transform="translate(${mx.toFixed(1)},${my.toFixed(1)})"><rect x="${(-w/2).toFixed(1)}" y="-10" width="${w.toFixed(1)}" height="20" rx="10" fill="var(--surface)" stroke="${col}" stroke-opacity=".55"/><text x="0" y="4" text-anchor="middle" font-size="11" fill="var(--ink)" style="font-family:var(--sans)">${label}</text></g>`;
+  }
+  svg.innerHTML=s;
+}
+addEventListener("scroll",()=>{ const n=curRel(); if(n!=null)drawHoverEdges(n); },true);
+let rz; addEventListener("resize",()=>{ cancelAnimationFrame(rz); rz=requestAnimationFrame(()=>{ if(VIEW==="network")renderNetwork(); const n=curRel(); if(n!=null)drawHoverEdges(n); }); });
+
+/* ── Network 뷰 (task4) — 경량 force layout ── */
+const netsvg=$("netsvg");
+let netPos=null, netEdges=[], netPinned=null;   // netEdges: 파티클 메타, netPinned: 클릭 고정 노드(hover 상태 유지)
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function layoutNetwork(W,H){
+  const rnd=mulberry32(20260827);
+  const ids=Object.keys(N).map(Number);
+  const deg={}; ids.forEach(i=>deg[i]=0); for(const e of EDGES){deg[e.from]++;deg[e.to]++;}
+  const pos={}; ids.forEach(i=>pos[i]={x:W/2+(rnd()-.5)*W*0.6,y:H/2+(rnd()-.5)*H*0.6,vx:0,vy:0});
+  const L=Math.min(W,H)/7;
+  for(let it=0; it<320; it++){
+    for(let a=0;a<ids.length;a++)for(let b=a+1;b<ids.length;b++){
+      const p=pos[ids[a]],q=pos[ids[b]]; let dx=p.x-q.x,dy=p.y-q.y,d2=dx*dx+dy*dy+.01,d=Math.sqrt(d2);
+      const f=(L*L*1.1)/d2; dx/=d;dy/=d; p.vx+=dx*f;p.vy+=dy*f;q.vx-=dx*f;q.vy-=dy*f;
+    }
+    for(const e of EDGES){ const p=pos[e.from],q=pos[e.to]; let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)+.01;
+      const f=(d-L)*0.06; dx/=d;dy/=d; p.vx+=dx*f;p.vy+=dy*f;q.vx-=dx*f;q.vy-=dy*f; }
+    for(const i of ids){ const p=pos[i]; p.vx+=(W/2-p.x)*0.008; p.vy+=(H/2-p.y)*0.008;
+      p.x+=Math.max(-6,Math.min(6,p.vx)); p.y+=Math.max(-6,Math.min(6,p.vy)); p.vx*=0.82; p.vy*=0.82;
+      p.x=Math.max(40,Math.min(W-40,p.x)); p.y=Math.max(40,Math.min(H-40,p.y)); }
+  }
+  ids.forEach(i=>pos[i].deg=deg[i]); return pos;
+}
+function renderNetwork(){
+  const r=board.getBoundingClientRect(), W=r.width, H=r.height;
+  netsvg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  netPos=layoutNetwork(W,H);
+  let e_html="", n_html="";
+  let idx=0; netEdges=[];
+  for(const e of EDGES){
+    const p=netPos[e.from],q=netPos[e.to]; if(!p||!q)continue;
+    const dir=(e.type==="depends-on"), directed=DIRECTED.has(e.type);
+    const s=dir?netPos[e.to]:netPos[e.from], t=dir?netPos[e.from]:netPos[e.to];   // depends-on: 선수→후속
+    const col=TYPE_COLOR[e.type]||'var(--e-relates)', id=`ne${idx++}`;
+    netEdges.push({id,from:e.from,to:e.to,directed,stale:!!e.stale,col});
+    e_html+=`<path id="${id}" class="nedge" data-a="${e.from}" data-b="${e.to}" d="M${s.x},${s.y} Q${(s.x+t.x)/2},${(s.y+t.y)/2-18} ${t.x},${t.y}"
+      fill="none" stroke="${col}" stroke-width="${directed?2:1.4}" stroke-opacity="${e.stale?.4:.6}"
+      ${e.stale?'stroke-dasharray="5 6"':''} marker-start="url(#ndot-${e.type})" ${directed?`marker-end="url(#narw-${e.type})"`:`marker-end="url(#ndot-${e.type})"`}/>`;
+  }
+  // 파티클은 기본 렌더에 넣지 않고 hover 시에만 #nparts 에 주입(task2)
+  for(const k in N){ const num=+k, p=netPos[num], cls=classifyOf(num), rad=9+Math.min(9,(p.deg||0)*1.1);
+    n_html+=`<g class="nnode" data-num="${num}" tabindex="0" onclick="openPanel(${num})" onpointerenter="hoverNet(${num})" onpointerleave="clearNet()"
+        onkeydown="if(event.key==='Enter')openPanel(${num})">
+      <circle cx="${p.x}" cy="${p.y}" r="${rad}" fill="color-mix(in srgb, ${CLS_TK[cls]} 30%, var(--surface))" stroke="${CLS_TK[cls]}" stroke-width="2"/>
+      <text class="nlabel" x="${p.x}" y="${p.y+rad+12}" text-anchor="middle">#${num}</text></g>`;
+  }
+  netsvg.innerHTML=markerDefs("n")+`<g>${e_html}</g><g>${n_html}</g><g id="nparts"></g>`;
+  if(netPinned!=null) hoverNet(netPinned);   // 재렌더(리사이즈 등) 후 고정 상태 복원
+}
+function hoverNet(num){
+  const nb=new Set([num]); for(const e of EDGES)if(e.from===num||e.to===num){nb.add(e.from);nb.add(e.to);}
+  netsvg.querySelectorAll(".nedge").forEach(p=>{const on=(+p.dataset.a===num||+p.dataset.b===num); p.style.opacity=on?1:.08;});
+  netsvg.querySelectorAll(".nnode").forEach(g=>{const n=+g.dataset.num; g.style.opacity=nb.has(n)?1:.2;});
+  // hover 시에만 방향 파티클 애니메이션 주입(task2)
+  const np=$("nparts"); if(np){ np.innerHTML = RM?"":netEdges.filter(x=>x.directed&&!x.stale&&(x.from===num||x.to===num))
+    .map(x=>`<circle r="3" fill="${x.col}"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#${x.id}"/></animateMotion></circle>`).join(""); }
+  // 커스텀 툴팁: hover 노드 + 이웃 노드의 이슈 제목을 함께 표시(task4)
+  const tips=$("ntips"); if(!netPos){ tips.innerHTML=""; return; }
+  tips.innerHTML=[...nb].sort((a,b)=>(a===num?-1:b===num?1:a-b)).map(n=>{ const p=netPos[n]; if(!p)return "";
+    return `<div class="ntip ${n===num?'me':''}" style="left:${p.x}px;top:${p.y}px"><span class="h">#${n}</span>${esc(N[n].title)}</div>`; }).join("");
+}
+function clearNet(){ if(netPinned!=null){ hoverNet(netPinned); return; }   // 클릭 고정 노드가 있으면 그 상태로 복귀(hover 상태 유지)
+  netsvg.querySelectorAll(".nedge").forEach(p=>p.style.opacity=""); netsvg.querySelectorAll(".nnode").forEach(g=>g.style.opacity="");
+  $("ntips").innerHTML=""; const np=$("nparts"); if(np)np.innerHTML=""; }   // 파티클 제거(task2)
+
+/* ── 상세 패널 ── */
+const relChip=num=>`<button class="chip" onclick="openPanel(${num})"><span class="dir">#</span>${num} · ${esc((N[num]?.title||"").slice(0,22))}</button>`;
+function openPanel(num){
+  const n=N[num]; if(!n)return;
+  const cls=classifyOf(num), preds=predecessorsOf(num), succ=successorsOf(num), wait=blockersOf(num);
+  $("ph-top").innerHTML=`<span class="ph-num">#${num}</span>
+    <span class="tag" title="${n.status}"><span class="d" style="--tk:${STATUS_TK[n.status]}"></span>${ST_LABEL[n.status]}</span>
+    ${prioRank(n)<9?`<span class="prio ${n.priority}">${n.priority.toUpperCase()}</span>`:""}
+    <a class="gh" href="${gh(num)}" target="_blank" rel="noopener" title="GitHub 에서 열기" style="margin-left:auto">${icoGh()}</a>`;
+  $("ph-title").textContent=n.title;
+  $("ph-labels").innerHTML=n.labels.map(l=>`<span class="lbl">${esc(l)}</span>`).join("");
+  const fields=[["problem","문제"],["outcome","결과 목표"],["scope","범위"],["acceptance","수용 기준"],["result","결과"],["components","컴포넌트"],["decisions","결정"],["evidence","증거"]];
+  const ctxHTML=fields.map(([k,ko])=>{const v=n.context[k]; if(!v)return ""; const unk=v.value==="unknown"; const val=Array.isArray(v.value)?v.value.join(", "):v.value;
+    return `<div class="kv"><span class="k">${ko}</span><span class="v ${unk?"unknown":""}">${esc(val)}${unk&&v.reason?`<span class="src">${esc(v.reason)}</span>`:(v.source?`<span class="src">↳ ${esc(v.source)}</span>`:"")}</span></div>`;}).join("");
+  const filesHTML=n.files.length?`<div class="filelist">${n.files.map(f=>`<a href="${blob(f)}" target="_blank" rel="noopener">${icoFile()}<span>${esc(f)}</span><span class="arr">↗</span></a>`).join("")}</div>`:`<span class="chip empty">연결된 파일 없음 · git log 에서 참조 못 찾음</span>`;
+  const eviHTML=n.evidence.length?`<div class="evi">${n.evidence.map((e,i)=>`<div class="thumb" onclick="openLightbox('${eviBg(i)}','${esc(e.cap)}')"><div class="img" style="background:${eviBg(i)}"></div><div class="cap">${esc(e.cap)}</div></div>`).join("")}</div>`:`<span class="chip empty">증거 캡처 없음</span>`;
+  const clsMsg=cls==="blocked"&&wait.length?`⛔ 대기: ${wait.map(w=>`#${w}`).join(", ")}`:(cls==="done"?"완료됨":cls==="inprog"?"진행 중":"선수 완료 · 착수 가능");
+  $("ph-body").innerHTML=`
+    <section class="blk"><h4>분류</h4><div class="classline"><span class="tag"><span class="d" style="--tk:${CLS_TK[cls]}"></span>${CLS_LABEL[cls]}</span><span>${clsMsg}</span></div></section>
+    <section class="blk"><h4>선수 <span class="n">predecessors · depends-on→</span></h4><div class="chips">${preds.length?preds.map(relChip).join(""):'<span class="chip empty">없음</span>'}</div></section>
+    <section class="blk"><h4>후속 <span class="n">successors</span></h4><div class="chips">${succ.length?succ.map(relChip).join(""):'<span class="chip empty">없음</span>'}</div></section>
+    <section class="blk"><h4>수정 파일 <span class="n">node.files · git log</span></h4>${filesHTML}</section>
+    <section class="blk"><h4>맥락 <span class="n">context</span></h4><div class="ctx">${ctxHTML}</div></section>
+    <section class="blk"><h4>증거 <span class="n">.issue/${num}/evidence · 클릭 확대</span></h4>${eviHTML}</section>
+    ${n.plan?`<section class="blk"><h4>계획 요약 <span class="n">.issue/${num}/plan.md</span></h4><div class="planbox">${esc(n.plan)}</div></section>`:""}
+    <div class="readonly-note"><a class="ghlink" href="${gh(num)}" target="_blank" rel="noopener">${icoGh()} GitHub 이슈 열기</a></div>`;
+  $("panel").classList.add("open"); $("panel").setAttribute("aria-hidden","false"); $("scrim").classList.add("open");
+  pinnedNum=num;
+  if(VIEW!=="network") showRelations(num);           // 보드: 연결선·하이라이트를 패널 닫힐 때까지 유지
+  else { netPinned=num; hoverNet(num); }             // 네트워크: 클릭 시 hover 상태(강조·툴팁·파티클) 고정
+}
+function closePanel(){ $("panel").classList.remove("open"); $("panel").setAttribute("aria-hidden","true"); $("scrim").classList.remove("open");
+  pinnedNum=null; if(hoverNum==null) clearRelationsDom();
+  if(netPinned!=null){ netPinned=null; clearNet(); } }
+
+/* ── 증거 라이트박스 (task7) ── */
+function openLightbox(bg,cap){ $("lbImg").style.background=bg; $("lbImg").style.backgroundSize="cover"; $("lbCap").textContent=cap; $("lightbox").classList.add("open"); }
+function closeLightbox(){ $("lightbox").classList.remove("open"); }
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeLightbox(); closePanel(); } });
+
+/* ── 뷰 전환 ── */
+function setView(v){ VIEW=v; board.dataset.view=v; clearHover(); netPinned=null;
+  document.querySelectorAll(".toggle button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v)));
+  $("network").setAttribute("aria-hidden",String(v!=="network"));
+  if(v==="network"){ requestAnimationFrame(renderNetwork); } else { render(); } }
+function toggleTheme(){ const h=document.documentElement; h.dataset.theme=h.dataset.theme==="dark"?"light":"dark";
+  if(VIEW==="network")requestAnimationFrame(renderNetwork); if(hoverNum!=null)drawHoverEdges(hoverNum); }
+
+/* ── 범례 드래그 (task1) ── */
+(function(){ const lg=$("legend"), head=$("lgHead"); let dragging=false,ox=0,oy=0;
+  head.addEventListener("pointerdown",e=>{ if(e.target.closest(".lg-collapse"))return;
+    const r=lg.getBoundingClientRect(), br=board.getBoundingClientRect();
+    dragging=true; ox=e.clientX-r.left; oy=e.clientY-r.top;                    // 커서와 범례 좌상단의 상대 오프셋
+    lg.style.right="auto"; lg.style.bottom="auto";
+    lg.style.left=(r.left-br.left)+"px"; lg.style.top=(r.top-br.top)+"px";      // board(offsetParent) 기준으로 전환
+    head.setPointerCapture(e.pointerId); });
+  head.addEventListener("pointermove",e=>{ if(!dragging)return; const br=board.getBoundingClientRect();
+    let x=e.clientX-ox-br.left, y=e.clientY-oy-br.top;                          // board 기준 좌표 → 커서와 정확히 일치
+    x=Math.max(6,Math.min(board.clientWidth-lg.offsetWidth-6,x));
+    y=Math.max(6,Math.min(board.clientHeight-lg.offsetHeight-6,y));
+    lg.style.left=x+"px"; lg.style.top=y+"px"; });
+  head.addEventListener("pointerup",e=>{ dragging=false; try{head.releasePointerCapture(e.pointerId);}catch(_){} });
+})();
+
+/* 배경 만다라: 경락 스포크 · 차크라 점 · 연꽃 petal (중심 0,0 로 translate 됨) */
+(function(){ const g=$("mandala"); if(!g)return; let s=""; const M=12;
+  for(let i=0;i<M;i++){ const deg=i*360/M, a=deg*Math.PI/180;
+    s+=`<line x1="${(Math.cos(a)*22).toFixed(1)}" y1="${(Math.sin(a)*22).toFixed(1)}" x2="${(Math.cos(a)*112).toFixed(1)}" y2="${(Math.sin(a)*112).toFixed(1)}"/>`;
+    s+=`<circle cx="${(Math.cos(a)*96).toFixed(1)}" cy="${(Math.sin(a)*96).toFixed(1)}" r="2" fill="currentColor" stroke="none"/>`;
+    s+=`<ellipse cx="0" cy="-59" rx="5.5" ry="14" transform="rotate(${deg})"/>`;   /* 연꽃 petal */
+  }
+  for(let i=0;i<8;i++){ const a=i*Math.PI/4; s+=`<circle cx="${(Math.cos(a)*22).toFixed(1)}" cy="${(Math.sin(a)*22).toFixed(1)}" r="1.4" fill="currentColor" stroke="none"/>`; }
+  g.innerHTML=s; })();
+
+render();
+</script>
+</body>
+</html>
