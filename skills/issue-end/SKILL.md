@@ -1,6 +1,6 @@
 ---
 name: issue-end
-description: issue-start 가 증거와 리포트를 게시하고 사람이 승인한 작업을 마무리합니다. 기존 증거의 완결성과 게시 상태를 확인하고, 부족하거나 바뀐 경우에만 보강·재게시한 뒤 PR 을 만듭니다. merge 는 하지 않고 issue-merge 로 넘깁니다. `$issue-end`, "이슈 마무리", "작업 종료", "승인한 작업 PR" 요청에 사용합니다.
+description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 만듭니다. merge 는 issue-merge 로 넘깁니다. `$issue-end`, "이슈 마무리", "작업 종료", "승인한 작업 PR" 요청에 사용.
 ---
 
 <skill>

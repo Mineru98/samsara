@@ -1,6 +1,6 @@
 ---
 name: github-issue-pr-convention
-description: Scan a GitHub repository's contribution conventions and write them to a replaceable local instructions block. Use when joining, forking, or cloning a repository, when the user asks how issues, pull requests, base branches, or work branches should be handled, or when `AGENTS.local.md` / `CLAUDE.local.md` should reflect the repository's actual contribution rules.
+description: Scan issue/PR/branch rules into AGENTS.local.md/CLAUDE.local.md. Use when joining/forking/cloning a repo or asked how issues/PRs/branches are handled.
 ---
 
 # Contribution Convention Scanner

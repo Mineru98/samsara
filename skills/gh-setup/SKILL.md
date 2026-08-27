@@ -1,6 +1,6 @@
 ---
 name: gh-setup
-description: GitHub CLI(`gh`)가 없거나 로그인되어 있지 않을 때 Windows·WSL·Linux·macOS 를 판별해 설치 경로를 정하고, 권한이 필요 없는 명령은 자동 실행하고 관리자 권한이 필요한 명령은 그대로 복사해 쓸 수 있게 안내한 뒤 `gh auth login` 까지 끌고 갑니다. gh 설치·인증이 끝나면 이어서 `gh-attach` 확장(private 저장소 증거 이미지 자동 업로드용)도 자동 설치합니다. 설정은 `~/.issue/settings.json` 에서 관리합니다. `/gh-setup`, "gh 설치", "gh 로그인", "GitHub CLI 설정", "gh attach 없다" 요청과 gh 또는 gh-attach 가 필요한 다른 스킬의 전제 확인 실패 시 사용합니다.
+description: gh 설치·로그인과 증거 업로드용 gh-attach 확장 설치를 OS별로 안내합니다. `/gh-setup`, "gh 설치", "gh 로그인", "GitHub CLI 설정", "gh attach 없다" 요청과 다른 스킬의 gh/gh-attach 전제 확인 실패 시 사용.
 ---
 
 <skill>
