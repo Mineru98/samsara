@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": null,
-  "updatedAt": "2026-08-27T18:16:50.733Z",
+  "updatedAt": "2026-08-27T23:16:41.018Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-27T18:16:50.733Z",
@@ -454,6 +454,15 @@
         "revision": "2026-08-27T18:16:27Z",
         "observedAt": "2026-08-27T18:16:50.733Z"
       }
+    },
+    "13": {
+      "number": 13,
+      "title": "issue-board: 산출물을 .issue/graph.html 단일 파일로 통일하고 2파일 산출물 제거",
+      "status": "in-process",
+      "labels": [
+        "enhancement"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/13"
     }
   },
   "edges": [],
