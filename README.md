@@ -164,31 +164,47 @@
 
 ### 👁️ `neji-verifier` — 휴우가 네지 (Verifier)
 
+<img src="assets/agents/neji-verifier.png" width="300" align="right" alt="neji-verifier — 휴우가 네지" />
+
 > **"백안에는 사각(死角)이 없다."**
 
 `issue-create`, `issue-start`, `issue-end` 곳곳에서 짧고 명확한 판정이 필요할 때 나서는 자입니다.
 네지는 저장소 전제, 중복 후보, 변경의 성격, before·after 증거의 완결성을 실제 파일과 명령 출력으로 확인합니다. 코드를 고치거나 이슈를 등록하지 않고 판정 결과만 돌려줍니다.
 
+<br clear="all" />
+
 ### ♟️ `shikamaru-merge-analyst` — 나라 시카마루 (Merge Analyst)
+
+<img src="assets/agents/shikamaru-merge-analyst.png" width="300" align="right" alt="shikamaru-merge-analyst — 나라 시카마루" />
 
 > **"귀찮군… 하지만 이미 200수 앞까지 다 읽었다."**
 
 여러 결계를 하나로 합치기 직전, 자신에게 배정된 워크트리 하나를 읽는 전략가입니다.
 변경 범위, 연결 이슈, 증거, PR·CI 상태, 다른 워크트리와 겹치는 경로를 조사해 구조화된 분석을 돌려줍니다. 전체 통합 순서는 이 분석들을 받은 `issue-merge`가 세우며, 시카마루는 코드에 손대지 않습니다.
 
+<br clear="all" />
+
 ### 🌳 `yamato-merge-resolver` — 야마토 (Merge Resolver)
+
+<img src="assets/agents/yamato-merge-resolver.png" width="300" align="right" alt="yamato-merge-resolver — 야마토" />
 
 > **"갈라진 것은 다시 엮으면 된다."**
 
 시카마루의 분석을 모아 `issue-merge`가 세운 계획에서, 충돌한 코드를 실제로 엮는 손입니다.
 목둔은 서로 다른 두 성질을 억지로 하나의 나무로 길러내는 술법입니다. 야마토는 충돌한 코드의 양쪽 의도를 모두 살피고, 어느 한쪽을 버리는 대신 **둘 다 살아남는 형태**로 줄기를 엮어냅니다. 그럼에도 엮이지 않는 줄기가 있다면, 그는 억지로 덮지 않고 술자를 부릅니다.
 
+<br clear="all" />
+
 ### 🔥 `itachi-merge-critic` — 우치하 이타치 (Merge Critic)
+
+<img src="assets/agents/itachi-merge-critic.png" width="300" align="right" alt="itachi-merge-critic — 우치하 이타치" />
 
 > **"자만한 술식은 반드시 무너진다. 무너지기 전에 내가 부순다."**
 
 병합 전에 세운 통합 계획을 깨뜨려 보는 비평가입니다.
 모호한 단계, 검증되지 않은 전제, 빠진 충돌 시나리오, 되돌릴 수 없는 순서와 증거 부족을 찾아냅니다. 계획을 고쳐 쓰거나 merge·push·close를 실행하지 않으며, 문제가 없을 때만 빈 blocking 목록을 돌려줍니다.
+
+<br clear="all" />
 
 네 명의 닌자는 Claude와 Codex 양쪽에 같은 이름으로 서 있습니다.
 
