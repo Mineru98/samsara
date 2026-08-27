@@ -1,13 +1,13 @@
 ---
 name: issue-board
-description: .issue/graph.json 을 칸반 HTML(board.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 보드", "보드 열어줘", "$issue-board" 요청에 사용.
+description: .issue/graph.json 을 칸반 HTML(graph.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 보드", "보드 열어줘", "$issue-board" 요청에 사용.
 ---
 
 # Issue Board
 
 `.issue/graph.json` 을 **그대로 칸반 형태 HTML 로 렌더링**해 브라우저로 바로 보는 스킬이다.
 GitHub 이슈가 정본이고 graph.json 은 재생성 캐시다. 이 스킬은 그래프를 **fetch(sync)** 한 뒤
-`board.html` + `graph-data.js` 사이드카를 만들어 연다. 렌더러는 외부 라이브러리·웹폰트 0 의
+데이터를 인라인한 `graph.html` **한 개**를 만들어 연다. 렌더러는 외부 라이브러리·웹폰트 0 의
 self-contained HTML 이라 `file://` 더블클릭으로도 동작한다.
 
 ## 입력
@@ -22,9 +22,9 @@ $issue-board [--sync] [--no-open]
 ## 절차
 
 1. `.issue/graph.json` 을 확인한다. 없거나 `--sync` 면 형제 스킬 `issue-onboard sync --state all` 로 GitHub 전체 snapshot 을 만든다(fetch).
-2. graph.json 을 `graph-data.js`(window.__ISSUE_GRAPH__)로 떨어뜨리고, 렌더러 자산 `assets/board.html` 을 `.issue/board.html` 로 복사한다.
-   같은 데이터를 `<script>` 안에 인라인한 단일 파일 `.issue/board.standalone.html` 도 함께 만든다 — 이 파일 **하나만** 옮겨도 어디서든 열린다.
-3. 기본 브라우저로 `.issue/board.html` 을 연다. 자동 열기 실패 시 파일 경로를 안내한다.
+2. 렌더러 자산 `assets/board.html` 에 graph.json 을 `<script>`(window.__ISSUE_GRAPH__)로 인라인해 `.issue/graph.html` **한 개**로 떨어뜨린다.
+   외부 참조가 0 이라 이 파일 하나만 옮겨도 어디서든 열린다. 옛 산출물(`board.html`·`graph-data.js`·`board.standalone.html`)이 남아 있으면 지운다.
+3. 기본 브라우저로 `.issue/graph.html` 을 연다. 자동 열기 실패 시 파일 경로를 안내한다.
 
 ## 보이는 것
 
@@ -39,8 +39,9 @@ $issue-board [--sync] [--no-open]
 - 서버·포트를 열지 않는다(`file://` 자체완결). 상태 변경 같은 **쓰기 동작은 없다**(읽기 전용).
 - 그래프 캐시를 직접 부분 수정하지 않는다. 최신화는 fetch(sync)로만 한다.
 - 불완전 snapshot(`SNAPSHOT_STATUS≠complete`)이면 보드를 만들지 않고 이유를 알린다.
-- `.issue/board.html`·`graph-data.js`·`board.standalone.html` 은 재생성 산출물이라 커밋하지 않는다(graph.json 만 정본 캐시로 추적).
-- 다른 머신으로 보드를 옮길 때는 `board.standalone.html` **한 개**를 쓴다. `board.html` 만 떼어 옮기면 사이드카를 못 찾아 **에러 없이 빈 보드**가 뜬다.
+- `.issue/graph.html` 은 재생성 산출물이라 커밋하지 않는다(graph.json 만 정본 캐시로 추적).
+- 산출물은 `graph.html` **하나뿐**이다. 사이드카를 따로 두지 않으므로 이 파일만 옮기면 어디서든 그대로 열린다.
+- 옛 2파일 산출물은 실행할 때마다 지운다. 남겨두면 사이드카 없이 열려 **에러 없이 빈 보드**가 뜨는 함정이 된다.
 
 ## 실행
 
@@ -55,9 +56,8 @@ node <skill>/scripts/issue-board.mjs --no-open  # 생성만(경로 출력)
 ```text
 그래프 fetch(sync) …            (필요 시)
 ✓ 보드 생성 — 노드 N개, 엣지 M개
-  .issue/board.html  (+ graph-data.js 사이드카)
-  .issue/board.standalone.html  (데이터 인라인 · 파일 1개로 완결)
+  .issue/graph.html  (데이터 인라인 · 파일 1개로 완결)
+  옛 산출물 N개 정리 — board.html, graph-data.js   (남아 있을 때만)
 BOARD_HTML=<절대경로>
-BOARD_STANDALONE=<절대경로>
 BOARD=ok
 ```

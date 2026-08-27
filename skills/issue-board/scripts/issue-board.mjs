@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 /**
- * issue-board.mjs — .issue/graph.json 을 그대로 칸반 HTML(board.html)로 렌더링해 바로 연다.
+ * issue-board.mjs — .issue/graph.json 을 그대로 칸반 HTML(graph.html)로 렌더링해 바로 연다.
  *
  *   1) fetch: 그래프를 최신화한다. `.issue/graph.json` 이 없거나 `--sync` 면 issue-onboard sync 로 재생성한다.
- *   2) render: 렌더러 자산(assets/board.html)을 `.issue/board.html` 로 복사하고,
- *              데이터를 인라인한 단일 파일 `.issue/board.standalone.html` 도 함께 만든다.
- *              graph.json 을 `graph-data.js` 사이드카(window.__ISSUE_GRAPH__)로 떨어뜨린다.
- *   3) open: 기본 브라우저로 `.issue/board.html` 을 연다(file://, 서버·포트 없음).
+ *   2) render: 렌더러 자산(assets/board.html)에 graph.json 을 <script> 로 인라인해
+ *              `.issue/graph.html` **한 개**로 떨어뜨린다. 옛 산출물이 남아 있으면 지운다.
+ *   3) open: 기본 브라우저로 `.issue/graph.html` 을 연다(file://, 서버·포트 없음).
  *
- * board.html 은 순수 렌더러다(외부 라이브러리·웹폰트 0). graph-data.js 를 <script> 로 읽어
- * file:// 더블클릭으로도 동작한다. `.issue/` 는 재생성 캐시라 board.html·graph-data.js 는 커밋되지 않는다.
+ * graph.html 은 외부 참조가 0 인 자체완결 파일이다(외부 라이브러리·웹폰트·사이드카 0).
+ * 이 파일 하나만 다른 머신으로 옮겨도 그대로 열린다. `.issue/` 는 재생성 캐시라 커밋되지 않는다.
  *
  *   node issue-board.mjs [--sync] [--no-open]
  *     --sync     : graph.json 이 있어도 GitHub 에서 새로 fetch(재생성)한다.
  *     --no-open  : 파일만 생성하고 브라우저를 열지 않는다(경로만 출력).
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -88,39 +87,34 @@ function main() {
     process.exit(1);
   }
 
-  // 2) render — 사이드카 + 렌더러 복사
+  // 2) render — 데이터를 인라인해 `.issue/graph.html` 한 개로 떨어뜨린다.
+  //    렌더러 자산(assets/board.html)은 소스이므로 이름을 유지하고, 산출물만 graph.json 과 짝을 맞춘다.
   const sidecar = `window.__ISSUE_GRAPH__=${JSON.stringify(graph)};\n`;
-  writeFileSync(path.join(outDir, 'graph-data.js'), sidecar);
-  const boardOut = path.join(outDir, 'board.html');
-  copyFileSync(ASSET, boardOut);
-
-  // 2-b) standalone — 데이터를 <script> 안에 인라인해 파일 하나로 완결시킨다.
-  //      board.html 은 graph-data.js 를 상대 경로로 읽어서, 파일 하나만 다른 머신으로 옮기면
-  //      사이드카를 못 찾고 렌더러 fallback 탓에 에러 없이 빈 보드가 뜬다. 그 경로를 막는다.
   const SIDECAR_TAG = '<script src="graph-data.js"></script>';
-  const standaloneOut = path.join(outDir, 'board.standalone.html');
-  let standaloneOk = false;
-  try {
-    const asset = readFileSync(ASSET, 'utf8');
-    if (!asset.includes(SIDECAR_TAG)) throw new Error('사이드카 script 태그를 찾지 못했다');
-    // 데이터에 </script> 가 섞여도 HTML 파서가 조기 종료하지 않게 한다(JSON 에서 \/ 는 / 로 읽힌다).
-    const inlined = sidecar.replace(/<\/script/gi, '<\\/script');
-    const inlineBlock = '<script>/* inlined graph-data.js */\n' + inlined + '</script>';
-    // 치환자는 반드시 함수로 넘긴다. 문자열이면 데이터 안의 달러-앰퍼샌드 패턴이 해석돼 내용이 깨진다.
-    writeFileSync(standaloneOut, asset.replace(SIDECAR_TAG, () => inlineBlock));
-    standaloneOk = true;
-  } catch (e) {
-    // standalone 실패가 기존 2파일 산출물까지 죽이지 않게 한다.
-    console.warn('  ! standalone 생성 생략 — ' + e.message);
+  const boardOut = path.join(outDir, 'graph.html');
+  const asset = readFileSync(ASSET, 'utf8');
+  if (!asset.includes(SIDECAR_TAG)) throw new Error('렌더러 자산에서 사이드카 script 태그를 찾지 못했다.');
+  // 데이터에 </script> 가 섞여도 HTML 파서가 조기 종료하지 않게 한다(JSON 에서 \/ 는 / 로 읽힌다).
+  const inlined = sidecar.replace(/<\/script/gi, '<\\/script');
+  const inlineBlock = '<script>/* inlined graph data */\n' + inlined + '</script>';
+  // 치환자는 반드시 함수로 넘긴다. 문자열이면 데이터 안의 달러-앰퍼샌드 패턴이 해석돼 내용이 깨진다.
+  writeFileSync(boardOut, asset.replace(SIDECAR_TAG, () => inlineBlock));
+
+  // 2-b) 옛 산출물 정리 — 남겨두면 사이드카 없이 열려 에러 없이 빈 보드가 뜨는 함정이 된다.
+  const removedStale = [];
+  for (const f of ['board.html', 'graph-data.js', 'board.standalone.html']) {
+    const stale = path.join(outDir, f);
+    if (!existsSync(stale)) continue;
+    try { unlinkSync(stale); removedStale.push(f); } catch { /* 지우지 못해도 생성 자체는 성공이다 */ }
   }
+
 
   const nodes = Object.keys(graph.nodes || {}).length;
   const edges = (graph.edges || []).length;
   console.log(`✓ 보드 생성 — 노드 ${nodes}개, 엣지 ${edges}개`);
-  console.log(`  ${path.relative(root, boardOut)}  (+ graph-data.js 사이드카)`);
-  if (standaloneOk) console.log(`  ${path.relative(root, standaloneOut)}  (데이터 인라인 · 파일 1개로 완결)`);
+  console.log(`  ${path.relative(root, boardOut)}  (데이터 인라인 · 파일 1개로 완결)`);
+  if (removedStale.length) console.log(`  옛 산출물 ${removedStale.length}개 정리 — ${removedStale.join(', ')}`);
   console.log(`BOARD_HTML=${boardOut}`);
-  if (standaloneOk) console.log(`BOARD_STANDALONE=${standaloneOut}`);
   console.log('BOARD=ok');
 
   // 3) open
