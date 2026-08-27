@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>이슈 경락도 · Board 시안 — samsara</title>
+<title>이슈 경락도 · Board</title>
 <!--
   DESIGN MOCKUP (시안) — issue-onboard board.  session interview_20260827_113337 요구 시각화.
   실제 산출물 아님(디자인 프로토타입). 외부 라이브러리·웹폰트 0, file:// 로 동작.
@@ -302,7 +302,7 @@
       </span>
       <div style="min-width:0">
         <h1>이슈 경락도 <span class="sep">·</span> Board</h1>
-        <div class="repo">Mineru98/samsara</div>
+        <div class="repo" id="repoName">Mineru98/samsara</div>
       </div>
     </div>
     <div class="spacer"></div>
@@ -312,7 +312,7 @@
       <button data-view="network" aria-pressed="false" onclick="setView('network')">연관도 <span class="k">network</span></button>
     </div>
     <div class="meta">
-      <div class="sync"><span class="dot"></span><span>마지막 동기화 <time>11:33</time><span class="ago"> · 방금</span></span></div>
+      <div class="sync"><span class="dot"></span><span>마지막 동기화 <time id="syncTime">—</time><span class="ago"> · 방금</span></span></div>
       <button class="iconbtn" title="테마 전환" onclick="toggleTheme()" aria-label="테마 전환">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M19.5 19.5 18 18M18 6l1.5-1.5M4.5 19.5 6 18"/><circle cx="12" cy="12" r="4"/></svg>
       </button>
@@ -369,88 +369,23 @@
   </div>
 </div>
 
+<script src="graph-data.js"></script>
 <script>
-const REPO="Mineru98/samsara";
-const gh=n=>`https://github.com/${REPO}/issues/${n}`;
-const blob=p=>`https://github.com/${REPO}/blob/main/${p}`;
-const cv=(value,reason,source)=>({value,reason:reason||null,source:source||null});
-const U=f=>cv("unknown",`GitHub 본문에 구조화된 ${f} 필드가 없음`,"sync");
-function node(number,title,status,priority,labels,files,context,evidence,plan){
-  return {number,title,status,priority,labels:labels||[],files:files||[],context:context||{},evidence:evidence||[],plan:plan||null}; }
-const N={};
-[
-  node(100,"이슈 보드 (epic) — graph.json 칸반 렌더링","open","p0",["epic","enhancement"],[],
-    {problem:cv("graph.json 을 사람이 한눈에 볼 방법이 없다","인터뷰","interview"),outcome:cv("이슈 경락도 board.html","인터뷰","interview"),
-     scope:cv("board 하위명령 + 사이드카 + 렌더러","seed","seed"),acceptance:U("acceptance"),result:U("result"),
-     components:cv(["issue-onboard","board"],"인터뷰","interview"),decisions:cv("정적 HTML + graph-data.js 사이드카","인터뷰","interview"),evidence:U("evidence")},
-    [],"인터뷰(session interview_20260827_113337)로 요구 확정. seed → run 대기."),
-  node(101,"그래프 온톨로지 v2 스키마","close","p1",["enhancement"],
-    ["tools/issue-ontology/schemas/graph-v2.schema.json","tools/issue-ontology/validate.mjs"],
-    {problem:cv("graph shape 가 명시되지 않았다","fixture","code"),outcome:cv("Ajv 로 검증 가능","code","code"),scope:cv("graph-v2","code","code"),
-     acceptance:cv("valid graph 통과","code","code"),result:cv("스키마 정합화 완료","code","code"),components:cv(["issue-ontology"],"code","code"),
-     decisions:cv("Ajv island","code","code"),evidence:cv("ontology.test.mjs 13 pass","test","code")},
-    [{cap:"ajv-valid.png"},{cap:"tests-13pass.png"}],"graph-v2 스키마·fixture·walker 정합화. edges 리치 필드 편입."),
-  node(102,"issue-onboard sync 엔진","close","p0",["enhancement"],
-    ["skills/issue-onboard/scripts/issue-onboard.mjs","skills/issue-sync/scripts/issue-sync.mjs"],
-    {problem:U("problem"),outcome:cv("본문 마커·결정 코멘트·네이티브 의존성 병합","code","code"),scope:U("scope"),acceptance:U("acceptance"),
-     result:cv("sync/plan/next 동작","code","code"),components:cv(["issue-onboard"],"code","code"),decisions:U("decisions"),evidence:U("evidence")},
-    [{cap:"sync-complete.png"}],"GitHub 정본에서 노드·엣지 재생성. classify/prereqMap 로 ready 판정."),
-  node(105,"Grok Build 호환 플러그인 지원","close","p2",["enhancement"],[".grok-plugin/plugin.json","README.md"],
-    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:cv("Grok 플러그인 등록","code","code"),
-     components:U("components"),decisions:U("decisions"),evidence:U("evidence")},
-    [],"독립 완결(엣지 없음) — 완결 클러스터라 보드 기본 렌더에서 숨김, Network 에서 확인."),
-  node(110,"board 사이드카 생성기 (graph-data.js)","in-process","p1",["enhancement"],["skills/issue-onboard/scripts/board-sidecar.mjs"],
-    {problem:cv("board.html 이 규칙을 복제하면 드리프트","인터뷰","interview"),outcome:cv("classify()/prereqMap() 재사용해 사전 계산","인터뷰","interview"),
-     scope:cv("window.__ISSUE_GRAPH__ 구움","seed","seed"),acceptance:U("acceptance"),result:U("result"),components:cv(["board"],"seed","seed"),
-     decisions:cv("board.html 은 순수 렌더러","인터뷰","interview"),evidence:U("evidence")},
-    [{cap:"sidecar-shape.png"}],"graph.json → 분류·엣지 좌표·node.files 를 사이드카에 구움."),
-  node(120,"node.files git log 수집","plan","p1",["enhancement"],["skills/issue-onboard/scripts/board-files.mjs"],
-    {problem:cv("이슈-코드 추적성 없음","인터뷰","interview"),outcome:cv("오프라인 git log 우선 수집","인터뷰","interview"),
-     scope:cv("node.files 스키마 편입","seed","seed"),acceptance:U("acceptance"),result:U("result"),components:cv(["issue-ontology","board"],"seed","seed"),
-     decisions:cv("온라인 gh 는 --online 옵션","인터뷰","interview"),evidence:U("evidence")},
-    [],"머지 커밋/브랜치명(feat/6-issue-6)의 #N 참조로 이슈↔파일 매핑."),
-  node(140,"검증 줄번호 매핑 (validate)","review","p1",["enhancement"],["skills/issue-onboard/scripts/issue-onboard.mjs"],
-    {problem:cv("검증 실패 위치를 못 짚음","인터뷰","interview"),outcome:cv("Ajv instancePath → graph.json:줄 매핑","인터뷰","interview"),
-     scope:U("scope"),acceptance:cv("전 문제 나열","인터뷰","interview"),result:U("result"),components:cv(["issue-ontology"],"seed","seed"),
-     decisions:U("decisions"),evidence:cv("before/after 캡처","evidence","code")},
-    [{cap:"before-noloc.png"},{cap:"after-lineno.png"}],"실패 시 CLI+오버레이에 .issue/graph.json:<줄> 로 전 문제 나열."),
-  node(111,"board.html 렌더러","open","p1",["enhancement"],[],
-    {problem:U("problem"),outcome:cv("status↔classify 토글·카드·패널","seed","seed"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),
-     components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-  node(112,"SVG 연결선 오버레이","open","p2",["enhancement"],[],
-    {problem:U("problem"),outcome:cv("5종 관계 연결선 + 범례","seed","seed"),scope:cv("결정론 레이아웃 + 단일 SVG","seed","seed"),
-     acceptance:U("acceptance"),result:U("result"),components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-  node(113,"카드 상세 패널","open","p2",["enhancement"],[],
-    {problem:U("problem"),outcome:cv("우측 패널: 선수/후속·파일·context·증거","seed","seed"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),
-     components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-  node(121,"파일 경로 GitHub blob 링크","open","p3",["enhancement"],[],
-    {problem:U("problem"),outcome:cv("node.files → blob URL 클릭 이동","seed","seed"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),
-     components:cv(["board"],"seed","seed"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-  node(130,"Playwright 성능 하네스 (dev 전용)","open","p2",["enhancement","test"],["tests/board.perf.spec.ts","scripts/gen-fixture.mjs"],
-    {problem:cv("500+ 끊김 없음을 무엇으로 판정?","인터뷰","interview"),outcome:cv("렌더≤2s·프레임 p95≤33ms·상호작용≤100ms 강제","인터뷰","interview"),
-     scope:cv("500노드/1000엣지 픽스처","seed","seed"),acceptance:U("acceptance"),result:U("result"),components:cv(["board","test"],"seed","seed"),
-     decisions:cv("Playwright 는 devDependency 만","인터뷰","interview"),evidence:U("evidence")},
-    [],"런타임 산출물은 무의존 유지. 헤드리스로 임계치 자동 측정·강제."),
-  node(150,"README 경락도 문서","open","p3",["docs"],["README.md"],
-    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),components:U("components"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-  node(151,"경락도 용어집 (중복 후보)","open","p3",["docs"],[],
-    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:U("result"),components:U("components"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-  node(160,"구 board POC (대체됨)","close","p3",["enhancement"],["skills/issue-onboard/scripts/board-poc.mjs"],
-    {problem:U("problem"),outcome:U("outcome"),scope:U("scope"),acceptance:U("acceptance"),result:cv("110 이 대체","code","code"),
-     components:U("components"),decisions:U("decisions"),evidence:U("evidence")},[],null),
-].forEach(n=>N[n.number]=n);
-
-const EDGES=[
-  {from:102,to:101,type:"depends-on"},{from:110,to:102,type:"depends-on"},{from:120,to:102,type:"depends-on"},
-  {from:140,to:101,type:"depends-on"},{from:111,to:110,type:"depends-on"},{from:112,to:111,type:"depends-on"},
-  {from:113,to:111,type:"depends-on"},{from:130,to:111,type:"depends-on"},{from:121,to:120,type:"depends-on"},
-  {from:100,to:110,type:"parent-of"},{from:100,to:111,type:"parent-of"},{from:100,to:112,type:"parent-of"},
-  {from:100,to:113,type:"parent-of"},{from:100,to:120,type:"parent-of"},{from:100,to:130,type:"parent-of"},
-  {from:110,to:112,type:"relates-to"},{from:110,to:160,type:"supersedes"},{from:151,to:150,type:"duplicate-of"},
-  {from:150,to:160,type:"relates-to",stale:true},
-];
-window.__ISSUE_GRAPH__={version:2,provider:"github",repository:REPO,nodes:N,edges:EDGES,
-  snapshot:{status:"complete",fetchedAt:"2026-08-27T11:33:00Z"}};
+/* graph-data.js 사이드카가 window.__ISSUE_GRAPH__ 를 주입(issue-board 스킬이 graph.json 에서 생성). 실데이터 렌더. */
+const G = (window.__ISSUE_GRAPH__ || {nodes:{}, edges:[]});
+const N = G.nodes || {};
+const EDGES = G.edges || [];
+const REPO = G.repository || (Object.values(N).map(function(n){var u=((n||{}).url||"");var i=u.indexOf("github.com/");var j=u.indexOf("/issues/");return (i>=0&&j>i)?u.slice(i+11,j):null;}).find(Boolean)) || "";
+const BRANCH = G.defaultBranch || "main";
+const gh = function(n){ return (N[n] && N[n].url) || (REPO?("https://github.com/"+REPO+"/issues/"+n):"#"); };
+const blob = function(p){ return REPO?("https://github.com/"+REPO+"/blob/"+BRANCH+"/"+p):"#"; };
+/* 실제 graph.json 노드를 렌더러가 기대하는 모양으로 정규화(누락 필드 보강) */
+for(var k in N){ var n=N[k]; if(n.number==null)n.number=+k; n.labels=n.labels||[]; n.files=n.files||[]; n.evidence=n.evidence||[]; if(n.plan===undefined)n.plan=null;
+  if(!n.priority){ var lm=(n.labels.join(" ")).toLowerCase().match(/\bp([0-3])\b/); n.priority=lm?("p"+lm[1]):""; }
+  if(n.context){ for(var f in n.context){ var c=n.context[f]; if(c&&c.source&&typeof c.source!=="string") c.source=(c.source.url||c.source.revision||null); } }
+}
+var _rn=document.getElementById("repoName"); if(_rn)_rn.textContent=REPO||"이슈 그래프";
+var _st=document.getElementById("syncTime"); if(_st&&G.snapshot&&G.snapshot.fetchedAt){ try{_st.textContent=new Date(G.snapshot.fetchedAt).toLocaleString("ko-KR",{hour12:false});}catch(e){_st.textContent=G.snapshot.fetchedAt;} }
 
 /* ── classify / prereqMap ── */
 const DONE="close", INPROG=new Set(["plan","in-process","review"]);
