@@ -2,11 +2,11 @@
   "version": 2,
   "provider": "github",
   "repository": null,
-  "updatedAt": "2026-08-27T15:28:45.021Z",
+  "updatedAt": "2026-08-27T18:16:50.733Z",
   "snapshot": {
     "status": "complete",
-    "fetchedAt": "2026-08-27T14:39:54.645Z",
-    "digest": "sha256:a33fe99effe44f5e4017d9fbbb188234f8d18db0df26e9bbb4e989c11cc3f750",
+    "fetchedAt": "2026-08-27T18:16:50.733Z",
+    "digest": "sha256:3fd88b19bb2b65c93f05107b45ba80a6e5190123b896e58b724661af1ae230d9",
     "reason": null
   },
   "nodes": {
@@ -26,7 +26,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "outcome": {
@@ -35,7 +35,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "scope": {
@@ -44,7 +44,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "acceptance": {
@@ -53,7 +53,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "result": {
@@ -62,7 +62,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "components": {
@@ -71,7 +71,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "decisions": {
@@ -80,7 +80,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "evidence": {
@@ -89,14 +89,14 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/1",
             "revision": "2026-08-26T12:55:58Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         }
       },
       "provenance": {
         "url": "https://github.com/Mineru98/samsara/issues/1",
         "revision": "2026-08-26T12:55:58Z",
-        "observedAt": "2026-08-27T14:39:54.645Z"
+        "observedAt": "2026-08-27T18:16:50.733Z"
       }
     },
     "3": {
@@ -115,7 +115,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "outcome": {
@@ -124,7 +124,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "scope": {
@@ -133,7 +133,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "acceptance": {
@@ -142,7 +142,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "result": {
@@ -151,7 +151,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "components": {
@@ -160,7 +160,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "decisions": {
@@ -169,7 +169,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "evidence": {
@@ -178,14 +178,14 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/3",
             "revision": "2026-08-26T13:25:06Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         }
       },
       "provenance": {
         "url": "https://github.com/Mineru98/samsara/issues/3",
         "revision": "2026-08-26T13:25:06Z",
-        "observedAt": "2026-08-27T14:39:54.645Z"
+        "observedAt": "2026-08-27T18:16:50.733Z"
       }
     },
     "4": {
@@ -204,7 +204,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "outcome": {
@@ -213,7 +213,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "scope": {
@@ -222,7 +222,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "acceptance": {
@@ -231,7 +231,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "result": {
@@ -240,7 +240,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "components": {
@@ -249,7 +249,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "decisions": {
@@ -258,7 +258,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "evidence": {
@@ -267,14 +267,14 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/4",
             "revision": "2026-08-26T13:42:11Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         }
       },
       "provenance": {
         "url": "https://github.com/Mineru98/samsara/issues/4",
         "revision": "2026-08-26T13:42:11Z",
-        "observedAt": "2026-08-27T14:39:54.645Z"
+        "observedAt": "2026-08-27T18:16:50.733Z"
       }
     },
     "6": {
@@ -293,7 +293,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "outcome": {
@@ -302,7 +302,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "scope": {
@@ -311,7 +311,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "acceptance": {
@@ -320,7 +320,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "result": {
@@ -329,7 +329,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "components": {
@@ -338,7 +338,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "decisions": {
@@ -347,7 +347,7 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         },
         "evidence": {
@@ -356,24 +356,104 @@
           "source": {
             "url": "https://github.com/Mineru98/samsara/issues/6",
             "revision": "2026-08-26T13:50:51Z",
-            "observedAt": "2026-08-27T14:39:54.645Z"
+            "observedAt": "2026-08-27T18:16:50.733Z"
           }
         }
       },
       "provenance": {
         "url": "https://github.com/Mineru98/samsara/issues/6",
         "revision": "2026-08-26T13:50:51Z",
-        "observedAt": "2026-08-27T14:39:54.645Z"
+        "observedAt": "2026-08-27T18:16:50.733Z"
       }
     },
     "11": {
+      "id": "github:unknown#11",
       "number": 11,
       "title": "issue-board: 데이터를 인라인한 self-contained board.standalone.html 을 항상 함께 생성",
-      "status": "in-process",
+      "status": "close",
       "labels": [
         "enhancement"
       ],
-      "url": "https://github.com/Mineru98/samsara/issues/11"
+      "url": "https://github.com/Mineru98/samsara/issues/11",
+      "context": {
+        "problem": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 problem 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "outcome": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 outcome 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "scope": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 scope 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "acceptance": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 acceptance 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "result": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 result 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "components": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 components 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "decisions": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 decisions 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        },
+        "evidence": {
+          "value": "unknown",
+          "reason": "GitHub 본문에 구조화된 evidence 필드가 없음",
+          "source": {
+            "url": "https://github.com/Mineru98/samsara/issues/11",
+            "revision": "2026-08-27T18:16:27Z",
+            "observedAt": "2026-08-27T18:16:50.733Z"
+          }
+        }
+      },
+      "provenance": {
+        "url": "https://github.com/Mineru98/samsara/issues/11",
+        "revision": "2026-08-27T18:16:27Z",
+        "observedAt": "2026-08-27T18:16:50.733Z"
+      }
     }
   },
   "edges": [],
