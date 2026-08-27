@@ -7,27 +7,33 @@ node <skill>/scripts/issue-onboard.mjs sync [--state open|closed|all] [--limit <
 ```
 
 - 트래커에서 이슈를 끌어와 노드를 갱신한다(기본 `--state all`, `--limit 200`).
-- 각 이슈 본문에서 아래 패턴을 엣지로 자동 감지한다.
+- 엣지는 **세 정본**에서 모은다(모두 GitHub 이 정본, graph.json 은 재생성 캐시).
 
 ```text
-"depends on #N" / "depends-on #N" / "blocked by #N" / "needs #N" → depends-on
-"blocks #N"                                                        → blocks
+① 본문 마커        "depends on #N" / "depends-on #N" / "blocked by #N" / "needs #N" → depends-on
+                   "blocks #N"                                            → 역방향 depends-on
+② 결정 코멘트      <!-- issue-graph-v2-decision … --> (link/unlink 가 남긴 승인/철회)
+③ 네이티브 의존성  GitHub 이슈 dependencies(blocked-by) — gh api graphql 로 조회
 ```
 
-- 자동 엣지는 `createdBy=sync` 로 매번 다시 계산한다. 손으로 건 엣지(`createdBy=link`)는 보존한다.
-- 출력 `CYCLE=` 이 비어 있지 않으면 순환이 있다. `validate` 로 경로를 확인한다.
+- ①③ 자동 엣지는 `createdBy=sync`/`github-native` 로 매번 다시 계산한다. ② 결정 엣지는 승인 코멘트가 남아 있는 한 보존된다.
+- ③ 은 실패(구형 GitHub Enterprise·오프라인·권한)하면 조용히 건너뛴다. `--no-native` 로 끌 수 있다.
+- 같은 `from|to|depends-on` 이 여러 정본에서 잡히면 본문 마커(근거가 풍부) → 네이티브 → 결정 순으로 하나만 남긴다.
+- 출력 `CYCLE=` 이 비어 있지 않으면 순환이 있다. `validate` 로 경로를 확인한다. `NATIVE_QUERIED`/`NATIVE_SKIPPED` 로 네이티브 조회 상태를 확인한다.
 
-## link / unlink — 의존 손보기
+## link / unlink — 선수·후속 손보기
 
 ```bash
-node <skill>/scripts/issue-onboard.mjs link <from> <to> [--type depends-on|blocks|relates-to|parent-of|duplicate-of] [--why "<근거>"]
+node <skill>/scripts/issue-onboard.mjs link <from> <to> [--type depends-on|parent-of|duplicate-of|relates-to|supersedes] [--why "<근거>"]
 node <skill>/scripts/issue-onboard.mjs unlink <from> <to> [--type <type>]
 ```
 
-- `--type` 기본값은 `depends-on`. `--why` 로 근거를 남긴다(provenance).
-- 순서 엣지(depends-on/blocks)가 순환을 만들면 추가하지 않고 거부한다(exit 2).
-- 자기 자신 엣지, 중복 엣지는 거부/무시한다.
-- `unlink` 는 `--type` 을 주면 그 타입만, 없으면 from→to 의 모든 엣지를 뗀다.
+- 방향: `from --depends-on--> to` = "to 가 선수(먼저 close), from 이 후속". 즉 `link 70 60` 은 #70 이 #60 을 기다리게 한다.
+- V2 는 GitHub 이 정본이므로 로컬 엣지를 쓰지 않는다. `link` 는 대상(**from**) 이슈에 구조화된 **승인 결정 코멘트**를 남기고 곧바로 재-sync 해 엣지를 실체화한다.
+- `--type` 기본값은 `depends-on`. `--why` 로 근거를 남긴다(provenance/evidence 에 들어간다).
+- 순서 엣지(depends-on)가 순환을 만들면 **코멘트를 남기기 전에** 거부한다(exit 2). 자기 자신 엣지도 거부한다.
+- `unlink` 는 같은 관계에 **철회 결정 코멘트**를 남기고 재-sync 한다(그 결정 엣지가 사라진다).
+- 단, 본문 마커(`depends on #N`)나 GitHub 네이티브 의존성으로 생긴 엣지는 `unlink` 로 지워지지 않는다 — 본문을 고치거나 GitHub 에서 의존성 링크를 직접 해제해야 한다.
 
 ## plan (todo) — 분류 산출
 

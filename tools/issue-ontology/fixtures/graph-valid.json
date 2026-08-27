@@ -130,12 +130,43 @@
       "from": 101,
       "to": 102,
       "type": "depends-on",
-      "rationale": "fixture",
+      "kind": "blocked-by",
+      "rationale": "#101 본문이 \"depends on #102\" 로 #102 을(를) 참조",
+      "context": {
+        "summary": "#101 본문이 \"depends on #102\" 로 #102 을(를) 참조",
+        "label": "depends on #102",
+        "keywords": [],
+        "sharedConcepts": [],
+        "generatedBy": "deterministic",
+        "confidence": "low",
+        "generatedAt": "2026-08-26T00:00:00.000Z"
+      },
+      "evidence": [],
+      "status": "active",
+      "schemaVersion": 1,
       "createdBy": "sync",
       "createdAt": "2026-08-26T00:00:00.000Z",
+      "cacheKey": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "provenance": {
         "url": "https://github.com/Mineru98/samsara/issues/101",
         "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  ],
+  "staleEdges": [
+    {
+      "from": 102,
+      "to": 101,
+      "type": "relates-to",
+      "kind": "relates",
+      "rationale": "fixture stale edge",
+      "status": "stale",
+      "staleAt": "2026-08-26T00:00:00.000Z",
+      "createdBy": "sync",
+      "createdAt": "2026-08-25T00:00:00.000Z",
+      "provenance": {
+        "url": "https://github.com/Mineru98/samsara/issues/102",
+        "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }
     }
   ]

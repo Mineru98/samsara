@@ -27,13 +27,15 @@
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync, renameSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber, resolveSkillScript } from './issue-common.mjs';
-import { createTracker } from './issue-tracker.mjs';
-import { GRAPH_VERSION as V2_GRAPH_VERSION, EDGE_TYPES as V2_EDGE_TYPES, ORDERING_TYPES as V2_ORDERING_TYPES, CONTEXT_FIELDS, EDGE_CONTEXT_VERSION, digest, normalizeEdge, edgeKey, parseDecisionComments, decisionEdge, resolveDecisions, auditGraph, migrateGraphV1, kindOfType, extractQuote, sharedConcepts, carryStaleEdges } from './issue-graph-v2.mjs';
+import { createTracker, gitHost } from './issue-tracker.mjs';
+import { GRAPH_VERSION as V2_GRAPH_VERSION, EDGE_TYPES as V2_EDGE_TYPES, ORDERING_TYPES as V2_ORDERING_TYPES, CONTEXT_FIELDS, EDGE_CONTEXT_VERSION, DECISION_MARKER, digest, normalizeEdge, edgeKey, parseDecisionComments, decisionEdge, resolveDecisions, auditGraph, migrateGraphV1, kindOfType, extractQuote, sharedConcepts, carryStaleEdges } from './issue-graph-v2.mjs';
 import { detectLlmCommand, enrichEdges } from './issue-llm.mjs';
+import { fetchBlockedBy, splitSlug } from './issue-native-deps.mjs';
 
 export const GRAPH_VERSION = V2_GRAPH_VERSION;
 export const GRAPH_FILE = GRAPH_FILE_NAME;
@@ -224,6 +226,52 @@ export function parseDependencies(body = '') {
   return refs;
 }
 
+/**
+ * GitHub 네이티브 의존성(blocked-by)을 depends-on 후보로 모은다.
+ * X 가 Y 에 blocked-by 면 Y 가 선수 → { from: X, to: Y }.
+ * seen 에 이미 있는 키(본문 마커가 만든 엣지)는 건너뛰어 본문 근거를 우선한다.
+ * 어떤 실패든 sync 를 막지 않는다: API 미지원이거나 첫 노드부터 실패하면 중단한다.
+ */
+export function collectNativeDependencies({ list = [], seen = new Set(), owner, repo, root, fetch = fetchBlockedBy } = {}) {
+  const stats = { queried: 0, edges: 0, skipped: null };
+  const candidates = [];
+  if (!owner || !repo) { stats.skipped = 'repo-unknown'; return { candidates, stats }; }
+  for (const it of list) {
+    const res = fetch({ owner, repo, number: it.number, cwd: root });
+    if (res && res.unsupported) { stats.skipped = 'api-unsupported'; break; }
+    if (!res || !Array.isArray(res.numbers)) {
+      if (stats.queried === 0) { stats.skipped = 'unavailable'; break; }
+      continue;
+    }
+    stats.queried += 1;
+    for (const dep of res.numbers) {
+      const from = it.number;
+      const to = dep;
+      if (to === from) continue;
+      const key = `${from}|${to}|depends-on`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      candidates.push({ from, to });
+      stats.edges += 1;
+    }
+  }
+  return { candidates, stats };
+}
+
+/** 네이티브 의존성 후보를 그래프 엣지(depends-on)로 만든다. graph-v2 스키마와 일치해야 한다. */
+export function buildNativeEdge({ from, to, toClosed = false, url = null, now }) {
+  return {
+    from, to, type: 'depends-on', kind: 'blocked-by',
+    rationale: `#${from} 은(는) GitHub 네이티브 의존성에서 #${to} 에 blocked-by`,
+    context: { summary: `#${from} 이(가) #${to} 에 blocked-by (GitHub 네이티브 의존성)`, label: `blocked-by #${to}`, keywords: [], sharedConcepts: [], generatedBy: 'github-native', confidence: 'high', generatedAt: now },
+    evidence: [],
+    status: toClosed ? 'resolved' : 'active',
+    schemaVersion: EDGE_CONTEXT_VERSION,
+    createdBy: 'github-native', createdAt: now,
+    provenance: { url, digest: digest({ nativeDependency: true, from, to }) },
+  };
+}
+
 /* ------------------------------------------------------------------- 명령 */
 
 function cmdSync(root, tracker, opts) {
@@ -280,7 +328,13 @@ function cmdSync(root, tracker, opts) {
     }
     decisions.push(...parseDecisionComments(it.comments ?? []));
   }
-  const referenced = [...new Set(candidates.flatMap((c) => [c.from, c.to]))].filter((number) => !graph.nodes[String(number)]);
+  // 하이브리드: GitHub 네이티브 의존성(blocked-by)도 depends-on 후보로 읽는다. 본문 마커가
+  // 이미 만든 엣지는 seen 으로 걸러 우선하고, 실패는 조용히 흡수한다 (#하이브리드 그래프).
+  const nativeSlug = splitSlug(opts.repo ?? graph.repository ?? gitHost.repoInfo(root)?.nameWithOwner ?? '');
+  const native = opts.noNative
+    ? { candidates: [], stats: { queried: 0, edges: 0, skipped: 'disabled-by-flag' } }
+    : collectNativeDependencies({ list, seen, owner: nativeSlug?.owner, repo: nativeSlug?.repo, root });
+  const referenced = [...new Set([...candidates, ...native.candidates].flatMap((c) => [c.from, c.to]))].filter((number) => !graph.nodes[String(number)]);
   const unresolved = [];
   for (const number of referenced) {
     const item = tracker.issueView(number);
@@ -312,8 +366,14 @@ function cmdSync(root, tracker, opts) {
       provenance: { url: it.url, digest: digest(it.body ?? '') },
     };
   });
+  const nativeEdges = native.candidates.map(({ from, to }) => buildNativeEdge({
+    from, to,
+    toClosed: graph.nodes[String(to)]?.status === 'close',
+    url: itemByNumber.get(from)?.url ?? graph.nodes[String(from)]?.url ?? null,
+    now,
+  }));
   const approved = resolveDecisions(decisions).map(decisionEdge).filter(Boolean).filter((edge) => { const key = edgeKey(edge); if (seen.has(key)) return false; seen.add(key); return true; });
-  graph.edges = [...auto, ...approved];
+  graph.edges = [...auto, ...nativeEdges, ...approved];
   // 재감지되지 않은 sync 엣지는 삭제하지 않고 stale 로 이관한다 — 소비 코드는 graph.edges 만 읽으므로 스케줄링에 영향 없음 (#93).
   graph.staleEdges = carryStaleEdges(previousEdges, new Set(graph.edges.map(edgeKey)), now);
   // LLM 보강 패스 (#94) — 실패·부재 시 결정론 산출물 유지, sync 는 정상 진행.
@@ -330,13 +390,16 @@ function cmdSync(root, tracker, opts) {
   const file = saveGraph(root, graph, { now });
   const cycle = findCycle(graph);
 
-  console.log(`✓ sync 완료 — 노드 ${Object.keys(graph.nodes).length}개, 엣지 ${graph.edges.length}개 (자동 ${auto.length}, 승인 ${approved.length})`);
+  console.log(`✓ sync 완료 — 노드 ${Object.keys(graph.nodes).length}개, 엣지 ${graph.edges.length}개 (자동 ${auto.length}, 네이티브 ${nativeEdges.length}, 승인 ${approved.length})`);
   console.log(`  저장: ${path.relative(root, file)}`);
   if (cycle) console.log(`  ! 경고: 순환 의존 감지 ${cycle.join(' → ')} (validate 로 확인)`);
   console.log('');
   console.log(`SYNCED=${Object.keys(graph.nodes).length}`);
   console.log(`EDGES=${graph.edges.length}`);
   console.log(`AUTO_EDGES=${auto.length}`);
+  console.log(`NATIVE_EDGES=${nativeEdges.length}`);
+  console.log(`NATIVE_QUERIED=${native.stats.queried}`);
+  console.log(`NATIVE_SKIPPED=${native.stats.skipped ?? ''}`);
   console.log(`DECISION_EDGES=${approved.length}`);
   console.log(`RESOLVED_REFERENCES=${referenced.length - unresolved.length}`);
   console.log(`UNRESOLVED_REFERENCES=${unresolved.join(' ')}`);
@@ -348,26 +411,92 @@ function cmdSync(root, tracker, opts) {
   console.log(`CYCLE=${cycle ? cycle.join('>') : ''}`);
 }
 
+/** 결정 코멘트 본문을 만든다. sync 의 parseDecisionComments 가 그대로 파싱한다. */
+export function decisionCommentBody(payload, human) {
+  return `<!-- ${DECISION_MARKER}\n${JSON.stringify(payload)}\n-->\n\n${human}`;
+}
+
+/** 결정 코멘트를 대상 이슈에 게시한다. 임시 파일을 거쳐 tracker.issueComment 로 올린다. */
+function postDecision(tracker, issueNumber, payload, human) {
+  const file = path.join(tmpdir(), `issue-relation-${payload.id}.md`);
+  writeFileSync(file, decisionCommentBody(payload, human));
+  return tracker.issueComment(issueNumber, file);
+}
+
+// V2 는 GitHub 을 정본으로 두고 graph.json 은 재생성 캐시다. 그래서 link 는 로컬 엣지를
+// 쓰는 대신, sync 가 읽는 구조화된 승인 결정 코멘트를 대상(from) 이슈에 남기고 다시
+// sync 해 엣지를 실체화한다. 순서 엣지(depends-on)는 순환이 되면 게시 전에 거부한다.
 function cmdLink(root, tracker, from, to, opts) {
   if (from == null || to == null) { console.error('✗ from 과 to 이슈 번호가 필요하다 (예: link 61 60)'); process.exit(1); }
   const type = opts.type ?? 'depends-on';
   if (!EDGE_TYPES.includes(type)) {
     console.error(`✗ 알 수 없는 엣지 타입: ${type} — ${EDGE_TYPES.join(' | ')} 중 하나`);
+    console.log('LINKED=0');
     process.exit(1);
   }
-  if (from === to) { console.error('✗ 자기 자신을 가리키는 엣지는 만들 수 없다.'); process.exit(1); }
+  if (from === to) { console.error('✗ 자기 자신을 가리키는 엣지는 만들 수 없다.'); console.log('LINKED=0'); process.exit(1); }
 
-  console.error('✗ V2는 로컬 link를 저장하지 않는다. 대상 GitHub 이슈에 구조화된 승인 코멘트를 남긴 뒤 sync 하라.');
-  console.error(`  type=${type} from=${from} to=${to} rationale=${opts.why ?? ''}`);
-  console.error('LINKED=0');
-  process.exit(2);
+  const graph = loadGraph(root, tracker.provider);
+  // 순서 엣지는 순환을 만들면 게시하지 않는다 (dag-ops 의 계약).
+  if (ORDERING_TYPES.has(type)) {
+    const cycle = findCycle({ nodes: graph.nodes ?? {}, edges: [...(graph.edges ?? []), { from, to, type }] });
+    if (cycle) { console.error(`✗ 순환이 되어 거부: ${cycle.join(' → ')}`); console.log('LINKED=0'); process.exit(2); }
+  }
+
+  const fromView = tracker.issueView(from);
+  const toView = tracker.issueView(to);
+  if (!fromView) { console.error(`✗ #${from} 이슈를 조회할 수 없다.`); console.log('LINKED=0'); process.exit(1); }
+  if (!toView) { console.error(`✗ #${to} 이슈를 조회할 수 없다.`); console.log('LINKED=0'); process.exit(1); }
+
+  const evidence = [fromView.url, toView.url].filter(Boolean);
+  if (!evidence.length) evidence.push(`#${from} → #${to}`);
+  const graphRevision = graph.snapshot?.digest ?? digest(graph);
+  const id = `relation-${from}-${to}-${type}`;
+  const payload = {
+    version: 1, id, action: 'relation', decision: 'approved',
+    type, from, to, graphRevision, rationale: opts.why ?? '', evidence,
+  };
+  const human = `관계 승인: #${from} --${type}--> #${to}${opts.why ? `\n\n근거: ${opts.why}` : ''}`;
+  const posted = postDecision(tracker, from, payload, human);
+  if (!posted.ok) { console.error(`✗ 결정 코멘트 게시 실패: ${posted.err ?? ''}`); console.log('LINKED=0'); process.exit(1); }
+
+  console.log(`✓ #${from} 에 관계 승인 코멘트 게시 (${id})`);
+  console.log('  그래프 재동기화 중...');
+  console.log('');
+  cmdSync(root, tracker, opts);
+  console.log('');
+  console.log('LINKED=1');
+  console.log(`LINK=${from}|${to}|${type}`);
+  console.log(`DECISION_ID=${id}`);
 }
 
+// unlink 는 같은 id 의 revoked 결정 코멘트를 남긴다. resolveDecisions 가 최신 결정을
+// 골라 revoked 를 걸러내므로 다음 sync 에서 결정 엣지가 사라진다. 단, 본문 마커
+// (`depends on #N`)나 GitHub 네이티브 의존성으로 생긴 엣지는 이 방식으로 지워지지
+// 않는다 — 본문을 고치거나 GitHub 에서 의존성 링크를 직접 해제해야 한다.
 function cmdUnlink(root, tracker, from, to, opts) {
-  if (from == null || to == null) { console.error('✗ from 과 to 이슈 번호가 필요하다.'); process.exit(1); }
-  console.error('✗ V2는 로컬 unlink를 저장하지 않는다. GitHub의 승인 결정 코멘트를 정정·철회한 뒤 sync 하라.');
-  console.error(`UNLINKED=0 from=${from} to=${to} type=${opts.type ?? 'all'}`);
-  process.exit(2);
+  if (from == null || to == null) { console.error('✗ from 과 to 이슈 번호가 필요하다.'); console.log('UNLINKED=0'); process.exit(1); }
+  const type = opts.type ?? 'depends-on';
+  if (!EDGE_TYPES.includes(type)) {
+    console.error(`✗ 알 수 없는 엣지 타입: ${type} — ${EDGE_TYPES.join(' | ')} 중 하나`);
+    console.log('UNLINKED=0');
+    process.exit(1);
+  }
+  const id = `relation-${from}-${to}-${type}`;
+  const payload = { version: 1, id, action: 'relation', decision: 'revoked', type, from, to };
+  const human = `관계 철회: #${from} --${type}--> #${to}`;
+  const posted = postDecision(tracker, from, payload, human);
+  if (!posted.ok) { console.error(`✗ 철회 코멘트 게시 실패: ${posted.err ?? ''}`); console.log('UNLINKED=0'); process.exit(1); }
+
+  console.log(`✓ #${from} 에 관계 철회 코멘트 게시 (${id})`);
+  console.log('  본문 마커·GitHub 네이티브 의존성으로 생긴 엣지는 이 방식으로 지워지지 않는다.');
+  console.log('  그래프 재동기화 중...');
+  console.log('');
+  cmdSync(root, tracker, opts);
+  console.log('');
+  console.log('UNLINKED=1');
+  console.log(`UNLINK=${from}|${to}|${type}`);
+  console.log(`DECISION_ID=${id}`);
 }
 
 function label(graph, num) {
@@ -585,7 +714,7 @@ function cmdOnboard(root, tracker, opts) {
 function usage(exitCode = 1) {
   console.error(`Usage:
   node issue-onboard.mjs [--all]
-  node issue-onboard.mjs sync [--state open|closed|all] [--limit <n>]  (plan/next에는 전체·완전 snapshot 필요)
+  node issue-onboard.mjs sync [--state open|closed|all] [--limit <n>] [--no-llm] [--no-native]
   node issue-onboard.mjs link <from> <to> [--type ${EDGE_TYPES.join('|')}] [--why "<근거>"]
   node issue-onboard.mjs unlink <from> <to> [--type <type>]
   node issue-onboard.mjs plan [--json]
@@ -594,7 +723,9 @@ function usage(exitCode = 1) {
   node issue-onboard.mjs audit
   node issue-onboard.mjs migrate
 
-엣지 방향: from --depends-on--> to = "from 은 to 가 close 전엔 착수 불가".
+엣지 방향: from --depends-on--> to = "from 은 to 가 close 전엔 착수 불가" (to 가 선수).
+link/unlink 는 대상(from) 이슈에 구조화된 승인/철회 결정 코멘트를 남기고 재-sync 한다.
+sync 는 본문 마커(depends on #N)·결정 코멘트·GitHub 네이티브 의존성(blocked-by)을 함께 읽는다.
 그래프: ${WORKSPACE_DIR}/${GRAPH_FILE} (GitHub 정본에서 재생성하는 로컬 캐시).
 이슈 백엔드는 ~/.issue/settings.json 의 provider.type 이 정한다 (github 기본 | jira).
 `);
@@ -624,6 +755,7 @@ function main() {
     else if (arg === '--repo') opts.repo = argv[++i];
     else if (arg === '--all') opts.all = true;
     else if (arg === '--no-llm') opts.noLlm = true;
+    else if (arg === '--no-native') opts.noNative = true;
     else if (arg === '--graph') opts.graph = argv[++i];
     else if (arg.startsWith('-')) { console.error(`✗ 알 수 없는 옵션: ${arg}`); usage(); }
     else positionals.push(arg);

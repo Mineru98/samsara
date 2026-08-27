@@ -17,6 +17,7 @@ $issue-onboard [--all]
 - 기본: 최대 6개 우선순위와 다음 행동을 낸다.
 - `--all`: 같은 우선순위 형식으로 전체 목록도 이어서 낸다.
 - `sync`, `plan`, `next`, `validate`, `audit`, `migrate`는 그래프 유지·진단용 하위 명령이다.
+- `link <from> <to>` / `unlink <from> <to>`는 선수·후속(depends-on 등) 관계를 손본다. 대상 이슈에 구조화된 승인/철회 결정 코멘트를 남기고 재-sync 한다(GitHub 이 정본).
 
 ## 절차
 

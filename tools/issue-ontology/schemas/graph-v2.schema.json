@@ -52,6 +52,12 @@
       "items": {
         "$ref": "#/$defs/edge"
       }
+    },
+    "staleEdges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
     }
   },
   "$defs": {
@@ -325,9 +331,43 @@
           "minLength": 1
         },
         "status": {
-          "const": "stale"
+          "enum": [
+            "active",
+            "resolved",
+            "stale"
+          ]
         },
         "staleAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "blocked-by",
+            "composition",
+            "duplicate",
+            "temporal",
+            "relates"
+          ]
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cacheKey": {
           "type": [
             "string",
             "null"

@@ -58,8 +58,13 @@ validate와 island 테스트는 Ajv 없이는 실패한다.
 ## 관계와 실행 규칙
 
 `depends-on`, `parent-of`, `duplicate-of`, `relates-to`, `supersedes`만 허용한다.
+`depends-on`(선수·후속) 엣지는 세 정본에서 온다: ① 본문 마커(`depends on #N`), ② `link`/`unlink`
+가 남긴 결정 코멘트, ③ GitHub 네이티브 이슈 의존성(blocked-by, `gh api graphql` 조회, `createdBy=github-native`).
+③ 은 실패하면 조용히 건너뛰고 `--no-native` 로 끌 수 있다. 캐시는 sync 엣지의 풍부한 맥락
+(`kind`·`context`·`evidence`·`status`·`schemaVersion`·`cacheKey`)과 재감지되지 않은 sync 엣지를
+옮겨 둔 `staleEdges` 배열까지 담으며, 이 shape 는 tools/issue-ontology 의 graph-v2 스키마와 일치한다.
 
-- `from --depends-on--> to`: from은 to가 close 되기 전 착수할 수 있다. 이것만 plan/next에 쓴다.
+- `from --depends-on--> to`: to 가 선수다. from 은 to 가 close 되기 전엔 착수할 수 없다. 이것만 plan/next에 쓴다.
 - `from --parent-of--> to`: from이 상위 이슈다. child는 하나의 parent만 가질 수 있고 계층 순환은 금지한다.
 - `from --duplicate-of--> to`: from은 중복이고 to가 canonical 이슈다. 구조화 승인 없이는 만들 수 없다.
 - `relates-to`는 번호가 작은 쪽에서 큰 쪽으로 정규화한다.
