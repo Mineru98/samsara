@@ -1,10 +1,37 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import process from 'node:process';
 import { resolveSkillScript } from './issue-common.mjs';
 
+const TRUSTED_PATH = [
+  '/opt/homebrew/bin', '/opt/homebrew/sbin',
+  '/usr/local/bin', '/usr/local/sbin',
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+].join(path.delimiter);
+const CHILD_ENV_KEYS = [
+  'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP',
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME',
+  'ISSUE_PROVIDER', 'ISSUE_ONTOLOGY_ROOT', 'GH_HOST',
+  'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
+  'JIRA_API_TOKEN',
+];
+
+function childEnvironment(env = process.env) {
+  return Object.fromEntries([
+    ...CHILD_ENV_KEYS.filter((key) => typeof env[key] === 'string').map((key) => [key, env[key]]),
+    ['PATH', TRUSTED_PATH],
+  ]);
+}
+
 function repoRoot() {
-  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+    encoding: 'utf8',
+    env: childEnvironment(),
+    timeout: 30000,
+  });
   if (result.status !== 0) throw new Error('git 저장소에서 실행해야 한다.');
   return result.stdout.trim();
 }
@@ -22,7 +49,13 @@ try {
       'issue-onboard 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.',
     );
   }
-  const result = spawnSync(process.execPath, [script, 'sync', '--state', 'all'], { cwd: root, encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [script, 'sync', '--state', 'all'], {
+    cwd: root,
+    encoding: 'utf8',
+    env: childEnvironment(),
+    timeout: 120000,
+    maxBuffer: 16 * 1024 * 1024,
+  });
   process.stdout.write(result.stdout);
   process.stderr.write(result.stderr);
   if (result.status !== 0 || !hasOutputMarker(result.stdout, 'SNAPSHOT_STATUS=complete')) {

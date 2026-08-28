@@ -65,7 +65,9 @@ close 불일치를 검사한다. 온보딩에서 Ajv 또는 온톨로지 검증�
 `depends-on`, `parent-of`, `duplicate-of`, `relates-to`, `supersedes`만 허용한다.
 `depends-on`(선수·후속) 엣지는 세 정본에서 온다: ① 본문 마커(`depends on #N`), ② `link`/`unlink`
 가 남긴 결정 코멘트, ③ GitHub 네이티브 이슈 의존성(blocked-by, `gh api graphql` 조회, `createdBy=github-native`).
-③ 은 실패하면 조용히 건너뛰고 `--no-native` 로 끌 수 있다. 캐시는 sync 엣지의 풍부한 맥락
+③ 은 기본 sync에서 실패하면 snapshot을 `partial`로 남겨 추천을 막는다. 명시적으로
+`--no-native`를 사용해 이 계층을 끌 수 있지만, 온보딩은 검증되지 않은 네이티브 엣지를
+신뢰하지 않는다. 캐시는 sync 엣지의 풍부한 맥락
 (`kind`·`context`·`evidence`·`status`·`schemaVersion`·`cacheKey`)과 재감지되지 않은 sync 엣지를
 옮겨 둔 `staleEdges` 배열까지 담으며, 이 shape 는 tools/issue-ontology 의 graph-v2 스키마와 일치한다.
 

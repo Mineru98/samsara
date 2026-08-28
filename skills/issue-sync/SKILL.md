@@ -22,7 +22,8 @@ node <issue-sync>/scripts/issue-sync.mjs
 
 출력에 정확히 `SNAPSHOT_STATUS=complete`와 `GRAPH_SYNC=ok` 줄이 함께 나와야 한다. 기본 실행은
 목록 한도가 찬 페이지를 계속 조회해 전체 이슈 목록을 확인하며, 최대 한도에서도 끝나지 않으면
-`partial`로 남긴다. partial·실패·무결성 digest 불일치 결과는 온보딩 추천에 사용하지 않는다.
+`partial`로 남긴다. GitHub 네이티브 의존성 조회나 참조 이슈 조회를 끝까지 증명하지 못한
+경우도 `partial`로 남긴다. partial·실패·무결성 digest 불일치 결과는 온보딩 추천에 사용하지 않는다.
 
 `issue-onboard`는 graph.json이 없거나 캐시가 불완전·유효하지 않거나 현재 전체 이슈 목록과
 불일치할 때 이 스킬을 먼저 호출한다. 온톨로지 검증기를 사용할 수 없거나 `.issue` 경로가

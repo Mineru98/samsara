@@ -17,11 +17,14 @@ node <skill>/scripts/issue-onboard.mjs sync [--state open|closed|all] [--limit <
 ```
 
 - ①③ 자동 엣지는 `createdBy=sync`/`github-native` 로 매번 다시 계산한다. ② 결정 엣지는 승인 코멘트가 남아 있는 한 보존된다.
-- ③ 은 실패(구형 GitHub Enterprise·오프라인·권한)하면 조용히 건너뛴다. `--no-native` 로 끌 수 있다.
+- ③ 은 기본 sync에서 실패(구형 GitHub Enterprise·오프라인·권한)하면 snapshot을 `partial`로
+  남겨 추천을 막는다. `--no-native`로 이 계층을 명시적으로 끌 수 있지만, 온보딩은 검증되지
+  않은 네이티브 엣지를 신뢰하지 않는다.
 - 같은 `from|to|depends-on` 이 여러 정본에서 잡히면 본문 마커(근거가 풍부) → 네이티브 → 결정 순으로 하나만 남긴다.
 - 출력 `CYCLE=` 이 비어 있지 않으면 순환이 있다. `validate` 로 경로를 확인한다. `NATIVE_QUERIED`/`NATIVE_SKIPPED` 로 네이티브 조회 상태를 확인한다.
 
-인자 없이 온보딩을 실행하면 전체 이슈 목록과 캐시를 비교한다. 캐시가 없거나 현재 이슈와
+인자 없이 온보딩을 실행하면 전체 이슈 목록과 캐시를 비교한다. `plan`과 `next`도 같은
+검증 경로를 사용한다. 캐시가 없거나 현재 이슈와
 불일치하거나 GitHub에서 닫힌 비종료 노드가 남아 있으면 위 sync를 자동 선행한다. 자동 sync가
 실패하거나 완전 snapshot·캐시 무결성 digest를 만들지 못하거나 온톨로지 검증을 사용할 수
 없으면 추천을 내지 않는다. 자동 부트스트랩은 현재 설치 묶음의 신뢰된 `issue-sync` 형제만

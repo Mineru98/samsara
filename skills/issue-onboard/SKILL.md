@@ -22,7 +22,8 @@ $issue-onboard [--all]
 ## 절차
 
 1. GitHub의 전체 이슈 snapshot과 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 현재 이슈의 내용·상태·라벨·revision과 맞지 않거나, GitHub에서 닫힌 비종료 노드가 남아 있으면 `$issue-sync`를 자동 실행해 전체 snapshot을 만든다. 기본 목록 한도가 찼으면 다음 페이지를 더 조회하고, 전체 조회를 증명하지 못하면 캐시를 사용하지 않는다.
-2. 자동 동기화가 성공한 뒤 완전 snapshot과 일치·검증된 캐시만 읽는다. sync 실패·partial·cycle·dangling·무결성 digest 불일치이면 순위와 다음 추천을 내지 않고 이유를 알린다.
+2. 자동 동기화가 성공한 뒤 완전 snapshot과 일치·검증된 캐시만 읽는다. `plan`과 `next`도 이
+   동일한 라이브 조회·bootstrap·온톨로지·관계 출처 검증을 거친다. sync 실패·partial·cycle·dangling·무결성 digest 불일치이면 순위와 다음 추천을 내지 않고 이유를 알린다.
 3. GitHub의 열린 이슈와 그래프 상태를 함께 읽어 ready → in-progress → blocked 순, P0~P3·번호 순으로 정렬한다.
 4. 최대 6개를 먼저 보여 준다. 더 있으면 `--all` 요청으로 같은 형식의 전체 목록을 이어서 낸다.
 5. 최우선 이슈 착수, 열린 PR 병합, 새 이슈 등록 중 하나를 선택받는다.

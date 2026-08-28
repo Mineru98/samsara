@@ -9,15 +9,53 @@
 //   issue-tracker.mjs 는 vendored("DO NOT EDIT") 파일이고 이 저장소에는 그
 //   canonical 원본(tools/issue-tracker.mjs)과 재동기화 스크립트가 존재하지 않는다.
 //   그래서 잠긴 사본 5개를 손대는 대신, onboard 소유의 이 모듈에서만 gh 를 부른다.
-//   실패(미지원 GitHub Enterprise·오프라인·권한)는 전부 조용히 흡수해 sync 를
-//   막지 않는다. 방향 규약은 onboard 와 동일하다:
+//   실패(미지원 GitHub Enterprise·오프라인·권한)는 sync 를 partial 로 만들며
+//   온보딩 추천을 막는다. 방향 규약은 onboard 와 동일하다:
 //     issue X 가 Y 에 blocked-by  ⇒  Y 가 선수(predecessor)  ⇒  X --depends-on--> Y.
 import { spawnSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+
+const SYSTEM_PATH = [
+  '/opt/homebrew/bin', '/opt/homebrew/sbin',
+  '/usr/local/bin', '/usr/local/sbin',
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+];
+const COMMAND_ENV_KEYS = [
+  'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP',
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'GH_CONFIG_DIR',
+  'GH_HOST', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
+];
+
+function trustedPath() {
+  // 테스트 fixture만 임시 디렉터리의 명령 mock을 명시적으로 주입할 수 있다.
+  // 일반 실행에서는 저장소·호출자 PATH를 절대 다시 추가하지 않는다.
+  const fixtureDir = process.env.ISSUE_ONBOARD_TEST_MODE === '1'
+    ? process.env.ISSUE_ONBOARD_TEST_COMMAND_DIR
+    : null;
+  const fixtureRoot = path.resolve(os.tmpdir());
+  const fixturePath = fixtureDir ? path.resolve(fixtureDir) : null;
+  const relative = fixturePath ? path.relative(fixtureRoot, fixturePath) : '..';
+  const allowedFixture = fixturePath
+    && relative !== '..'
+    && !relative.startsWith(`..${path.sep}`)
+    && !path.isAbsolute(relative);
+  return [...(allowedFixture ? [fixturePath] : []), ...SYSTEM_PATH].join(path.delimiter);
+}
+
+function trustedCommandEnv() {
+  return Object.fromEntries([
+    ...COMMAND_ENV_KEYS.filter((key) => typeof process.env[key] === 'string').map((key) => [key, process.env[key]]),
+    ['PATH', trustedPath()],
+  ]);
+}
 
 const DEP_QUERY = `query($owner:String!,$repo:String!,$number:Int!){
   repository(owner:$owner,name:$repo){
     issue(number:$number){
-      blockedBy(first:50){ nodes{ number } }
+      blockedBy(first:50){ nodes{ number } pageInfo { hasNextPage } }
     }
   }
 }`;
@@ -27,7 +65,7 @@ const DEP_QUERY = `query($owner:String!,$repo:String!,$number:Int!){
  * 반환:
  *   { numbers: number[] }        조회 성공(빈 배열 포함)
  *   { unsupported: true }        네이티브 의존성 API/필드를 쓸 수 없음 → 호출부는 중단
- *   null                         일시적 실패(권한·네트워크·파싱) → 호출부는 이 노드만 건너뜀
+ *   null                         일시적 실패(권한·네트워크·파싱) → 전체 snapshot을 partial로 처리
  */
 export function fetchBlockedBy({ owner, repo, number, cwd, runner = spawnSync } = {}) {
   if (!owner || !repo || !Number.isInteger(number)) return null;
@@ -40,7 +78,13 @@ export function fetchBlockedBy({ owner, repo, number, cwd, runner = spawnSync } 
   ];
   let result;
   try {
-    result = runner('gh', args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    result = runner('gh', args, {
+      cwd,
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+      timeout: 30000,
+      env: trustedCommandEnv(),
+    });
   } catch {
     return null;
   }
@@ -63,6 +107,7 @@ export function fetchBlockedBy({ owner, repo, number, cwd, runner = spawnSync } 
   }
   const nodes = json?.data?.repository?.issue?.blockedBy?.nodes;
   if (!Array.isArray(nodes)) return null;
+  if (json?.data?.repository?.issue?.blockedBy?.pageInfo?.hasNextPage !== false) return null;
   const numbers = nodes
     .map((n) => Number(n?.number))
     .filter((n) => Number.isInteger(n) && n > 0);

@@ -111,8 +111,22 @@ export const PROJECT_SETTINGS_REL = `${WORKSPACE_DIR}/${PROJECT_SETTINGS_FILE}`;
 
 /* ------------------------------------------------------------- 프로세스 */
 
+const TRUSTED_COMMAND_PATH = [
+  '/opt/homebrew/bin', '/opt/homebrew/sbin',
+  '/usr/local/bin', '/usr/local/sbin',
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+].join(path.delimiter);
+
 export function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
+  const r = spawnSync(cmd, args, {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    ...opts,
+    env: opts.env
+      ? { ...process.env, ...opts.env }
+      : { ...process.env, PATH: TRUSTED_COMMAND_PATH },
+  });
   return { code: r.status ?? 1, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
 

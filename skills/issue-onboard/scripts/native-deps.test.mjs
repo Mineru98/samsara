@@ -5,7 +5,7 @@ import { fetchBlockedBy, splitSlug } from './issue-native-deps.mjs';
 import { buildNativeEdge, classify, collectNativeDependencies, findCycle } from './issue-onboard.mjs';
 import { validateGraphDocument } from '../../../tools/issue-ontology/validate.mjs';
 
-const ok = (nodes) => ({ status: 0, stdout: JSON.stringify({ data: { repository: { issue: { blockedBy: { nodes } } } } }), stderr: '' });
+const ok = (nodes) => ({ status: 0, stdout: JSON.stringify({ data: { repository: { issue: { blockedBy: { nodes, pageInfo: { hasNextPage: false } } } } } }), stderr: '' });
 
 test('splitSlug parses owner/repo and rejects garbage', () => {
   assert.deepEqual(splitSlug('Mineru98/samsara'), { owner: 'Mineru98', repo: 'samsara' });
@@ -31,6 +31,7 @@ test('fetchBlockedBy flags unsupported when the field is missing', () => {
 test('fetchBlockedBy returns null on transient failure and bad args', () => {
   assert.equal(fetchBlockedBy({ owner: 'o', repo: 'r', number: 9, runner: () => ({ status: 1, stdout: '', stderr: 'network' }) }), null);
   assert.equal(fetchBlockedBy({ owner: 'o', repo: 'r', number: 9, runner: () => ({ status: 0, stdout: 'not json', stderr: '' }) }), null);
+  assert.equal(fetchBlockedBy({ owner: 'o', repo: 'r', number: 9, runner: () => ({ status: 0, stdout: JSON.stringify({ data: { repository: { issue: { blockedBy: { nodes: [] } } } } }), stderr: '' }) }), null);
   assert.equal(fetchBlockedBy({ owner: '', repo: 'r', number: 9 }), null);
   assert.equal(fetchBlockedBy({ owner: 'o', repo: 'r', number: 1.5 }), null);
 });
@@ -57,6 +58,22 @@ test('collectNativeDependencies skips cleanly when repo unknown or API unsupport
   assert.equal(flaky.stats.skipped, 'unavailable');
 });
 
+test('collectNativeDependencies marks any later node failure as incomplete', () => {
+  const calls = [];
+  const result = collectNativeDependencies({
+    list: [{ number: 1 }, { number: 2 }],
+    owner: 'o',
+    repo: 'r',
+    fetch: ({ number }) => {
+      calls.push(number);
+      return number === 1 ? { numbers: [] } : null;
+    },
+  });
+  assert.deepEqual(calls, [1, 2]);
+  assert.equal(result.stats.queried, 1);
+  assert.equal(result.stats.skipped, 'unavailable');
+});
+
 test('buildNativeEdge produces a schema-valid depends-on edge', () => {
   const now = '2026-08-26T00:00:00.000Z';
   const edge = buildNativeEdge({ from: 9, to: 5, toClosed: true, url: 'https://github.com/o/r/issues/9', now });
@@ -72,7 +89,7 @@ test('buildNativeEdge produces a schema-valid depends-on edge', () => {
   });
   const graph = {
     version: 2, provider: 'github', repository: 'o/r', updatedAt: now,
-    snapshot: { status: 'complete', fetchedAt: now, digest: `sha256:${'a'.repeat(64)}`, reason: null },
+    snapshot: { status: 'complete', fetchedAt: now, digest: `sha256:${'a'.repeat(64)}`, graphDigest: `sha256:${'b'.repeat(64)}`, reason: null },
     nodes: { 5: node(5), 9: node(9) }, edges: [edge],
   };
   assert.deepEqual(validateGraphDocument(graph).errors, []);

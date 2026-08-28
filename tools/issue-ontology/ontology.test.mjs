@@ -30,7 +30,7 @@ test('valid graph passes Ajv and the schema contains the live snapshot keys', ()
   const graph = fixture('graph-valid.json');
   const result = validateGraphDocument(graph);
   assert.equal(result.valid, true);
-  assert.deepEqual(Object.keys(graph.snapshot).sort(), ['digest', 'fetchedAt', 'reason', 'status']);
+  assert.deepEqual(Object.keys(graph.snapshot).sort(), ['digest', 'fetchedAt', 'graphDigest', 'reason', 'status']);
 });
 
 test('Ajv rejects blocks and unknown graph root properties', () => {
@@ -137,7 +137,7 @@ test('Ajv accepts the rich sync edge shape and top-level staleEdges', () => {
     provider: 'github',
     repository: 'Mineru98/samsara',
     updatedAt: '2026-08-26T00:00:00.000Z',
-    snapshot: { status: 'complete', fetchedAt: '2026-08-26T00:00:00.000Z', digest, reason: null },
+    snapshot: { status: 'complete', fetchedAt: '2026-08-26T00:00:00.000Z', digest, graphDigest: digest, reason: null },
     nodes: { 5: node(5), 6: node(6) },
     edges: [richSyncEdge],
     staleEdges: [{ ...richSyncEdge, from: 5, to: 6, status: 'stale', staleAt: '2026-08-25T00:00:00.000Z' }],

@@ -77,7 +77,7 @@ function cliFixture({ syncMode = 'complete', graph = null, initialGraph = null, 
 case "$*" in
   *"issue list"*) printf '%s\\n' '[{"number":1,"title":"Issue 1","labels":[],"url":"https://github.com/o/r/issues/1","state":"OPEN","updatedAt":"r"}]' ;;
   *"repo view"*) printf '%s\\n' '{"nameWithOwner":"o/r"}' ;;
-  *"api graphql"*) printf '%s\\n' '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[]}}}}}' ;;
+  *"api graphql"*) printf '%s\\n' '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[],"pageInfo":{"hasNextPage":false}}}}}}' ;;
   *) printf '%s\\n' '{}' ;;
 esac
 `);
@@ -130,6 +130,8 @@ console.log('GRAPH_SYNC=ok');
     env: {
       ...process.env,
       PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
+      ISSUE_ONBOARD_TEST_MODE: '1',
+      ISSUE_ONBOARD_TEST_COMMAND_DIR: bin,
       ISSUE_ONTOLOGY_ROOT: ontologyPath === ontologyRoot ? fixtureOntology : ontologyPath,
     },
   };
@@ -137,6 +139,14 @@ console.log('GRAPH_SYNC=ok');
 
 function runCliOnboard(fixture) {
   return spawnSync(process.execPath, [fixture.entry, 'onboard', '--all', '--no-llm'], {
+    cwd: fixture.root,
+    env: fixture.env,
+    encoding: 'utf8',
+  });
+}
+
+function runCliMode(fixture, mode, args = []) {
+  return spawnSync(process.execPath, [fixture.entry, mode, ...args], {
     cwd: fixture.root,
     env: fixture.env,
     encoding: 'utf8',
@@ -153,7 +163,7 @@ function trustedInstallWithRepositoryFallback() {
 case "$*" in
   *"issue list"*) printf '%s\\n' '[{"number":1,"title":"Issue 1","labels":[],"url":"https://github.com/o/r/issues/1","state":"OPEN","updatedAt":"r"}]' ;;
   *"repo view"*) printf '%s\\n' '{"nameWithOwner":"o/r"}' ;;
-  *"api graphql"*) printf '%s\\n' '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[]}}}}}' ;;
+  *"api graphql"*) printf '%s\\n' '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[],"pageInfo":{"hasNextPage":false}}}}}}' ;;
   *) printf '%s\\n' '{}' ;;
 esac
 `);
@@ -179,6 +189,8 @@ console.log('GRAPH_SYNC=ok');
     env: {
       ...process.env,
       PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
+      ISSUE_ONBOARD_TEST_MODE: '1',
+      ISSUE_ONBOARD_TEST_COMMAND_DIR: bin,
       ISSUE_ONTOLOGY_ROOT: ontology,
       BOOTSTRAP_SENTINEL: 'must-not-reach-repository-script',
     },
@@ -272,6 +284,38 @@ test('complete caches require a matching live snapshot and cache integrity diges
   assert.equal(graphBootstrapReason(graph, { ...live, allIssues: [{ ...issue, updatedAt: 'new' }] }), 'snapshot-changed');
 });
 
+test('complete caches reject a repository identity that differs from the live checkout', () => {
+  const graph = completeGraph();
+  assert.equal(graphBootstrapReason(graph, {
+    openIssues: [], allIssues: [], allIssuesComplete: true, repository: 'other/repository',
+  }), 'repository-changed');
+});
+
+test('complete caches reject graph edges that are absent from the live issue sources', () => {
+  const issue1 = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r', body: '', comments: [] };
+  const issue2 = { number: 2, title: 'Issue 2', labels: [], url: 'https://github.com/o/r/issues/2', state: 'OPEN', updatedAt: 'r', body: '', comments: [] };
+  const graph = completeGraph({ '1': validNode(1), '2': validNode(2) });
+  graph.snapshot.digest = issueSnapshotDigest([issue1, issue2]);
+  graph.edges = [{
+    from: 1, to: 2, type: 'depends-on', kind: 'blocked-by', rationale: 'forged',
+    context: { generatedBy: 'sync', confidence: 'high', generatedAt: now }, evidence: [],
+    status: 'active', schemaVersion: 1, createdBy: 'sync', createdAt: now,
+    provenance: { url: issue1.url, digest: 'sha256:' + 'f'.repeat(64) },
+  }];
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const live = { openIssues: [issue1, issue2], allIssues: [issue1, issue2], allIssuesComplete: true };
+  assert.equal(graphBootstrapReason(graph, live), 'edge-source-changed');
+});
+
+test('an empty complete cache still requires both integrity digests', () => {
+  const graph = completeGraph({});
+  graph.snapshot.digest = issueSnapshotDigest([]);
+  delete graph.snapshot.graphDigest;
+  assert.equal(graphBootstrapReason(graph, {
+    openIssues: [], allIssues: [], allIssuesComplete: true,
+  }), 'invalid');
+});
+
 test('default issue-list probing continues past a full page before declaring completeness', () => {
   const calls = [];
   const result = fetchCompleteIssueList({
@@ -287,6 +331,28 @@ test('default issue-list probing continues past a full page before declaring com
   assert.equal(result.items.length, 1);
 });
 
+test('Jira pagination requires authoritative totals and follows startAt', () => {
+  const calls = [];
+  const tracker = {
+    provider: 'jira',
+    issueListPage({ startAt, limit }) {
+      calls.push({ startAt, limit });
+      if (startAt === 0) return { items: [{ number: 1 }, { number: 2 }], startAt: 0, total: 3, complete: false };
+      return { items: [{ number: 3 }], startAt: 2, total: 3, complete: true };
+    },
+  };
+  const result = fetchCompleteIssueList(tracker, { initialLimit: 2, state: 'all' });
+  assert.equal(result.complete, true);
+  assert.deepEqual(result.items.map((item) => item.number), [1, 2, 3]);
+  assert.deepEqual(calls, [{ startAt: 0, limit: 2 }, { startAt: 2, limit: 2 }]);
+
+  const unknown = fetchCompleteIssueList({
+    provider: 'jira',
+    issueListPage: () => ({ items: [{ number: 1 }], startAt: 0, total: null, complete: false }),
+  });
+  assert.equal(unknown.complete, false);
+});
+
 test('the onboarding CLI bootstraps a complete sync before recommending issues', () => {
   const fixture = cliFixture();
   try {
@@ -298,6 +364,25 @@ test('the onboarding CLI bootstraps a complete sync before recommending issues',
     assert.match(result.stdout, /ONBOARD_COUNT=1/);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('next and plan use the same live bootstrap validation as onboard', () => {
+  const nextFixture = cliFixture();
+  const planFixture = cliFixture();
+  try {
+    const next = runCliMode(nextFixture, 'next');
+    assert.equal(next.status, 0, next.stderr);
+    assert.match(next.stdout, /GRAPH_BOOTSTRAP=issue-sync/);
+    assert.match(next.stdout, /NEXT_ISSUE=1/);
+
+    const plan = runCliMode(planFixture, 'plan', ['--json']);
+    assert.equal(plan.status, 0, plan.stderr);
+    assert.match(plan.stdout, /GRAPH_BOOTSTRAP=issue-sync/);
+    assert.match(plan.stdout, /"ready": \[\s*1\s*\]/);
+  } finally {
+    rmSync(nextFixture.root, { recursive: true, force: true });
+    rmSync(planFixture.root, { recursive: true, force: true });
   }
 });
 
@@ -389,7 +474,10 @@ test('bootstrap subprocess receives only the explicit environment allowlist', ()
     BOOTSTRAP_SENTINEL: 'must-not-leak',
     NODE_OPTIONS: '--require=attacker-module',
   });
-  assert.deepEqual(env, { PATH: '/bin', GH_TOKEN: 'token-for-gh' });
+  assert.equal(env.GH_TOKEN, 'token-for-gh');
+  assert.notEqual(env.PATH, '/bin');
+  assert.ok(env.PATH.split(path.delimiter).includes('/bin'));
+  assert.doesNotMatch(env.PATH, /attacker/);
 });
 
 test('runSyncBootstrap executes the discovered issue-sync entrypoint with bounded output and time', () => {
@@ -415,7 +503,7 @@ test('runSyncBootstrap executes the discovered issue-sync entrypoint with bounde
       options: {
         cwd: '/repo',
         encoding: 'utf8',
-        env: { PATH: '/bin' },
+        env: bootstrapEnvironment({ PATH: '/bin' }),
         timeout: 120000,
         maxBuffer: 16 * 1024 * 1024,
       },

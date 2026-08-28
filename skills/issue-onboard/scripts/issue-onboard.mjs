@@ -50,6 +50,13 @@ const IN_PROGRESS = new Set(['plan', 'in-process', 'review']);
 const DEFAULT_ISSUE_LIST_LIMIT = 200;
 const MAX_ISSUE_LIST_LIMIT = 10000;
 const BOOTSTRAP_TIMEOUT_MS = 120000;
+const TRUSTED_PATH_DIRS = [
+  '/opt/homebrew/bin', '/opt/homebrew/sbin',
+  '/usr/local/bin', '/usr/local/sbin',
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+];
+const TRUSTED_PATH = TRUSTED_PATH_DIRS.join(path.delimiter);
 const BOOTSTRAP_ENV_KEYS = [
   'PATH', 'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP',
   'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM',
@@ -345,7 +352,7 @@ export function parseDependencies(body = '') {
  * GitHub 네이티브 의존성(blocked-by)을 depends-on 후보로 모은다.
  * X 가 Y 에 blocked-by 면 Y 가 선수 → { from: X, to: Y }.
  * seen 에 이미 있는 키(본문 마커가 만든 엣지)는 건너뛰어 본문 근거를 우선한다.
- * 어떤 실패든 sync 를 막지 않는다: API 미지원이거나 첫 노드부터 실패하면 중단한다.
+ * 어떤 실패든 전체 snapshot을 partial로 만든다: API 미지원이거나 한 노드라도 실패하면 중단한다.
  */
 export function collectNativeDependencies({ list = [], seen = new Set(), owner, repo, root, fetch = fetchBlockedBy } = {}) {
   const stats = { queried: 0, edges: 0, skipped: null };
@@ -355,8 +362,8 @@ export function collectNativeDependencies({ list = [], seen = new Set(), owner, 
     const res = fetch({ owner, repo, number: it.number, cwd: root });
     if (res && res.unsupported) { stats.skipped = 'api-unsupported'; break; }
     if (!res || !Array.isArray(res.numbers)) {
-      if (stats.queried === 0) { stats.skipped = 'unavailable'; break; }
-      continue;
+      stats.skipped = 'unavailable';
+      break;
     }
     stats.queried += 1;
     for (const dep of res.numbers) {
@@ -387,6 +394,24 @@ export function buildNativeEdge({ from, to, toClosed = false, url = null, now })
   };
 }
 
+/** 라이브 이슈 본문·승인 코멘트에서 재현할 수 있는 관계 키를 만든다. */
+export function issueSourceEdgeKeys(issues = []) {
+  const keys = new Set();
+  const decisions = [];
+  for (const issue of issues) {
+    for (const ref of parseDependencies(issue.body ?? '')) {
+      const from = ref.reverse ? ref.from : issue.number;
+      const to = ref.reverse ? issue.number : ref.to;
+      if (to !== from) keys.add(edgeKey({ from, to, type: ref.type }));
+    }
+    decisions.push(...parseDecisionComments(issue.comments ?? []));
+  }
+  for (const edge of resolveDecisions(decisions).map(decisionEdge).filter(Boolean)) {
+    keys.add(edgeKey(edge));
+  }
+  return keys;
+}
+
 function issueListLimit(value) {
   const limit = Number(value);
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_ISSUE_LIST_LIMIT) {
@@ -399,6 +424,25 @@ export function fetchCompleteIssueList(tracker, options = {}) {
   let limit = options.initialLimit ?? DEFAULT_ISSUE_LIST_LIMIT;
   const request = { ...options };
   delete request.initialLimit;
+  if (tracker.provider === 'jira' && typeof tracker.issueListPage === 'function') {
+    let startAt = 0;
+    const items = [];
+    for (;;) {
+      const page = tracker.issueListPage({ ...request, limit, startAt });
+      if (!page || !Array.isArray(page.items)) return { items: null, complete: false };
+      items.push(...page.items);
+      if (page.complete === true) return { items, complete: true };
+      if (!Number.isSafeInteger(page.total) || page.total < 0) return { items, complete: false };
+      const pageStart = Number.isSafeInteger(page.startAt) ? page.startAt : startAt;
+      if (pageStart !== startAt || page.items.length > limit) return { items, complete: false };
+      const nextStart = pageStart + page.items.length;
+      if (!page.items.length || nextStart <= startAt || nextStart > MAX_ISSUE_LIST_LIMIT) {
+        return { items, complete: false };
+      }
+      if (nextStart >= page.total) return { items, complete: false };
+      startAt = nextStart;
+    }
+  }
   for (;;) {
     const list = tracker.issueList({ ...request, limit });
     if (list === null) return { items: null, complete: false };
@@ -417,21 +461,28 @@ function issueIsOpen(issue) {
 function cmdSync(root, tracker, opts) {
   const state = opts.state ?? 'all';
   const limit = issueListLimit(opts.limit ?? DEFAULT_ISSUE_LIST_LIMIT);
-  const listResult = opts.limit == null
-    ? fetchCompleteIssueList(tracker, {
+  let listResult;
+  if (opts.limit == null) {
+    listResult = fetchCompleteIssueList(tracker, {
       state,
       initialLimit: limit,
       fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
-    })
-    : {
-      items: tracker.issueList({
-        state,
-        limit,
-        fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
-      }),
-      complete: false,
-    };
-  if (opts.limit != null) listResult.complete = listResult.items !== null && listResult.items.length < limit;
+    });
+  } else if (tracker.provider === 'jira' && typeof tracker.issueListPage === 'function') {
+    const page = tracker.issueListPage({
+      state,
+      limit,
+      fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
+    });
+    listResult = { items: page?.items ?? null, complete: page?.complete === true };
+  } else {
+    const items = tracker.issueList({
+      state,
+      limit,
+      fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
+    });
+    listResult = { items, complete: items !== null && items.length < limit };
+  }
   const list = listResult.items;
   if (list === null) {
     console.log('SYNCED=0');
@@ -441,7 +492,8 @@ function cmdSync(root, tracker, opts) {
   const graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
   graph.version = GRAPH_VERSION;
   graph.provider = tracker.provider;
-  graph.repository = opts.repo ?? graph.repository ?? null;
+  graph.repository = opts.repo
+    ?? (tracker.provider === 'github' ? tracker.repository ?? gitHost.repoInfo(root)?.nameWithOwner : null);
   graph.nodes = {};
 
   const now = opts.now ?? new Date().toISOString();
@@ -480,9 +532,11 @@ function cmdSync(root, tracker, opts) {
     decisions.push(...parseDecisionComments(it.comments ?? []));
   }
   // 하이브리드: GitHub 네이티브 의존성(blocked-by)도 depends-on 후보로 읽는다. 본문 마커가
-  // 이미 만든 엣지는 seen 으로 걸러 우선하고, 실패는 조용히 흡수한다 (#하이브리드 그래프).
-  const nativeSlug = splitSlug(opts.repo ?? graph.repository ?? gitHost.repoInfo(root)?.nameWithOwner ?? '');
-  const native = opts.noNative
+  // 이미 만든 엣지는 seen 으로 걸러 우선하고, 조회 실패는 snapshot을 partial로 만든다.
+  const nativeSlug = splitSlug(opts.repo ?? graph.repository ?? '');
+  const native = tracker.provider !== 'github'
+    ? { candidates: [], stats: { queried: 0, edges: 0, skipped: null } }
+    : opts.noNative
     ? { candidates: [], stats: { queried: 0, edges: 0, skipped: 'disabled-by-flag' } }
     : collectNativeDependencies({ list, seen, owner: nativeSlug?.owner, repo: nativeSlug?.repo, root });
   const referenced = [...new Set([...candidates, ...native.candidates].flatMap((c) => [c.from, c.to]))].filter((number) => !graph.nodes[String(number)]);
@@ -535,13 +589,16 @@ function cmdSync(root, tracker, opts) {
     graph.edges = result.edges;
     llmStats = result.stats;
   }
-  const complete = state === 'all' && listResult.complete && unresolved.length === 0;
+  const nativeComplete = opts.noNative || !native.stats.skipped;
+  const complete = state === 'all' && listResult.complete && unresolved.length === 0 && nativeComplete;
   graph.updatedAt = now;
   graph.snapshot = {
     status: complete ? 'complete' : 'partial',
     fetchedAt: now,
     digest: issueSnapshotDigest(list),
-    reason: complete ? null : unresolved.length
+    reason: complete ? null : native.stats.skipped
+      ? `GitHub 네이티브 의존성 조회 실패: ${native.stats.skipped}`
+      : unresolved.length
       ? `참조 GitHub 항목을 조회할 수 없음: ${unresolved.map((number) => `#${number}`).join(', ')}`
       : 'state filter, limit, 또는 전체 목록 증명 실패',
   };
@@ -665,17 +722,7 @@ function label(graph, num) {
 }
 
 function cmdPlan(root, tracker, opts) {
-  const graph = loadGraph(root, tracker.provider);
-  const problems = auditGraph(graph);
-  const cycle = findCycle(graph);
-  if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
-  if (problems.length) { console.error(`✗ 안전하지 않은 그래프라 plan을 만들지 않는다: ${problems.join(' / ')}`); console.log('READY_NUMBERS='); process.exit(2); }
-  if (!Object.keys(graph.nodes).length) {
-    console.log('그래프가 비어 있다. 먼저 `sync` 를 실행하라.');
-    console.log('READY_NUMBERS=');
-    return;
-  }
-  const c = classify(graph);
+  const { graph, groups: c } = ensureValidatedOnboardGraph(root, tracker);
   const prio = (num) => { const r = priorityRank(graph.nodes[String(num)]); return r < 9 ? ` [P${r}]` : ''; };
 
   if (opts.json) {
@@ -709,12 +756,7 @@ function cmdPlan(root, tracker, opts) {
 }
 
 function cmdNext(root, tracker) {
-  const graph = loadGraph(root, tracker.provider);
-  const problems = auditGraph(graph);
-  const cycle = findCycle(graph);
-  if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
-  if (problems.length) { console.error(`✗ 안전하지 않은 그래프라 next를 추천하지 않는다: ${problems.join(' / ')}`); console.log('NEXT_ISSUE='); process.exit(2); }
-  const c = classify(graph);
+  const { graph, groups: c } = ensureValidatedOnboardGraph(root, tracker);
   if (!c.ready.length) {
     console.log(c.inProgress.length
       ? `착수 가능한 이슈가 없다. 진행 중: ${c.inProgress.map((n) => `#${n}`).join(', ')}`
@@ -855,7 +897,22 @@ function missingSkill(skill) {
   return `${skill} 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.`;
 }
 
-function canonicalIssueReason(graph, issues) {
+function edgeSourceReason(graph, issues, edgeSource = null) {
+  const expected = issueSourceEdgeKeys(issues);
+  if (edgeSource) {
+    if (!edgeSource.complete) return edgeSource.reason ?? 'native-dependencies-unverified';
+    for (const key of edgeSource.edgeKeys ?? []) expected.add(key);
+  } else if ([...(graph.edges ?? [])].some((edge) => edge.createdBy === 'github-native')) {
+    return 'native-dependencies-unverified';
+  }
+  const actual = new Set((graph.edges ?? []).map(edgeKey));
+  if (actual.size !== expected.size || [...actual].some((key) => !expected.has(key))) {
+    return 'edge-source-changed';
+  }
+  return null;
+}
+
+function canonicalIssueReason(graph, issues, { edgeSource = null } = {}) {
   if (graph.snapshot?.digest !== issueSnapshotDigest(issues)) return 'snapshot-changed';
   if (graph.snapshot?.graphDigest !== graphDocumentDigest(graph)) return 'cache-integrity-failed';
 
@@ -879,7 +936,7 @@ function canonicalIssueReason(graph, issues) {
   for (const node of Object.values(graph.nodes)) {
     if (!live.has(String(node.number)) && node.provenance?.kind !== 'referenced') return 'issue-removed';
   }
-  return null;
+  return edgeSourceReason(graph, issues, edgeSource);
 }
 
 /**
@@ -891,6 +948,8 @@ export function graphBootstrapReason(graph, {
   openIssues = [],
   allIssues = null,
   allIssuesComplete = true,
+  edgeSource = null,
+  repository = null,
 } = {}) {
   if (!fileExists) return 'missing';
   if (graph.snapshot?.status === 'invalid') return 'invalid';
@@ -900,16 +959,20 @@ export function graphBootstrapReason(graph, {
   const ontologyReason = ontologyBootstrapReason(graph);
   if (ontologyReason) return ontologyReason;
 
-  const nodeCount = Object.keys(graph.nodes ?? {}).length;
-  if (!nodeCount) return openIssues.length ? 'empty' : null;
+  if (repository && String(graph.repository ?? '').toLowerCase() !== String(repository).toLowerCase()) {
+    return 'repository-changed';
+  }
 
   const problems = auditGraph(graph);
   if (problems.length) return 'invalid';
 
   if (allIssues) {
-    const canonicalReason = canonicalIssueReason(graph, allIssues);
+    const canonicalReason = canonicalIssueReason(graph, allIssues, { edgeSource });
     if (canonicalReason) return canonicalReason;
   }
+
+  const nodeCount = Object.keys(graph.nodes ?? {}).length;
+  if (!nodeCount) return openIssues.length ? 'empty' : null;
 
   for (const issue of openIssues) {
     const node = graph.nodes[String(issue.number)];
@@ -928,8 +991,8 @@ export function graphBootstrapReason(graph, {
 
 export function bootstrapEnvironment(env = process.env) {
   return Object.fromEntries(BOOTSTRAP_ENV_KEYS
-    .filter((key) => typeof env[key] === 'string')
-    .map((key) => [key, env[key]]));
+    .filter((key) => key === 'PATH' || typeof env[key] === 'string')
+    .map((key) => [key, key === 'PATH' ? TRUSTED_PATH : env[key]]));
 }
 
 export function runSyncBootstrap(root, {
@@ -976,19 +1039,60 @@ function liveIssueSnapshot(tracker) {
   });
 }
 
-function cmdOnboard(root, tracker, opts) {
+/** 라이브 원본에서 재생성한 엣지 집합과 캐시를 비교한다. */
+function liveEdgeSource(root, graph, issues, repository = null) {
+  const edgeKeys = issueSourceEdgeKeys(issues);
+  if (graph.provider !== 'github') return { complete: true, edgeKeys };
+  const currentRepository = repository ?? gitHost.repoInfo(root)?.nameWithOwner;
+  const slug = splitSlug(currentRepository ?? '');
+  if (!slug) return { complete: false, reason: 'native-dependencies-repo-unknown', edgeKeys };
+  if (String(graph.repository ?? '').toLowerCase() !== currentRepository.toLowerCase()) {
+    return { complete: false, reason: 'repository-changed', edgeKeys };
+  }
+  const native = collectNativeDependencies({
+    list: issues,
+    seen: new Set(edgeKeys),
+    owner: slug.owner,
+    repo: slug.repo,
+    root,
+  });
+  if (native.stats.skipped) {
+    return { complete: false, reason: `native-dependencies-${native.stats.skipped}`, edgeKeys };
+  }
+  for (const candidate of native.candidates) {
+    edgeKeys.add(edgeKey({ ...candidate, type: 'depends-on' }));
+  }
+  return { complete: true, edgeKeys };
+}
+
+function snapshotBootstrapReason(root, graph, live, tracker) {
+  const repository = tracker.provider === 'github'
+    ? tracker.repository ?? gitHost.repoInfo(root)?.nameWithOwner
+    : null;
+  const base = {
+    fileExists: graph.snapshot?.status !== 'missing',
+    openIssues: live.items.filter(issueIsOpen),
+    allIssues: live.items,
+    allIssuesComplete: live.complete,
+    repository,
+  };
+  let reason = graphBootstrapReason(graph, base);
+  if (graph.snapshot?.status === 'complete'
+    && (reason === null || reason === 'native-dependencies-unverified')) {
+    reason = graphBootstrapReason(graph, {
+      ...base,
+      edgeSource: liveEdgeSource(root, graph, live.items, repository),
+    });
+  }
+  return reason;
+}
+
+function ensureValidatedOnboardGraph(root, tracker) {
   let graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
   let live = liveIssueSnapshot(tracker);
   if (live.items === null) throw new Error('전체 이슈 목록을 조회하지 못했다.');
   if (!live.complete) throw new Error('전체 이슈 목록이 limit 안에서 끝났다는 것을 증명하지 못했다.');
-  let allIssues = live.items;
-  let openIssues = allIssues.filter(issueIsOpen);
-  const reason = graphBootstrapReason(graph, {
-    fileExists: graph.snapshot?.status !== 'missing',
-    openIssues,
-    allIssues,
-    allIssuesComplete: live.complete,
-  });
+  const reason = snapshotBootstrapReason(root, graph, live, tracker);
   if (reason === 'ontology-unavailable') {
     ontologyProblems(graph, { required: true });
     throw new Error('온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
@@ -999,13 +1103,7 @@ function cmdOnboard(root, tracker, opts) {
     live = liveIssueSnapshot(tracker);
     if (live.items === null) throw new Error('동기화 후 전체 이슈 목록을 조회하지 못했다.');
     if (!live.complete) throw new Error('동기화 후 전체 이슈 목록이 완전하다는 것을 증명하지 못했다.');
-    allIssues = live.items;
-    openIssues = allIssues.filter(issueIsOpen);
-    const postSyncReason = graphBootstrapReason(graph, {
-      openIssues,
-      allIssues,
-      allIssuesComplete: live.complete,
-    });
+    const postSyncReason = snapshotBootstrapReason(root, graph, live, tracker);
     if (postSyncReason === 'ontology-unavailable') {
       ontologyProblems(graph, { required: true });
       throw new Error('동기화 후 온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
@@ -1018,6 +1116,12 @@ function cmdOnboard(root, tracker, opts) {
   if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
   if (problems.length) throw new Error(`안전하지 않은 그래프: ${problems.join(' / ')}`);
   const groups = classify(graph);
+  const openIssues = live.items.filter(issueIsOpen);
+  return { graph, openIssues, groups };
+}
+
+function cmdOnboard(root, tracker, opts) {
+  const { graph, openIssues, groups } = ensureValidatedOnboardGraph(root, tracker);
   const openNumbers = new Set(openIssues.map((issue) => issue.number));
   const ordered = [...groups.ready, ...groups.inProgress, ...groups.blocked.map((item) => item.num)]
     .filter((number) => openNumbers.has(number));
