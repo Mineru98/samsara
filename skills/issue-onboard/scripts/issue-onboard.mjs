@@ -1106,7 +1106,8 @@ export function bootstrapEnvironment(env = process.env, { includeCredentials = f
 
 function isTrustedBootstrapScript(file) {
   const installationRoot = trustedInstallationRoot();
-  return Boolean(installationRoot && trustedRegularFile(file, installationRoot));
+  const skillRoot = installationRoot ? path.join(installationRoot, 'skills') : null;
+  return Boolean(skillRoot && trustedRegularFile(file, skillRoot));
 }
 
 export function runSyncBootstrap(root, {

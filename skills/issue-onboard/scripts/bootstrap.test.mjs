@@ -223,7 +223,7 @@ console.log('GRAPH_SYNC=ok');
 function trustedInstallWithProjectFlavor() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-project-skill-'));
   const bin = path.join(root, 'bin');
-  const install = path.join(root, 'trusted-install');
+  const install = root;
   mkdirSync(bin, { recursive: true });
   assert.equal(spawnSync('git', ['init', '--quiet', root], { encoding: 'utf8' }).status, 0);
   writeExecutable(path.join(bin, 'gh'), `#!/bin/sh
@@ -640,6 +640,25 @@ test('project-local bootstrap scripts do not receive provider credentials', () =
   assert.equal(env.GH_TOKEN, undefined);
   assert.equal(env.JIRA_API_TOKEN, undefined);
   assert.equal(env.PATH, '/usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin');
+});
+
+test('same-installation bootstrap scripts receive the explicit provider credentials', () => {
+  let childOptions;
+  const result = runSyncBootstrap('/repo', {
+    resolve: () => path.join(repositoryRoot, 'skills', 'issue-sync', 'scripts', 'issue-sync.mjs'),
+    spawn: (_command, _args, options) => {
+      childOptions = options;
+      return { status: 0, stdout: 'SNAPSHOT_STATUS=complete\\nGRAPH_SYNC=ok\\n', stderr: '' };
+    },
+    env: {
+      PATH: '/bin',
+      GH_TOKEN: 'trusted-install-token',
+      NODE_OPTIONS: '--import=attacker.mjs',
+    },
+  });
+  assert.equal(result.status, 0);
+  assert.equal(childOptions.env.GH_TOKEN, 'trusted-install-token');
+  assert.equal(childOptions.env.NODE_OPTIONS, undefined);
 });
 
 test('production CLI rejects test-only command directory overrides', () => {

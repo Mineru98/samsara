@@ -66,9 +66,10 @@ try {
   const root = repoRoot();
   // 설치 위치(프로젝트 로컬 / 홈 전역 / 저장소를 링크한 개발 설치)를 가리지 않고 형제 스킬을 찾는다.
   const installationRoot = trustedInstallationRoot();
+  const skillRoot = installationRoot ? path.join(installationRoot, 'skills') : null;
   const script = resolveSkillScript(import.meta.url, 'issue-onboard', 'issue-onboard.mjs', {
     root,
-    accept: (candidate) => Boolean(installationRoot && trustedRegularFile(candidate, installationRoot)),
+    accept: (candidate) => Boolean(skillRoot && trustedRegularFile(candidate, skillRoot)),
   });
   if (!script) {
     throw new Error(
