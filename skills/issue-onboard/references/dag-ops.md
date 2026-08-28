@@ -21,8 +21,9 @@ node <skill>/scripts/issue-onboard.mjs sync [--state open|closed|all] [--limit <
 - 같은 `from|to|depends-on` 이 여러 정본에서 잡히면 본문 마커(근거가 풍부) → 네이티브 → 결정 순으로 하나만 남긴다.
 - 출력 `CYCLE=` 이 비어 있지 않으면 순환이 있다. `validate` 로 경로를 확인한다. `NATIVE_QUERIED`/`NATIVE_SKIPPED` 로 네이티브 조회 상태를 확인한다.
 
-인자 없이 온보딩을 실행하면 캐시가 없거나 현재 열린 이슈와 불일치할 때 위 sync를 자동으로
-선행한다. 자동 sync가 실패하거나 완전 snapshot을 만들지 못하면 추천을 내지 않는다.
+인자 없이 온보딩을 실행하면 캐시가 없거나 현재 열린 이슈와 불일치하거나 GitHub에서 닫힌
+비종료 노드가 남아 있을 때 위 sync를 자동 선행한다. 자동 sync가 실패하거나 완전 snapshot을
+만들지 못하거나 온톨로지 검증을 사용할 수 없으면 추천을 내지 않는다.
 
 ## link / unlink — 선수·후속 손보기
 

@@ -18,7 +18,7 @@ node <issue-sync>/scripts/issue-sync.mjs
 
 ## 성공 조건
 
-`SNAPSHOT_STATUS=complete`와 `GRAPH_SYNC=ok`가 함께 나와야 한다. partial·실패 결과는
+출력에 정확히 `SNAPSHOT_STATUS=complete`와 `GRAPH_SYNC=ok` 줄이 함께 나와야 한다. partial·실패 결과는
 온보딩 추천에 사용하지 않는다.
 
 `issue-onboard`는 graph.json이 없거나 캐시가 불완전·유효하지 않거나 열린 이슈와 불일치할 때

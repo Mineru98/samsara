@@ -21,7 +21,7 @@ $issue-onboard [--all]
 
 ## 절차
 
-1. GitHub의 열린 이슈와 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 열린 이슈의 제목·revision과 맞지 않으면 `$issue-sync`를 자동 실행해 전체 snapshot을 만든다.
+1. GitHub의 열린 이슈와 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 열린 이슈의 제목·revision과 맞지 않거나, GitHub에서 닫힌 비종료 노드가 남아 있으면 `$issue-sync`를 자동 실행해 전체 snapshot을 만든다.
 2. 자동 동기화가 성공한 뒤 완전 snapshot만 읽는다. sync 실패·partial·cycle·dangling이면 순위와 다음 추천을 내지 않고 이유를 알린다.
 3. GitHub의 열린 이슈와 그래프 상태를 함께 읽어 ready → in-progress → blocked 순, P0~P3·번호 순으로 정렬한다.
 4. 최대 6개를 먼저 보여 준다. 더 있으면 `--all` 요청으로 같은 형식의 전체 목록을 이어서 낸다.
@@ -31,6 +31,7 @@ $issue-onboard [--all]
 
 - 그래프가 없거나 현재 온보딩에 사용할 수 없는 캐시이면 빈 결과를 내지 않고 `issue-sync`를 먼저 실행한다.
 - `issue-sync` 실패는 명확히 보고하고, 불완전 그래프에서 추천하지 않는다.
+- 온톨로지 검증을 사용할 수 없으면 안전을 위해 추천하지 않는다.
 - 그래프 캐시를 직접 부분 수정하지 않는다. GitHub에서 다시 동기화한다.
 - 우선순위 목록은 처음에 6개를 넘지 않는다.
 - 이슈 생성은 issue-create, 착수는 issue-start, PR 생성은 issue-end, 병합은 issue-merge가 맡는다.

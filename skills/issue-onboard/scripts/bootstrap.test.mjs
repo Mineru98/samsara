@@ -54,7 +54,7 @@ function writeExecutable(file, contents) {
   chmodSync(file, 0o755);
 }
 
-function cliFixture({ syncMode = 'complete', graph = null } = {}) {
+function cliFixture({ syncMode = 'complete', graph = null, initialGraph = null, ontologyPath = ontologyRoot } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-cli-'));
   const bin = path.join(root, 'bin');
   mkdirSync(bin, { recursive: true });
@@ -98,13 +98,18 @@ console.log('SNAPSHOT_STATUS=complete');
 console.log('GRAPH_SYNC=ok');
 `, 'utf8');
 
+  if (initialGraph) {
+    mkdirSync(path.join(root, '.issue'), { recursive: true });
+    writeFileSync(path.join(root, '.issue', 'graph.json'), JSON.stringify(initialGraph) + '\n', 'utf8');
+  }
+
   return {
     root,
     entry: path.join(root, 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs'),
     env: {
       ...process.env,
       PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
-      ISSUE_ONTOLOGY_ROOT: ontologyRoot,
+      ISSUE_ONTOLOGY_ROOT: ontologyPath,
     },
   };
 }
@@ -161,6 +166,7 @@ test('only a complete issue-sync result can unlock onboarding', () => {
   assert.equal(syncBootstrapComplete({ status: 0, stdout: 'SNAPSHOT_STATUS=partial\n' }), false);
   assert.equal(syncBootstrapComplete({ status: 0, stdout: 'SNAPSHOT_STATUS=complete\n' }), false);
   assert.equal(syncBootstrapComplete({ status: 2, stdout: 'SNAPSHOT_STATUS=complete\nGRAPH_SYNC=ok\n' }), false);
+  assert.equal(syncBootstrapComplete({ status: 0, stdout: 'SNAPSHOT_STATUS=complete-but-not-a-marker\nGRAPH_SYNC=okay\n' }), false);
 });
 
 test('cache coverage and revisions are compared with current open issues', () => {
@@ -180,6 +186,12 @@ test('cache coverage and revisions are compared with current open issues', () =>
   assert.equal(graphBootstrapReason(missingRevision, {
     openIssues: [{ number: 1, title: 'Issue 1', updatedAt: 'new-revision' }],
   }), 'invalid');
+  assert.equal(graphBootstrapReason(graph), 'open-issue-closed');
+  const reopened = completeGraph();
+  reopened.nodes['1'].status = 'close';
+  assert.equal(graphBootstrapReason(reopened, {
+    openIssues: [{ number: 1, title: 'Issue 1', updatedAt: 'r' }],
+  }), 'open-issue-reopened');
 });
 
 test('the onboarding CLI bootstraps a complete sync before recommending issues', () => {
@@ -207,6 +219,38 @@ test('the onboarding CLI never recommends after partial or failed sync', () => {
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });
     }
+  }
+});
+
+test('the onboarding CLI rejects a graph that remains stale after a reported-success sync', () => {
+  const staleGraph = completeGraph();
+  staleGraph.nodes['1'].title = 'Old title';
+  staleGraph.nodes['1'].provenance.revision = 'old-revision';
+  const fixture = cliFixture({ graph: staleGraph });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /동기화 후 그래프가 최신 열린 이슈와 일치하지 않는다: open-issue-changed/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI fails closed when the ontology validator is unavailable', () => {
+  const fixture = cliFixture({
+    initialGraph: completeGraph(),
+    ontologyPath: '/definitely-not-present',
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /Ajv|온톨로지/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 

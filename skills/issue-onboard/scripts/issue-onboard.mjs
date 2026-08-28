@@ -606,6 +606,15 @@ function ontologyProblems(graph, { required = false } = {}) {
   }
 }
 
+function ontologyBootstrapReason(graph) {
+  if (!ontologyModule || ontologyModule.ontologyAvailable === false) return 'ontology-unavailable';
+  try {
+    return ontologyProblems(graph).length ? 'invalid' : null;
+  } catch {
+    return 'ontology-unavailable';
+  }
+}
+
 function cmdValidate(root, tracker, opts = {}) {
   const graph = opts.graph ? graphFromFile(root, opts.graph) : loadGraph(root, tracker.provider);
   const shapeProblems = ontologyProblems(graph, { required: true });
@@ -689,7 +698,8 @@ export function graphBootstrapReason(graph, { fileExists = true, openIssues = []
   if (graph.snapshot?.status === 'invalid') return 'invalid';
   if (graph.snapshot?.status !== 'complete') return 'snapshot-incomplete';
 
-  if (ontologyProblems(graph).length) return 'invalid';
+  const ontologyReason = ontologyBootstrapReason(graph);
+  if (ontologyReason) return ontologyReason;
 
   const nodeCount = Object.keys(graph.nodes ?? {}).length;
   if (!nodeCount) return openIssues.length ? 'empty' : null;
@@ -700,8 +710,14 @@ export function graphBootstrapReason(graph, { fileExists = true, openIssues = []
   for (const issue of openIssues) {
     const node = graph.nodes[String(issue.number)];
     if (!node) return 'open-issue-missing';
+    if (node.status === DONE) return 'open-issue-reopened';
     if (issue.title && node.title !== issue.title) return 'open-issue-changed';
     if (issue.updatedAt && node.provenance?.revision !== issue.updatedAt) return 'open-issue-changed';
+  }
+
+  const openNumbers = new Set(openIssues.map((issue) => String(issue.number)));
+  for (const node of Object.values(graph.nodes)) {
+    if (node.status !== DONE && !openNumbers.has(String(node.number))) return 'open-issue-closed';
   }
   return null;
 }
@@ -714,9 +730,10 @@ export function runSyncBootstrap(root, { resolve = siblingSkill, spawn = spawnSy
 
 export function syncBootstrapComplete(result) {
   const stdout = String(result.stdout ?? '');
+  const markers = new Set(stdout.split(/\r?\n/).map((line) => line.trim()));
   return result.status === 0
-    && stdout.includes('SNAPSHOT_STATUS=complete')
-    && stdout.includes('GRAPH_SYNC=ok');
+    && markers.has('SNAPSHOT_STATUS=complete')
+    && markers.has('GRAPH_SYNC=ok');
 }
 
 function bootstrapWithSync(root, reason) {
@@ -737,16 +754,24 @@ function cmdOnboard(root, tracker, opts) {
   let openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
   if (openIssues === null) throw new Error('GitHub 열린 이슈를 조회하지 못했다.');
   const reason = graphBootstrapReason(graph, { fileExists: existsSync(graphPath(root)), openIssues });
+  if (reason === 'ontology-unavailable') {
+    ontologyProblems(graph, { required: true });
+    throw new Error('온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
+  }
   if (reason) {
     bootstrapWithSync(root, reason);
     graph = loadGraph(root, tracker.provider);
     openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
     if (openIssues === null) throw new Error('동기화 후 GitHub 열린 이슈를 조회하지 못했다.');
     const postSyncReason = graphBootstrapReason(graph, { openIssues });
+    if (postSyncReason === 'ontology-unavailable') {
+      ontologyProblems(graph, { required: true });
+      throw new Error('동기화 후 온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
+    }
     if (postSyncReason) throw new Error(`동기화 후 그래프가 최신 열린 이슈와 일치하지 않는다: ${postSyncReason}`);
   }
   const problems = auditGraph(graph);
-  problems.push(...ontologyProblems(graph));
+  problems.push(...ontologyProblems(graph, { required: true }));
   const cycle = findCycle(graph);
   if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
   if (problems.length) throw new Error(`안전하지 않은 그래프: ${problems.join(' / ')}`);

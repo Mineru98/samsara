@@ -9,6 +9,10 @@ function repoRoot() {
   return result.stdout.trim();
 }
 
+function hasOutputMarker(output, marker) {
+  return String(output ?? '').split(/\r?\n/).some((line) => line.trim() === marker);
+}
+
 try {
   const root = repoRoot();
   // 설치 위치(프로젝트 로컬 / 홈 전역 / 저장소를 링크한 개발 설치)를 가리지 않고 형제 스킬을 찾는다.
@@ -21,7 +25,7 @@ try {
   const result = spawnSync(process.execPath, [script, 'sync', '--state', 'all'], { cwd: root, encoding: 'utf8' });
   process.stdout.write(result.stdout);
   process.stderr.write(result.stderr);
-  if (result.status !== 0 || !result.stdout.includes('SNAPSHOT_STATUS=complete')) {
+  if (result.status !== 0 || !hasOutputMarker(result.stdout, 'SNAPSHOT_STATUS=complete')) {
     console.log('GRAPH_SYNC=failed');
     process.exit(result.status || 2);
   }
