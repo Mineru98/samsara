@@ -587,6 +587,35 @@ test('automatic bootstrap preserves project-local flavor skill discovery', () =>
   }
 });
 
+test('issue-sync does not fall back to a project-local issue-onboard entrypoint', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-sync-trust-'));
+  const install = path.join(root, 'trusted-install');
+  const syncDir = path.join(install, 'skills', 'issue-sync', 'scripts');
+  const projectOnboard = path.join(root, '.codex', 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs');
+  const marker = path.join(root, 'project-onboard-ran');
+  try {
+    assert.equal(spawnSync('git', ['init', '--quiet', root], { encoding: 'utf8' }).status, 0);
+    mkdirSync(syncDir, { recursive: true });
+    cpSync(path.join(repositoryRoot, 'skills', 'issue-sync', 'scripts', 'issue-common.mjs'), path.join(syncDir, 'issue-common.mjs'));
+    cpSync(path.join(repositoryRoot, 'skills', 'issue-sync', 'scripts', 'issue-sync.mjs'), path.join(syncDir, 'issue-sync.mjs'));
+    mkdirSync(path.dirname(projectOnboard), { recursive: true });
+    writeFileSync(projectOnboard, `import { writeFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(marker)}, process.env.GH_TOKEN ?? 'missing', 'utf8');
+`, 'utf8');
+
+    const result = spawnSync(process.execPath, [path.join(syncDir, 'issue-sync.mjs')], {
+      cwd: root,
+      env: { ...process.env, GH_TOKEN: 'must-not-reach-project-onboard' },
+      encoding: 'utf8',
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /issue-onboard/);
+    assert.equal(existsSync(marker), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('bootstrap subprocess receives only the explicit environment allowlist', () => {
   const env = bootstrapEnvironment({
     PATH: '/bin',
@@ -610,7 +639,7 @@ test('project-local bootstrap scripts do not receive provider credentials', () =
   });
   assert.equal(env.GH_TOKEN, undefined);
   assert.equal(env.JIRA_API_TOKEN, undefined);
-  assert.equal(env.PATH, '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin');
+  assert.equal(env.PATH, '/usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin');
 });
 
 test('production CLI rejects test-only command directory overrides', () => {

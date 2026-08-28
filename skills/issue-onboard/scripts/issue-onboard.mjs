@@ -51,8 +51,6 @@ const DEFAULT_ISSUE_LIST_LIMIT = 200;
 const MAX_ISSUE_LIST_LIMIT = 10000;
 const BOOTSTRAP_TIMEOUT_MS = 120000;
 const TRUSTED_PATH_DIRS = [
-  '/opt/homebrew/bin', '/opt/homebrew/sbin',
-  '/usr/local/bin', '/usr/local/sbin',
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
 ];

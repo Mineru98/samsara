@@ -2,7 +2,8 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
-import { readIssueSettings, resolveSkillScript, trustedExecutable } from './issue-common.mjs';
+import { fileURLToPath } from 'node:url';
+import { readIssueSettings, resolveSkillScript, trustedExecutable, trustedRegularFile } from './issue-common.mjs';
 
 const TRUSTED_PATH = [
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
@@ -53,10 +54,22 @@ function hasOutputMarker(output, marker) {
   return String(output ?? '').split(/\r?\n/).some((line) => line.trim() === marker);
 }
 
+function trustedInstallationRoot(metaUrl = import.meta.url) {
+  try {
+    return path.resolve(path.dirname(fileURLToPath(metaUrl)), '..', '..', '..');
+  } catch {
+    return null;
+  }
+}
+
 try {
   const root = repoRoot();
   // 설치 위치(프로젝트 로컬 / 홈 전역 / 저장소를 링크한 개발 설치)를 가리지 않고 형제 스킬을 찾는다.
-  const script = resolveSkillScript(import.meta.url, 'issue-onboard', 'issue-onboard.mjs', { root });
+  const installationRoot = trustedInstallationRoot();
+  const script = resolveSkillScript(import.meta.url, 'issue-onboard', 'issue-onboard.mjs', {
+    root,
+    accept: (candidate) => Boolean(installationRoot && trustedRegularFile(candidate, installationRoot)),
+  });
   if (!script) {
     throw new Error(
       'issue-onboard 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.',
