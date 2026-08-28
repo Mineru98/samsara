@@ -14,7 +14,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync,
+  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, statSync,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -111,8 +111,54 @@ export const PROJECT_SETTINGS_REL = `${WORKSPACE_DIR}/${PROJECT_SETTINGS_FILE}`;
 
 /* ------------------------------------------------------------- 프로세스 */
 
+const TRUSTED_COMMAND_PATH = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+].join(path.delimiter);
+const TRUSTED_EXECUTABLE_CANDIDATES = {
+  git: ['/usr/bin/git', '/bin/git', '/opt/homebrew/bin/git', '/usr/local/bin/git'],
+  gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', '/usr/bin/gh', '/bin/gh'],
+  curl: ['/usr/bin/curl', '/bin/curl', '/opt/homebrew/bin/curl', '/usr/local/bin/curl'],
+};
+const TRUSTED_EXECUTABLE_ROOTS = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+  '/opt/homebrew/Cellar', '/opt/homebrew/opt',
+  '/usr/local/Cellar', '/usr/local/opt',
+];
+
+function isPathWithin(parent, target) {
+  const relative = path.relative(parent, target);
+  return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+/** PATH 검색을 피하고 허용된 설치 경로의 안전한 정규 파일만 반환한다. */
+export function trustedExecutable(command) {
+  for (const candidate of TRUSTED_EXECUTABLE_CANDIDATES[command] ?? []) {
+    try {
+      const resolved = realpathSync(candidate);
+      const stat = statSync(resolved);
+      const uid = process.getuid?.();
+      if (!stat.isFile() || (stat.mode & 0o111) === 0 || (stat.mode & 0o022) !== 0) continue;
+      if (typeof stat.uid === 'number' && typeof uid === 'number' && stat.uid !== 0 && stat.uid !== uid) continue;
+      if (!TRUSTED_EXECUTABLE_ROOTS.some((root) => isPathWithin(root, resolved))) continue;
+      return resolved;
+    } catch {
+      // 다음 허용 경로를 확인한다.
+    }
+  }
+  return null;
+}
+
 export function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
+  const executable = cmd === 'git' ? trustedExecutable('git') : cmd;
+  if (!executable) return { code: 1, out: '', err: `trusted executable not found: ${cmd}` };
+  const r = spawnSync(executable, args, {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    ...opts,
+    env: opts.env ?? { ...process.env, PATH: TRUSTED_COMMAND_PATH },
+  });
   return { code: r.status ?? 1, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
 

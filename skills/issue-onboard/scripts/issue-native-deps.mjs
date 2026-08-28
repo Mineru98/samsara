@@ -14,10 +14,9 @@
 //     issue X 가 Y 에 blocked-by  ⇒  Y 가 선수(predecessor)  ⇒  X --depends-on--> Y.
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { trustedExecutable } from './issue-common.mjs';
 
 const SYSTEM_PATH = [
-  '/opt/homebrew/bin', '/opt/homebrew/sbin',
-  '/usr/local/bin', '/usr/local/sbin',
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
 ];
@@ -65,7 +64,9 @@ export function fetchBlockedBy({ owner, repo, number, cwd, runner = spawnSync } 
   ];
   let result;
   try {
-    result = runner('gh', args, {
+    const gh = runner === spawnSync ? trustedExecutable('gh') : 'gh';
+    if (!gh) return null;
+    result = runner(gh, args, {
       cwd,
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024,

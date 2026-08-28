@@ -25,7 +25,7 @@
  *
  * 요구사항: git, Node 18+, (github 면 gh 로그인 / jira 면 baseUrl·projectKey·토큰)
  */
-import { mkdirSync, writeFileSync, readFileSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
@@ -701,9 +701,14 @@ export function decisionCommentBody(payload, human) {
 
 /** 결정 코멘트를 대상 이슈에 게시한다. 임시 파일을 거쳐 tracker.issueComment 로 올린다. */
 function postDecision(tracker, issueNumber, payload, human) {
-  const file = path.join(tmpdir(), `issue-relation-${payload.id}.md`);
-  writeFileSync(file, decisionCommentBody(payload, human));
-  return tracker.issueComment(issueNumber, file);
+  const directory = mkdtempSync(path.join(tmpdir(), 'issue-relation-'));
+  const file = path.join(directory, 'body.md');
+  try {
+    writeFileSync(file, decisionCommentBody(payload, human), { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    return tracker.issueComment(issueNumber, file);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 // V2 는 GitHub 을 정본으로 두고 graph.json 은 재생성 캐시다. 그래서 link 는 로컬 엣지를

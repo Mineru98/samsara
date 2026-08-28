@@ -78,7 +78,7 @@ const fixtureRoot = process.env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT;
 if (fixtureRoot) {
   const originalSpawnSync = childProcess.spawnSync;
   childProcess.spawnSync = (command, args, options) => {
-    if (command === 'gh') {
+    if (path.basename(String(command)) === 'gh') {
       return originalSpawnSync(path.join(fixtureRoot, 'bin', 'gh'), args, options);
     }
     return originalSpawnSync(command, args, options);

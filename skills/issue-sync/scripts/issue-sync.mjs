@@ -2,11 +2,9 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
-import { readIssueSettings, resolveSkillScript } from './issue-common.mjs';
+import { readIssueSettings, resolveSkillScript, trustedExecutable } from './issue-common.mjs';
 
 const TRUSTED_PATH = [
-  '/opt/homebrew/bin', '/opt/homebrew/sbin',
-  '/usr/local/bin', '/usr/local/sbin',
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
 ].join(path.delimiter);
@@ -40,7 +38,9 @@ function childEnvironment(env = process.env) {
 }
 
 function repoRoot() {
-  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+  const git = trustedExecutable('git');
+  if (!git) throw new Error('신뢰할 수 있는 git 실행 파일을 찾지 못했다.');
+  const result = spawnSync(git, ['rev-parse', '--show-toplevel'], {
     encoding: 'utf8',
     env: childEnvironment(),
     timeout: 30000,

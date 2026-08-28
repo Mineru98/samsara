@@ -32,14 +32,12 @@ import path from 'node:path';
 import process from 'node:process';
 import {
   run, fail, detectBase, listEvidence, evidenceRel, repoSlugFromRemote, readIssueSettings,
-  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode, trustedExecutable,
 } from './issue-common.mjs';
 
 export const PROVIDERS = ['github', 'jira'];
 
 const SYSTEM_COMMAND_PATH = [
-  '/opt/homebrew/bin', '/opt/homebrew/sbin',
-  '/usr/local/bin', '/usr/local/sbin',
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
 ];
@@ -62,7 +60,9 @@ function trustedCommandEnv(env = process.env) {
 }
 
 function commandRun(cmd, args, opts = {}) {
-  return run(cmd, args, { ...opts, env: trustedCommandEnv({ ...process.env, ...(opts.env ?? {}) }) });
+  const executable = trustedExecutable(cmd);
+  if (!executable) return { code: 1, out: '', err: `trusted executable not found: ${cmd}` };
+  return run(executable, args, { ...opts, env: trustedCommandEnv({ ...process.env, ...(opts.env ?? {}) }) });
 }
 
 /* ------------------------------------------------------------------ 설정 */
@@ -300,7 +300,9 @@ export function curlJson({ method = 'GET', url, auth, body, timeout = 30 }) {
   }
   args.push(url);
 
-  const res = spawnSync('curl', args, {
+  const curl = trustedExecutable('curl');
+  if (!curl) return { ok: false, status: 0, err: 'trusted executable not found: curl' };
+  const res = spawnSync(curl, args, {
     encoding: 'utf8',
     input: body === undefined ? undefined : JSON.stringify(body),
     env: trustedCommandEnv(),
