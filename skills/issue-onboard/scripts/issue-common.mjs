@@ -174,9 +174,11 @@ export const SKILL_FLAVORS = ['.claude', '.codex'];
  * @param {string} selfUrl 호출하는 스크립트의 `import.meta.url`
  * @param {string} skill   찾을 스킬 이름 (예: 'issue-sync')
  * @param {string} script  그 스킬의 scripts/ 아래 파일명
- * @param {{root?: string}} [opts] root 는 저장소 루트. 주면 프로젝트 로컬도 본다.
+ * @param {{root?: string, accept?: (file: string, base: string) => boolean}} [opts]
+ *   root 는 저장소 루트. 주면 프로젝트 로컬도 본다. accept 가 있으면 후보별
+ *   신뢰 경계를 확인한 뒤 다음 후보로 계속 탐색한다.
  */
-export function resolveSkillScript(selfUrl, skill, script, { root } = {}) {
+export function resolveSkillScript(selfUrl, skill, script, { root, accept } = {}) {
   const bases = [];
   const add = (base) => {
     if (base && !bases.includes(base)) bases.push(base);
@@ -202,7 +204,15 @@ export function resolveSkillScript(selfUrl, skill, script, { root } = {}) {
 
   for (const base of bases) {
     const file = path.join(base, skill, 'scripts', script);
-    if (existsSync(file)) return file;
+    if (!existsSync(file)) continue;
+    if (accept) {
+      try {
+        if (!accept(file, base)) continue;
+      } catch {
+        continue;
+      }
+    }
+    return file;
   }
   return null;
 }

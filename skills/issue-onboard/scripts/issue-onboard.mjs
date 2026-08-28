@@ -27,11 +27,11 @@
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber, readIssueSettings } from './issue-common.mjs';
+import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber, readIssueSettings, resolveSkillScript } from './issue-common.mjs';
 import { createTracker, gitHost } from './issue-tracker.mjs';
 import { GRAPH_VERSION as V2_GRAPH_VERSION, EDGE_TYPES as V2_EDGE_TYPES, ORDERING_TYPES as V2_ORDERING_TYPES, CONTEXT_FIELDS, EDGE_CONTEXT_VERSION, DECISION_MARKER, digest, normalizeEdge, edgeKey, parseDecisionComments, decisionEdge, resolveDecisions, auditGraph, migrateGraphV1, kindOfType, extractQuote, sharedConcepts, carryStaleEdges } from './issue-graph-v2.mjs';
 import { detectLlmCommand, enrichEdges } from './issue-llm.mjs';
@@ -942,16 +942,32 @@ function cmdAudit(root, tracker) {
   console.log('AUDIT=1'); console.log('PROBLEMS=0');
 }
 
-/** 자동 부트스트랩은 현재 issue-onboard와 같은 설치 묶음의 형제만 실행한다. */
-function siblingSkill(_root, skill, script) {
-  let base;
-  try {
-    base = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-  } catch {
-    return null;
+/**
+ * 자동 부트스트랩은 기존 스킬 탐색 순서를 따르되, 확인된 설치 루트의
+ * 일반 파일만 실행한다. bare repository `skills/`는 현재 onboard가 그
+ * 묶음에서 실행될 때만 trustedInstallationRoot를 통해 허용된다.
+ */
+function siblingSkill(root, skill, script) {
+  const trustedRoots = [];
+  const addRoot = (candidate) => {
+    if (!candidate) return;
+    const resolved = path.resolve(candidate);
+    if (!trustedRoots.includes(resolved)) trustedRoots.push(resolved);
+  };
+
+  addRoot(trustedInstallationRoot());
+  if (root) {
+    addRoot(path.join(root, '.claude'));
+    addRoot(path.join(root, '.codex'));
   }
-  const candidate = path.join(base, skill, 'scripts', script);
-  return trustedRegularFile(candidate, base) ? candidate : null;
+  const home = homedir();
+  addRoot(path.join(home, '.claude'));
+  addRoot(path.join(home, '.codex'));
+
+  return resolveSkillScript(import.meta.url, skill, script, {
+    root,
+    accept: (candidate) => trustedRoots.some((trustedRoot) => trustedRegularFile(candidate, trustedRoot)),
+  });
 }
 
 /** 못 찾았을 때 어디를 확인해야 하는지 알려 주는 메시지. */

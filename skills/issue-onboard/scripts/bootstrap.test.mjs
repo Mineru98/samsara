@@ -220,6 +220,57 @@ console.log('GRAPH_SYNC=ok');
   };
 }
 
+function trustedInstallWithProjectFlavor() {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-project-skill-'));
+  const bin = path.join(root, 'bin');
+  const install = path.join(root, 'trusted-install');
+  mkdirSync(bin, { recursive: true });
+  assert.equal(spawnSync('git', ['init', '--quiet', root], { encoding: 'utf8' }).status, 0);
+  writeExecutable(path.join(bin, 'gh'), `#!/bin/sh
+case "$*" in
+  *"issue list"*) printf '%s\\n' '[{"number":1,"title":"Issue 1","labels":[],"url":"https://github.com/o/r/issues/1","state":"OPEN","updatedAt":"r"}]' ;;
+  *"repo view"*) printf '%s\\n' '{"nameWithOwner":"o/r"}' ;;
+  *"api graphql"*) printf '%s\\n' '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[],"pageInfo":{"hasNextPage":false}}}}}}' ;;
+  *) printf '%s\\n' '{}' ;;
+esac
+`);
+  const testLoader = writeCliTestLoader(root);
+  cpSync(path.join(repositoryRoot, 'skills', 'issue-onboard'), path.join(install, 'skills', 'issue-onboard'), { recursive: true });
+  const ontology = path.join(install, 'tools', 'issue-ontology');
+  mkdirSync(ontology, { recursive: true });
+  cpSync(path.join(ontologyRoot, 'validate.mjs'), path.join(ontology, 'validate.mjs'));
+  cpSync(path.join(ontologyRoot, 'schemas'), path.join(ontology, 'schemas'), { recursive: true });
+  cpSync(path.join(ontologyRoot, 'node_modules'), path.join(ontology, 'node_modules'), { recursive: true });
+
+  const projectSync = path.join(root, '.codex', 'skills', 'issue-sync', 'scripts', 'issue-sync.mjs');
+  const observed = path.join(root, 'project-sync-ran');
+  const fixtureIssue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r', body: '', comments: [] };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([fixtureIssue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  mkdirSync(path.dirname(projectSync), { recursive: true });
+  writeFileSync(projectSync, `import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+writeFileSync(${JSON.stringify(observed)}, 'project-local', 'utf8');
+mkdirSync(path.join(process.cwd(), '.issue'), { recursive: true });
+writeFileSync(path.join(process.cwd(), '.issue', 'graph.json'), ${JSON.stringify(JSON.stringify(graph) + '\n')}, 'utf8');
+console.log('SNAPSHOT_STATUS=complete');
+console.log('GRAPH_SYNC=ok');
+`, 'utf8');
+
+  return {
+    root,
+    entry: path.join(install, 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs'),
+    observed,
+    env: {
+      ...process.env,
+      ISSUE_ONTOLOGY_ROOT: ontology,
+      ISSUE_ONBOARD_TEST_FIXTURE_ROOT: root,
+      NODE_OPTIONS: `--import=${testLoader}`,
+    },
+  };
+}
+
 test('missing, incomplete, or invalid caches request a sync bootstrap', () => {
   assert.equal(graphBootstrapReason(completeGraph(), { fileExists: false }), 'missing');
   assert.equal(
@@ -521,6 +572,19 @@ test('automatic bootstrap does not execute a repository-local sync outside its t
   }
 });
 
+test('automatic bootstrap preserves project-local flavor skill discovery', () => {
+  const fixture = trustedInstallWithProjectFlavor();
+  try {
+    const result = runCliOnboard(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /GRAPH_BOOTSTRAP=issue-sync/);
+    assert.match(result.stdout, /ONBOARD_COUNT=1/);
+    assert.equal(existsSync(fixture.observed), true);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('bootstrap subprocess receives only the explicit environment allowlist', () => {
   const env = bootstrapEnvironment({
     PATH: '/bin',
@@ -532,6 +596,28 @@ test('bootstrap subprocess receives only the explicit environment allowlist', ()
   assert.notEqual(env.PATH, '/bin');
   assert.ok(env.PATH.split(path.delimiter).includes('/bin'));
   assert.doesNotMatch(env.PATH, /attacker/);
+  assert.equal(env.NODE_OPTIONS, undefined);
+  assert.equal(env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT, undefined);
+});
+
+test('production CLI rejects test-only command directory overrides', () => {
+  const fixture = cliFixture();
+  try {
+    const result = spawnSync(process.execPath, [
+      fixture.entry,
+      'onboard',
+      '--test-command-dir',
+      path.join(fixture.root, 'bin'),
+    ], {
+      cwd: fixture.root,
+      env: { ...fixture.env, NODE_OPTIONS: '' },
+      encoding: 'utf8',
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /알 수 없는 옵션: --test-command-dir/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test('explicit command environments do not regain ambient variables in the shared runner', () => {

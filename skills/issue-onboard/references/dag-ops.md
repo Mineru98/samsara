@@ -27,8 +27,10 @@ node <skill>/scripts/issue-onboard.mjs sync [--state open|closed|all] [--limit <
 검증 경로를 사용한다. 캐시가 없거나 현재 이슈와
 불일치하거나 GitHub에서 닫힌 비종료 노드가 남아 있으면 위 sync를 자동 선행한다. 자동 sync가
 실패하거나 완전 snapshot·캐시 무결성 digest를 만들지 못하거나 온톨로지 검증을 사용할 수
-없으면 추천을 내지 않는다. 자동 부트스트랩은 현재 설치 묶음의 신뢰된 `issue-sync` 형제만
-실행하며, `.issue` 경로가 심볼릭 링크이면 저장을 거부한다.
+없으면 추천을 내지 않는다. 자동 부트스트랩은 기존 탐색 순서로 찾은 현재 설치 묶음 또는
+프로젝트·사용자 `.claude/.codex/skills` 아래의 심볼릭 링크가 아닌 `issue-sync`만 실행하며,
+다른 설치에서 저장소의 bare `skills/` fallback으로 바뀌지 않는다. `.issue` 경로가 심볼릭
+링크이면 저장을 거부한다.
 
 ## link / unlink — 선수·후속 손보기
 
