@@ -335,12 +335,12 @@ grok plugin update samsara
 ```
 
 카탈로그에 아직 항목이 없거나 이 저장소 원본을 직접 설치하려면 GitHub shorthand와 고정된
-commit ref를 source로 넘깁니다. 아래 SHA는 이 README의 문서 보정 커밋과 분리된, manifest를
-포함한 검증된 기준 커밋입니다. 문서가 자기 자신을 가리키는 순환을 피하기 위해 이전 커밋을
+commit ref를 source로 넘깁니다. 아래 SHA는 `issue-viz`와 현재 9개 스킬을 포함하는 manifest
+기준 커밋입니다. 문서가 자기 자신을 가리키는 순환을 피하기 위해 검증된 기준 ref를
 의도적으로 고정하며, 새 버전으로 갱신할 때는 새로 검증한 전체 SHA로 교체합니다.
 
 ```sh
-grok plugin install Mineru98/samsara@fac10ac385f41c217f94d9565e0cec416288d37e
+grok plugin install Mineru98/samsara@825c70c1faa5db06cfd20774966587412322f59f
 ```
 
 `--trust`는 manifest와 구성 요소를 검토한 뒤 비대화식 설치가 필요할 때만 선택적으로 추가하세요.
@@ -367,7 +367,7 @@ Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기
 사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
 원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
 설치 시 고정된 커밋을 다시 확인합니다. SHA는 전체 소문자 40자여야 하며, 예시는
-`fac10ac385f41c217f94d9565e0cec416288d37e`이며 위 직접 설치 명령과 같은 기준 ref입니다.
+`825c70c1faa5db06cfd20774966587412322f59f`이며 위 직접 설치 명령과 같은 기준 ref입니다.
 marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
 PR 규칙을 따릅니다.
 
