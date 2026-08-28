@@ -92,6 +92,10 @@
           ],
           "pattern": "^sha256:[0-9a-f]{64}$"
         },
+        "graphDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
         "reason": {
           "type": [
             "string",

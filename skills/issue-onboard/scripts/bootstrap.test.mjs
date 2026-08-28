@@ -1,12 +1,22 @@
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { chmodSync, cpSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { graphBootstrapReason, loadGraph, runSyncBootstrap, syncBootstrapComplete } from './issue-onboard.mjs';
+import {
+  bootstrapEnvironment,
+  graphBootstrapReason,
+  graphDocumentDigest,
+  fetchCompleteIssueList,
+  issueSnapshotDigest,
+  loadGraph,
+  runSyncBootstrap,
+  saveGraph,
+  syncBootstrapComplete,
+} from './issue-onboard.mjs';
 
 const now = '2026-08-28T00:00:00.000Z';
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -33,7 +43,7 @@ function validNode(number, { title = 'Issue ' + number, revision = 'r' } = {}) {
 }
 
 function completeGraph(nodes = { '1': validNode(1) }) {
-  return {
+  const graph = {
     version: 2,
     provider: 'github',
     repository: 'o/r',
@@ -47,6 +57,8 @@ function completeGraph(nodes = { '1': validNode(1) }) {
     nodes,
     edges: [],
   };
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  return graph;
 }
 
 function writeExecutable(file, contents) {
@@ -75,9 +87,18 @@ esac
     path.join(root, 'skills', 'issue-onboard'),
     { recursive: true },
   );
+  const fixtureOntology = path.join(root, 'tools', 'issue-ontology');
+  mkdirSync(fixtureOntology, { recursive: true });
+  cpSync(path.join(ontologyRoot, 'validate.mjs'), path.join(fixtureOntology, 'validate.mjs'));
+  cpSync(path.join(ontologyRoot, 'schemas'), path.join(fixtureOntology, 'schemas'), { recursive: true });
+  cpSync(path.join(ontologyRoot, 'node_modules'), path.join(fixtureOntology, 'node_modules'), { recursive: true });
   const syncFile = path.join(root, 'skills', 'issue-sync', 'scripts', 'issue-sync.mjs');
   mkdirSync(path.dirname(syncFile), { recursive: true });
-  const graphLiteral = JSON.stringify(graph ?? completeGraph());
+  const fixtureIssue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r', body: '', comments: [] };
+  const graphForSync = structuredClone(graph ?? completeGraph());
+  graphForSync.snapshot.digest = issueSnapshotDigest([fixtureIssue]);
+  graphForSync.snapshot.graphDigest = graphDocumentDigest(graphForSync);
+  const graphLiteral = JSON.stringify(graphForSync);
   writeFileSync(syncFile, `import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -109,7 +130,7 @@ console.log('GRAPH_SYNC=ok');
     env: {
       ...process.env,
       PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
-      ISSUE_ONTOLOGY_ROOT: ontologyPath,
+      ISSUE_ONTOLOGY_ROOT: ontologyPath === ontologyRoot ? fixtureOntology : ontologyPath,
     },
   };
 }
@@ -120,6 +141,48 @@ function runCliOnboard(fixture) {
     env: fixture.env,
     encoding: 'utf8',
   });
+}
+
+function trustedInstallWithRepositoryFallback() {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-trust-'));
+  const bin = path.join(root, 'bin');
+  const install = path.join(root, 'trusted-install');
+  mkdirSync(bin, { recursive: true });
+  assert.equal(spawnSync('git', ['init', '--quiet', root], { encoding: 'utf8' }).status, 0);
+  writeExecutable(path.join(bin, 'gh'), `#!/bin/sh
+case "$*" in
+  *"issue list"*) printf '%s\\n' '[{"number":1,"title":"Issue 1","labels":[],"url":"https://github.com/o/r/issues/1","state":"OPEN","updatedAt":"r"}]' ;;
+  *"repo view"*) printf '%s\\n' '{"nameWithOwner":"o/r"}' ;;
+  *"api graphql"*) printf '%s\\n' '{"data":{"repository":{"issue":{"blockedBy":{"nodes":[]}}}}}' ;;
+  *) printf '%s\\n' '{}' ;;
+esac
+`);
+  cpSync(path.join(repositoryRoot, 'skills', 'issue-onboard'), path.join(install, 'skills', 'issue-onboard'), { recursive: true });
+  const ontology = path.join(install, 'tools', 'issue-ontology');
+  mkdirSync(ontology, { recursive: true });
+  cpSync(path.join(ontologyRoot, 'validate.mjs'), path.join(ontology, 'validate.mjs'));
+  cpSync(path.join(ontologyRoot, 'schemas'), path.join(ontology, 'schemas'), { recursive: true });
+  cpSync(path.join(ontologyRoot, 'node_modules'), path.join(ontology, 'node_modules'), { recursive: true });
+
+  const localSync = path.join(root, 'skills', 'issue-sync', 'scripts', 'issue-sync.mjs');
+  const observed = path.join(root, 'repository-sync-ran');
+  mkdirSync(path.dirname(localSync), { recursive: true });
+  writeExecutable(localSync, `import { writeFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(observed)}, process.env.BOOTSTRAP_SENTINEL ?? 'missing', 'utf8');
+console.log('SNAPSHOT_STATUS=complete');
+console.log('GRAPH_SYNC=ok');
+`);
+  return {
+    root,
+    entry: path.join(install, 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs'),
+    observed,
+    env: {
+      ...process.env,
+      PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
+      ISSUE_ONTOLOGY_ROOT: ontology,
+      BOOTSTRAP_SENTINEL: 'must-not-reach-repository-script',
+    },
+  };
 }
 
 test('missing, incomplete, or invalid caches request a sync bootstrap', () => {
@@ -194,6 +257,36 @@ test('cache coverage and revisions are compared with current open issues', () =>
   }), 'open-issue-reopened');
 });
 
+test('complete caches require a matching live snapshot and cache integrity digest', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r', body: '', comments: [] };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const live = { openIssues: [issue], allIssues: [issue], allIssuesComplete: true };
+  assert.equal(graphBootstrapReason(graph, live), null);
+  assert.equal(graphBootstrapReason(graph, { ...live, allIssuesComplete: false }), 'issue-list-incomplete');
+
+  const tampered = structuredClone(graph);
+  tampered.nodes['1'].labels = ['bug'];
+  assert.equal(graphBootstrapReason(tampered, live), 'cache-integrity-failed');
+  assert.equal(graphBootstrapReason(graph, { ...live, allIssues: [{ ...issue, updatedAt: 'new' }] }), 'snapshot-changed');
+});
+
+test('default issue-list probing continues past a full page before declaring completeness', () => {
+  const calls = [];
+  const result = fetchCompleteIssueList({
+    issueList({ limit }) {
+      calls.push(limit);
+      return limit === 200
+        ? Array.from({ length: 200 }, (_, number) => ({ number: number + 1 }))
+        : [{ number: 1 }];
+    },
+  });
+  assert.deepEqual(calls, [200, 400]);
+  assert.equal(result.complete, true);
+  assert.equal(result.items.length, 1);
+});
+
 test('the onboarding CLI bootstraps a complete sync before recommending issues', () => {
   const fixture = cliFixture();
   try {
@@ -254,7 +347,52 @@ test('the onboarding CLI fails closed when the ontology validator is unavailable
   }
 });
 
-test('runSyncBootstrap executes the discovered issue-sync entrypoint in the repository', () => {
+test('automatic onboarding does not import an ontology outside its trusted installation', () => {
+  const outside = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-ontology-'));
+  const marker = path.join(outside, 'ontology-imported');
+  writeFileSync(path.join(outside, 'validate.mjs'), `import { writeFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(marker)}, 'imported', 'utf8');
+export const ontologyAvailable = true;
+export function validateGraphDocument() { return { valid: true, errors: [] }; }
+`, 'utf8');
+  const fixture = cliFixture({
+    initialGraph: completeGraph(),
+    ontologyPath: outside,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /Ajv|온톨로지/);
+    assert.equal(existsSync(marker), false);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('automatic bootstrap does not execute a repository-local sync outside its trusted installation', () => {
+  const fixture = trustedInstallWithRepositoryFallback();
+  try {
+    const result = runCliOnboard(fixture);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /issue-sync/);
+    assert.equal(existsSync(fixture.observed), false);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('bootstrap subprocess receives only the explicit environment allowlist', () => {
+  const env = bootstrapEnvironment({
+    PATH: '/bin',
+    GH_TOKEN: 'token-for-gh',
+    BOOTSTRAP_SENTINEL: 'must-not-leak',
+    NODE_OPTIONS: '--require=attacker-module',
+  });
+  assert.deepEqual(env, { PATH: '/bin', GH_TOKEN: 'token-for-gh' });
+});
+
+test('runSyncBootstrap executes the discovered issue-sync entrypoint with bounded output and time', () => {
   const calls = [];
   const result = runSyncBootstrap('/repo', {
     resolve: (root, skill, script) => {
@@ -265,6 +403,7 @@ test('runSyncBootstrap executes the discovered issue-sync entrypoint in the repo
       calls.push({ command, args, options });
       return { status: 0, stdout: 'SNAPSHOT_STATUS=complete\\n', stderr: '' };
     },
+    env: { PATH: '/bin', BOOTSTRAP_SENTINEL: 'must-not-leak' },
   });
 
   assert.equal(result.status, 0);
@@ -273,7 +412,26 @@ test('runSyncBootstrap executes the discovered issue-sync entrypoint in the repo
     {
       command: process.execPath,
       args: ['/skills/issue-sync/scripts/issue-sync.mjs'],
-      options: { cwd: '/repo', encoding: 'utf8' },
+      options: {
+        cwd: '/repo',
+        encoding: 'utf8',
+        env: { PATH: '/bin' },
+        timeout: 120000,
+        maxBuffer: 16 * 1024 * 1024,
+      },
     },
   ]);
+});
+
+test('saveGraph rejects a symlinked .issue directory before writing outside the repository', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-safe-'));
+  const outside = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-outside-'));
+  try {
+    symlinkSync(outside, path.join(root, '.issue'), 'dir');
+    assert.throws(() => saveGraph(root, completeGraph()), /심볼릭 링크/);
+    assert.equal(existsSync(path.join(outside, 'graph.json')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
 });

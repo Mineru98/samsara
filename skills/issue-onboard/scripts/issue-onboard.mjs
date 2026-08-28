@@ -25,13 +25,13 @@
  *
  * 요구사항: git, Node 18+, (github 면 gh 로그인 / jira 면 baseUrl·projectKey·토큰)
  */
-import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync, renameSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber, resolveSkillScript } from './issue-common.mjs';
+import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber } from './issue-common.mjs';
 import { createTracker, gitHost } from './issue-tracker.mjs';
 import { GRAPH_VERSION as V2_GRAPH_VERSION, EDGE_TYPES as V2_EDGE_TYPES, ORDERING_TYPES as V2_ORDERING_TYPES, CONTEXT_FIELDS, EDGE_CONTEXT_VERSION, DECISION_MARKER, digest, normalizeEdge, edgeKey, parseDecisionComments, decisionEdge, resolveDecisions, auditGraph, migrateGraphV1, kindOfType, extractQuote, sharedConcepts, carryStaleEdges } from './issue-graph-v2.mjs';
 import { detectLlmCommand, enrichEdges } from './issue-llm.mjs';
@@ -47,21 +47,68 @@ export const ORDERING_TYPES = V2_ORDERING_TYPES;
 /** 진행 상태를 세 부류로. done 만 "끝난 것"으로 본다. */
 const DONE = 'close';
 const IN_PROGRESS = new Set(['plan', 'in-process', 'review']);
+const DEFAULT_ISSUE_LIST_LIMIT = 200;
+const MAX_ISSUE_LIST_LIMIT = 10000;
+const BOOTSTRAP_TIMEOUT_MS = 120000;
+const BOOTSTRAP_ENV_KEYS = [
+  'PATH', 'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP',
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME',
+  'ISSUE_PROVIDER', 'ISSUE_ONTOLOGY_ROOT', 'GH_HOST',
+  'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
+  'JIRA_API_TOKEN',
+];
 function unknownField(reason, source) { return { value: 'unknown', reason, source }; }
 
-function ontologyEntry(start = process.cwd()) {
-  if (process.env.ISSUE_ONTOLOGY_ROOT) {
-    return path.join(path.resolve(process.env.ISSUE_ONTOLOGY_ROOT), 'validate.mjs');
+function isPathWithin(parent, target) {
+  const relative = path.relative(parent, target);
+  return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+function optionalLstat(file) {
+  try {
+    return lstatSync(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
   }
-  let current = path.resolve(start);
-  while (true) {
-    const candidate = path.join(current, 'tools', 'issue-ontology', 'validate.mjs');
-    if (existsSync(candidate)) return candidate;
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
+}
+
+function trustedInstallationRoot(metaUrl = import.meta.url) {
+  try {
+    return path.resolve(path.dirname(fileURLToPath(metaUrl)), '..', '..', '..');
+  } catch {
+    return null;
   }
-  return null;
+}
+
+function trustedRegularFile(file, root) {
+  try {
+    const stat = lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink()) return false;
+    const rootReal = realpathSync(root);
+    const fileReal = realpathSync(file);
+    return isPathWithin(rootReal, fileReal);
+  } catch {
+    return false;
+  }
+}
+
+function ontologyEntry() {
+  const installationRoot = trustedInstallationRoot();
+  if (!installationRoot) return null;
+  const configuredRoot = process.env.ISSUE_ONTOLOGY_ROOT
+    ? path.resolve(process.env.ISSUE_ONTOLOGY_ROOT)
+    : path.join(installationRoot, 'tools', 'issue-ontology');
+  const candidate = path.join(configuredRoot, 'validate.mjs');
+  try {
+    const realInstallationRoot = realpathSync(installationRoot);
+    const realConfiguredRoot = realpathSync(configuredRoot);
+    if (!isPathWithin(realInstallationRoot, realConfiguredRoot)) return null;
+    return trustedRegularFile(candidate, realInstallationRoot) ? candidate : null;
+  } catch {
+    return null;
+  }
 }
 
 const ONTOLOGY_ENTRY = ontologyEntry();
@@ -81,12 +128,68 @@ export function graphPath(root) {
   return path.join(root, WORKSPACE_DIR, GRAPH_FILE);
 }
 
+export function issueSnapshotDigest(issues = []) {
+  return digest([...issues].map((issue) => ({
+    number: issue.number,
+    updatedAt: issue.updatedAt ?? null,
+    body: issue.body ?? '',
+    comments: issue.comments ?? [],
+  })).sort((a, b) => Number(a.number) - Number(b.number)));
+}
+
+export function graphDocumentDigest(graph) {
+  const snapshot = { ...(graph.snapshot ?? {}) };
+  delete snapshot.graphDigest;
+  const nodes = {};
+  for (const key of Object.keys(graph.nodes ?? {}).sort((a, b) => Number(a) - Number(b))) {
+    nodes[key] = graph.nodes[key];
+  }
+  const edges = [...(graph.edges ?? [])].map(normalizeEdge).sort((a, b) =>
+    a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
+  return digest({ ...graph, snapshot, nodes, edges });
+}
+
+function safeGraphFile(root) {
+  const resolvedRoot = path.resolve(root);
+  let realRoot;
+  try {
+    realRoot = realpathSync(resolvedRoot);
+  } catch (error) {
+    throw new Error(`저장소 루트를 확인할 수 없다: ${error.message}`);
+  }
+
+  const issueDir = path.join(resolvedRoot, WORKSPACE_DIR);
+  const issueStat = optionalLstat(issueDir);
+  if (issueStat) {
+    if (issueStat.isSymbolicLink() || !issueStat.isDirectory()) {
+      throw new Error(`${WORKSPACE_DIR} 디렉터리는 심볼릭 링크가 아닌 실제 디렉터리여야 한다.`);
+    }
+    const realIssueDir = realpathSync(issueDir);
+    if (!isPathWithin(realRoot, realIssueDir)) {
+      throw new Error(`${WORKSPACE_DIR} 디렉터리가 저장소 바깥을 가리킨다.`);
+    }
+  }
+
+  const file = path.join(issueDir, GRAPH_FILE);
+  const fileStat = optionalLstat(file);
+  if (fileStat) {
+    if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+      throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+    }
+    const realFile = realpathSync(file);
+    if (!isPathWithin(realRoot, realFile)) {
+      throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE}이 저장소 바깥을 가리킨다.`);
+    }
+  }
+  return file;
+}
+
 export function emptyGraph(provider = 'github') {
   return { version: GRAPH_VERSION, provider, repository: null, updatedAt: null, snapshot: { status: 'missing' }, nodes: {}, edges: [] };
 }
 
 export function loadGraph(root, provider = 'github', { tolerateParseError = false } = {}) {
-  const file = graphPath(root);
+  const file = safeGraphFile(root);
   if (!existsSync(file)) return emptyGraph(provider);
   try {
     const g = JSON.parse(readFileSync(file, 'utf8'));
@@ -105,11 +208,22 @@ export function saveGraph(root, graph, { now } = {}) {
   const edges = [...graph.edges].map(normalizeEdge).sort((a, b) =>
     a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
   const out = { ...graph, version: GRAPH_VERSION, updatedAt: now ?? graph.updatedAt, nodes, edges };
-  const file = graphPath(root);
+  const file = safeGraphFile(root);
   mkdirSync(path.dirname(file), { recursive: true });
+  safeGraphFile(root);
   const temporary = `${file}.tmp-${process.pid}`;
-  writeFileSync(temporary, `${JSON.stringify(out, null, 2)}\n`, 'utf8');
-  renameSync(temporary, file);
+  let temporaryCreated = false;
+  try {
+    writeFileSync(temporary, `${JSON.stringify(out, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
+    temporaryCreated = true;
+    safeGraphFile(root);
+    renameSync(temporary, file);
+  } catch (error) {
+    if (temporaryCreated) {
+      try { unlinkSync(temporary); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
+  }
   return file;
 }
 
@@ -273,16 +387,52 @@ export function buildNativeEdge({ from, to, toClosed = false, url = null, now })
   };
 }
 
+function issueListLimit(value) {
+  const limit = Number(value);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_ISSUE_LIST_LIMIT) {
+    throw new Error(`이슈 목록 limit은 1-${MAX_ISSUE_LIST_LIMIT} 사이의 정수여야 한다.`);
+  }
+  return limit;
+}
+
+export function fetchCompleteIssueList(tracker, options = {}) {
+  let limit = options.initialLimit ?? DEFAULT_ISSUE_LIST_LIMIT;
+  const request = { ...options };
+  delete request.initialLimit;
+  for (;;) {
+    const list = tracker.issueList({ ...request, limit });
+    if (list === null) return { items: null, complete: false };
+    if (list.length < limit) return { items: list, complete: true };
+    if (limit >= MAX_ISSUE_LIST_LIMIT) return { items: list, complete: false };
+    limit = Math.min(limit * 2, MAX_ISSUE_LIST_LIMIT);
+  }
+}
+
+function issueIsOpen(issue) {
+  return !['CLOSED', 'MERGED'].includes(String(issue.state ?? '').toUpperCase());
+}
+
 /* ------------------------------------------------------------------- 명령 */
 
 function cmdSync(root, tracker, opts) {
   const state = opts.state ?? 'all';
-  const limit = Number(opts.limit ?? 200);
-  const list = tracker.issueList({
-    state,
-    limit,
-    fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
-  });
+  const limit = issueListLimit(opts.limit ?? DEFAULT_ISSUE_LIST_LIMIT);
+  const listResult = opts.limit == null
+    ? fetchCompleteIssueList(tracker, {
+      state,
+      initialLimit: limit,
+      fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
+    })
+    : {
+      items: tracker.issueList({
+        state,
+        limit,
+        fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
+      }),
+      complete: false,
+    };
+  if (opts.limit != null) listResult.complete = listResult.items !== null && listResult.items.length < limit;
+  const list = listResult.items;
   if (list === null) {
     console.log('SYNCED=0');
     console.log('SYNC_FAILED=1');
@@ -385,8 +535,17 @@ function cmdSync(root, tracker, opts) {
     graph.edges = result.edges;
     llmStats = result.stats;
   }
-  const complete = state === 'all' && list.length < limit && unresolved.length === 0;
-  graph.snapshot = { status: complete ? 'complete' : 'partial', fetchedAt: now, digest: digest(list.map((it) => ({ number: it.number, updatedAt: it.updatedAt ?? null, body: it.body ?? '', comments: it.comments ?? [] }))), reason: complete ? null : unresolved.length ? `참조 GitHub 항목을 조회할 수 없음: ${unresolved.map((number) => `#${number}`).join(', ')}` : 'state filter 또는 limit로 전체 GitHub 이슈 목록을 증명할 수 없음' };
+  const complete = state === 'all' && listResult.complete && unresolved.length === 0;
+  graph.updatedAt = now;
+  graph.snapshot = {
+    status: complete ? 'complete' : 'partial',
+    fetchedAt: now,
+    digest: issueSnapshotDigest(list),
+    reason: complete ? null : unresolved.length
+      ? `참조 GitHub 항목을 조회할 수 없음: ${unresolved.map((number) => `#${number}`).join(', ')}`
+      : 'state filter, limit, 또는 전체 목록 증명 실패',
+  };
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
 
   const file = saveGraph(root, graph, { now });
   const cycle = findCycle(graph);
@@ -679,9 +838,16 @@ function cmdAudit(root, tracker) {
   console.log('AUDIT=1'); console.log('PROBLEMS=0');
 }
 
-/** 형제 스킬 스크립트. 프로젝트 로컬·홈 전역·링크 개발 설치를 모두 본다. */
-function siblingSkill(root, skill, script) {
-  return resolveSkillScript(import.meta.url, skill, script, { root });
+/** 자동 부트스트랩은 현재 issue-onboard와 같은 설치 묶음의 형제만 실행한다. */
+function siblingSkill(_root, skill, script) {
+  let base;
+  try {
+    base = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  } catch {
+    return null;
+  }
+  const candidate = path.join(base, skill, 'scripts', script);
+  return trustedRegularFile(candidate, base) ? candidate : null;
 }
 
 /** 못 찾았을 때 어디를 확인해야 하는지 알려 주는 메시지. */
@@ -689,14 +855,47 @@ function missingSkill(skill) {
   return `${skill} 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.`;
 }
 
+function canonicalIssueReason(graph, issues) {
+  if (graph.snapshot?.digest !== issueSnapshotDigest(issues)) return 'snapshot-changed';
+  if (graph.snapshot?.graphDigest !== graphDocumentDigest(graph)) return 'cache-integrity-failed';
+
+  const live = new Map(issues.map((issue) => [String(issue.number), issue]));
+  for (const issue of issues) {
+    const node = graph.nodes[String(issue.number)];
+    if (!node) return 'issue-missing';
+    const labels = typeLabels((issue.labels ?? []).map((label) => typeof label === 'string' ? label : label.name));
+    const nodeLabels = [...(node.labels ?? [])].map(String).sort();
+    const liveLabels = [...labels].map(String).sort();
+    const revision = issue.updatedAt ?? 'unknown';
+    if (node.number !== issue.number
+      || node.title !== issue.title
+      || node.status !== deriveStatus(issue.labels ?? [], issue.state)
+      || node.url !== issue.url
+      || node.provenance?.revision !== revision
+      || JSON.stringify(nodeLabels) !== JSON.stringify(liveLabels)) {
+      return issueIsOpen(issue) ? 'open-issue-changed' : 'issue-changed';
+    }
+  }
+  for (const node of Object.values(graph.nodes)) {
+    if (!live.has(String(node.number)) && node.provenance?.kind !== 'referenced') return 'issue-removed';
+  }
+  return null;
+}
+
 /**
  * 온보딩 전에 그래프 캐시를 다시 만들어야 하는 이유를 반환한다.
  * null 이면 완전한 캐시가 현재 열린 이슈 목록과 일치한다.
  */
-export function graphBootstrapReason(graph, { fileExists = true, openIssues = [] } = {}) {
+export function graphBootstrapReason(graph, {
+  fileExists = true,
+  openIssues = [],
+  allIssues = null,
+  allIssuesComplete = true,
+} = {}) {
   if (!fileExists) return 'missing';
   if (graph.snapshot?.status === 'invalid') return 'invalid';
   if (graph.snapshot?.status !== 'complete') return 'snapshot-incomplete';
+  if (allIssues && !allIssuesComplete) return 'issue-list-incomplete';
 
   const ontologyReason = ontologyBootstrapReason(graph);
   if (ontologyReason) return ontologyReason;
@@ -706,6 +905,11 @@ export function graphBootstrapReason(graph, { fileExists = true, openIssues = []
 
   const problems = auditGraph(graph);
   if (problems.length) return 'invalid';
+
+  if (allIssues) {
+    const canonicalReason = canonicalIssueReason(graph, allIssues);
+    if (canonicalReason) return canonicalReason;
+  }
 
   for (const issue of openIssues) {
     const node = graph.nodes[String(issue.number)];
@@ -722,10 +926,26 @@ export function graphBootstrapReason(graph, { fileExists = true, openIssues = []
   return null;
 }
 
-export function runSyncBootstrap(root, { resolve = siblingSkill, spawn = spawnSync } = {}) {
+export function bootstrapEnvironment(env = process.env) {
+  return Object.fromEntries(BOOTSTRAP_ENV_KEYS
+    .filter((key) => typeof env[key] === 'string')
+    .map((key) => [key, env[key]]));
+}
+
+export function runSyncBootstrap(root, {
+  resolve = siblingSkill,
+  spawn = spawnSync,
+  env = process.env,
+} = {}) {
   const sync = resolve(root, 'issue-sync', 'issue-sync.mjs');
   if (!sync) throw new Error(missingSkill('issue-sync'));
-  return spawn(process.execPath, [sync], { cwd: root, encoding: 'utf8' });
+  return spawn(process.execPath, [sync], {
+    cwd: root,
+    encoding: 'utf8',
+    env: bootstrapEnvironment(env),
+    timeout: BOOTSTRAP_TIMEOUT_MS,
+    maxBuffer: 16 * 1024 * 1024,
+  });
 }
 
 export function syncBootstrapComplete(result) {
@@ -749,11 +969,26 @@ function bootstrapWithSync(root, reason) {
   console.log('GRAPH_BOOTSTRAP_REASON=' + reason);
 }
 
+function liveIssueSnapshot(tracker) {
+  return fetchCompleteIssueList(tracker, {
+    state: 'all',
+    fields: 'number,title,labels,url,state,body,comments,updatedAt,author,createdAt',
+  });
+}
+
 function cmdOnboard(root, tracker, opts) {
   let graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
-  let openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
-  if (openIssues === null) throw new Error('GitHub 열린 이슈를 조회하지 못했다.');
-  const reason = graphBootstrapReason(graph, { fileExists: existsSync(graphPath(root)), openIssues });
+  let live = liveIssueSnapshot(tracker);
+  if (live.items === null) throw new Error('전체 이슈 목록을 조회하지 못했다.');
+  if (!live.complete) throw new Error('전체 이슈 목록이 limit 안에서 끝났다는 것을 증명하지 못했다.');
+  let allIssues = live.items;
+  let openIssues = allIssues.filter(issueIsOpen);
+  const reason = graphBootstrapReason(graph, {
+    fileExists: graph.snapshot?.status !== 'missing',
+    openIssues,
+    allIssues,
+    allIssuesComplete: live.complete,
+  });
   if (reason === 'ontology-unavailable') {
     ontologyProblems(graph, { required: true });
     throw new Error('온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
@@ -761,9 +996,16 @@ function cmdOnboard(root, tracker, opts) {
   if (reason) {
     bootstrapWithSync(root, reason);
     graph = loadGraph(root, tracker.provider);
-    openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
-    if (openIssues === null) throw new Error('동기화 후 GitHub 열린 이슈를 조회하지 못했다.');
-    const postSyncReason = graphBootstrapReason(graph, { openIssues });
+    live = liveIssueSnapshot(tracker);
+    if (live.items === null) throw new Error('동기화 후 전체 이슈 목록을 조회하지 못했다.');
+    if (!live.complete) throw new Error('동기화 후 전체 이슈 목록이 완전하다는 것을 증명하지 못했다.');
+    allIssues = live.items;
+    openIssues = allIssues.filter(issueIsOpen);
+    const postSyncReason = graphBootstrapReason(graph, {
+      openIssues,
+      allIssues,
+      allIssuesComplete: live.complete,
+    });
     if (postSyncReason === 'ontology-unavailable') {
       ontologyProblems(graph, { required: true });
       throw new Error('동기화 후 온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
