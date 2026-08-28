@@ -17,6 +17,7 @@ node <issue-sync>/scripts/issue-sync.mjs
 수동 실행에서는 같은 플러그인의 `skills/issue-onboard`를 먼저 찾고, 없으면 사용자 스킬 디렉터리를 찾아 실행한다.
 `issue-onboard`가 자동으로 부트스트랩할 때도 이 탐색 순서를 유지한다. 다만 현재 설치 묶음
 또는 프로젝트·사용자 `.claude/.codex/skills` 아래의 심볼릭 링크가 아닌 `issue-sync`만 실행하며,
+현재 설치 묶음 밖의 project/user 스크립트에는 provider credential 환경 변수를 전달하지 않는다.
 다른 설치에서 실행 중인 `issue-onboard`가 프로젝트 저장소의 bare `skills/` 동명 스크립트로
 대체되지는 않는다.
 

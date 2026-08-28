@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -251,7 +251,7 @@ esac
   mkdirSync(path.dirname(projectSync), { recursive: true });
   writeFileSync(projectSync, `import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-writeFileSync(${JSON.stringify(observed)}, 'project-local', 'utf8');
+writeFileSync(${JSON.stringify(observed)}, process.env.GH_TOKEN ?? 'absent', 'utf8');
 mkdirSync(path.join(process.cwd(), '.issue'), { recursive: true });
 writeFileSync(path.join(process.cwd(), '.issue', 'graph.json'), ${JSON.stringify(JSON.stringify(graph) + '\n')}, 'utf8');
 console.log('SNAPSHOT_STATUS=complete');
@@ -265,6 +265,7 @@ console.log('GRAPH_SYNC=ok');
     env: {
       ...process.env,
       ISSUE_ONTOLOGY_ROOT: ontology,
+      GH_TOKEN: 'fake-project-token',
       ISSUE_ONBOARD_TEST_FIXTURE_ROOT: root,
       NODE_OPTIONS: `--import=${testLoader}`,
     },
@@ -580,6 +581,7 @@ test('automatic bootstrap preserves project-local flavor skill discovery', () =>
     assert.match(result.stdout, /GRAPH_BOOTSTRAP=issue-sync/);
     assert.match(result.stdout, /ONBOARD_COUNT=1/);
     assert.equal(existsSync(fixture.observed), true);
+    assert.equal(readFileSync(fixture.observed, 'utf8'), 'absent');
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -591,13 +593,24 @@ test('bootstrap subprocess receives only the explicit environment allowlist', ()
     GH_TOKEN: 'token-for-gh',
     BOOTSTRAP_SENTINEL: 'must-not-leak',
     NODE_OPTIONS: '--require=attacker-module',
-  });
+  }, { includeCredentials: true });
   assert.equal(env.GH_TOKEN, 'token-for-gh');
   assert.notEqual(env.PATH, '/bin');
   assert.ok(env.PATH.split(path.delimiter).includes('/bin'));
   assert.doesNotMatch(env.PATH, /attacker/);
   assert.equal(env.NODE_OPTIONS, undefined);
   assert.equal(env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT, undefined);
+});
+
+test('project-local bootstrap scripts do not receive provider credentials', () => {
+  const env = bootstrapEnvironment({
+    PATH: '/bin',
+    GH_TOKEN: 'must-not-reach-project-skill',
+    JIRA_API_TOKEN: 'must-not-reach-project-skill',
+  });
+  assert.equal(env.GH_TOKEN, undefined);
+  assert.equal(env.JIRA_API_TOKEN, undefined);
+  assert.equal(env.PATH, '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin');
 });
 
 test('production CLI rejects test-only command directory overrides', () => {

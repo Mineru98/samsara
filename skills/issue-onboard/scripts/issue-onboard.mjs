@@ -65,6 +65,10 @@ const BOOTSTRAP_ENV_KEYS = [
   'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
   'JIRA_API_TOKEN',
 ];
+const BOOTSTRAP_CREDENTIAL_KEYS = new Set([
+  'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
+  'JIRA_API_TOKEN',
+]);
 const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function configuredJiraTokenEnv() {
@@ -1085,13 +1089,21 @@ export function graphBootstrapReason(graph, {
   return null;
 }
 
-export function bootstrapEnvironment(env = process.env) {
+export function bootstrapEnvironment(env = process.env, { includeCredentials = false } = {}) {
   const keys = new Set(BOOTSTRAP_ENV_KEYS);
+  if (!includeCredentials) {
+    for (const key of BOOTSTRAP_CREDENTIAL_KEYS) keys.delete(key);
+  }
   const tokenEnv = configuredJiraTokenEnv();
-  if (tokenEnv) keys.add(tokenEnv);
+  if (includeCredentials && tokenEnv) keys.add(tokenEnv);
   return Object.fromEntries([...keys]
     .filter((key) => key === 'PATH' || typeof env[key] === 'string')
     .map((key) => [key, key === 'PATH' ? TRUSTED_PATH : env[key]]));
+}
+
+function isTrustedBootstrapScript(file) {
+  const installationRoot = trustedInstallationRoot();
+  return Boolean(installationRoot && trustedRegularFile(file, installationRoot));
 }
 
 export function runSyncBootstrap(root, {
@@ -1104,7 +1116,7 @@ export function runSyncBootstrap(root, {
   return spawn(process.execPath, [sync], {
     cwd: root,
     encoding: 'utf8',
-    env: bootstrapEnvironment(env),
+    env: bootstrapEnvironment(env, { includeCredentials: isTrustedBootstrapScript(sync) }),
     timeout: BOOTSTRAP_TIMEOUT_MS,
     maxBuffer: 16 * 1024 * 1024,
   });
