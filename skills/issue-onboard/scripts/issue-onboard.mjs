@@ -689,6 +689,8 @@ export function graphBootstrapReason(graph, { fileExists = true, openIssues = []
   if (graph.snapshot?.status === 'invalid') return 'invalid';
   if (graph.snapshot?.status !== 'complete') return 'snapshot-incomplete';
 
+  if (ontologyProblems(graph).length) return 'invalid';
+
   const nodeCount = Object.keys(graph.nodes ?? {}).length;
   if (!nodeCount) return openIssues.length ? 'empty' : null;
 
