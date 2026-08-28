@@ -32,7 +32,7 @@ import path from 'node:path';
 import process from 'node:process';
 import {
   run, fail, detectBase, listEvidence, evidenceRel, repoSlugFromRemote, readIssueSettings,
-  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode, testFixtureCommandDir,
+  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
 } from './issue-common.mjs';
 
 export const PROVIDERS = ['github', 'jira'];
@@ -51,8 +51,7 @@ const COMMAND_ENV_KEYS = [
 ];
 
 function trustedCommandPath() {
-  const fixtureDir = testFixtureCommandDir();
-  return [...(fixtureDir ? [fixtureDir] : []), ...SYSTEM_COMMAND_PATH].join(path.delimiter);
+  return SYSTEM_COMMAND_PATH.join(path.delimiter);
 }
 
 function trustedCommandEnv(env = process.env) {

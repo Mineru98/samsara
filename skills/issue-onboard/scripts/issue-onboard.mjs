@@ -1278,7 +1278,6 @@ function main() {
     else if (arg === '--no-llm') opts.noLlm = true;
     else if (arg === '--no-native') opts.noNative = true;
     else if (arg === '--graph') opts.graph = argv[++i];
-    else if (arg === '--test-command-dir') i += 1;
     else if (arg.startsWith('-')) { console.error(`✗ 알 수 없는 옵션: ${arg}`); usage(); }
     else positionals.push(arg);
   }

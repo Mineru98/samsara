@@ -14,7 +14,6 @@
 //     issue X 가 Y 에 blocked-by  ⇒  Y 가 선수(predecessor)  ⇒  X --depends-on--> Y.
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { testFixtureCommandDir } from './issue-common.mjs';
 
 const SYSTEM_PATH = [
   '/opt/homebrew/bin', '/opt/homebrew/sbin',
@@ -30,8 +29,7 @@ const COMMAND_ENV_KEYS = [
 ];
 
 function trustedPath() {
-  const fixtureDir = testFixtureCommandDir();
-  return [...(fixtureDir ? [fixtureDir] : []), ...SYSTEM_PATH].join(path.delimiter);
+  return SYSTEM_PATH.join(path.delimiter);
 }
 
 function trustedCommandEnv() {

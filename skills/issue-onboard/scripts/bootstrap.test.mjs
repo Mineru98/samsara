@@ -68,6 +68,27 @@ function writeExecutable(file, contents) {
   chmodSync(file, 0o755);
 }
 
+function writeCliTestLoader(root) {
+  const loader = path.join(root, 'test-loader.mjs');
+  writeFileSync(loader, `import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import path from 'node:path';
+
+const fixtureRoot = process.env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT;
+if (fixtureRoot) {
+  const originalSpawnSync = childProcess.spawnSync;
+  childProcess.spawnSync = (command, args, options) => {
+    if (command === 'gh') {
+      return originalSpawnSync(path.join(fixtureRoot, 'bin', 'gh'), args, options);
+    }
+    return originalSpawnSync(command, args, options);
+  };
+  syncBuiltinESMExports();
+}
+`, 'utf8');
+  return loader;
+}
+
 function cliFixture({ syncMode = 'complete', graph = null, initialGraph = null, ontologyPath = ontologyRoot } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-cli-'));
   const bin = path.join(root, 'bin');
@@ -83,6 +104,7 @@ case "$*" in
   *) printf '%s\\n' '{}' ;;
 esac
 `);
+  const testLoader = writeCliTestLoader(root);
 
   cpSync(
     path.join(repositoryRoot, 'skills', 'issue-onboard'),
@@ -132,12 +154,14 @@ console.log('GRAPH_SYNC=ok');
     env: {
       ...process.env,
       ISSUE_ONTOLOGY_ROOT: ontologyPath === ontologyRoot ? fixtureOntology : ontologyPath,
+      ISSUE_ONBOARD_TEST_FIXTURE_ROOT: root,
+      NODE_OPTIONS: `--import=${testLoader}`,
     },
   };
 }
 
 function runCliOnboard(fixture) {
-  return spawnSync(process.execPath, [fixture.entry, 'onboard', '--all', '--no-llm', '--test-command-dir', path.join(fixture.root, 'bin')], {
+  return spawnSync(process.execPath, [fixture.entry, 'onboard', '--all', '--no-llm'], {
     cwd: fixture.root,
     env: fixture.env,
     encoding: 'utf8',
@@ -145,7 +169,7 @@ function runCliOnboard(fixture) {
 }
 
 function runCliMode(fixture, mode, args = []) {
-  return spawnSync(process.execPath, [fixture.entry, mode, ...args, '--test-command-dir', path.join(fixture.root, 'bin')], {
+  return spawnSync(process.execPath, [fixture.entry, mode, ...args], {
     cwd: fixture.root,
     env: fixture.env,
     encoding: 'utf8',
@@ -166,6 +190,7 @@ case "$*" in
   *) printf '%s\\n' '{}' ;;
 esac
 `);
+  const testLoader = writeCliTestLoader(root);
   cpSync(path.join(repositoryRoot, 'skills', 'issue-onboard'), path.join(install, 'skills', 'issue-onboard'), { recursive: true });
   const ontology = path.join(install, 'tools', 'issue-ontology');
   mkdirSync(ontology, { recursive: true });
@@ -189,6 +214,8 @@ console.log('GRAPH_SYNC=ok');
       ...process.env,
       ISSUE_ONTOLOGY_ROOT: ontology,
       BOOTSTRAP_SENTINEL: 'must-not-reach-repository-script',
+      ISSUE_ONBOARD_TEST_FIXTURE_ROOT: root,
+      NODE_OPTIONS: `--import=${testLoader}`,
     },
   };
 }

@@ -14,7 +14,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, lstatSync,
+  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -117,38 +117,6 @@ const TRUSTED_COMMAND_PATH = [
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
 ].join(path.delimiter);
-
-function isPathWithin(parent, target) {
-  const relative = path.relative(parent, target);
-  return relative === ''
-    || (relative !== '..'
-      && !relative.startsWith(`..${path.sep}`)
-      && !path.isAbsolute(relative));
-}
-
-/** 테스트 fixture 명령은 환경 변수로 켜지지 않도록 임시 실행 경로에서만 허용한다. */
-export function testFixtureCommandDir(args = process.argv) {
-  const index = Array.isArray(args) ? args.indexOf('--test-command-dir') : -1;
-  const candidate = index >= 0 ? args[index + 1] : null;
-  const entry = Array.isArray(args) ? args[1] : null;
-  if (!candidate || !entry) return null;
-  try {
-    // macOS 에서는 /var 와 /private/var 가 같은 실제 경로를 가리킬 수 있다.
-    // 모든 경로를 realpath 로 정규화해 lexical alias 우회를 막고, fixture 디렉터리
-    // 자체는 lstat 로 심볼릭 링크를 거부한다.
-    const temporaryRoot = realpathSync(os.tmpdir());
-    const candidatePath = path.resolve(candidate);
-    const entryPath = path.resolve(entry);
-    const stat = lstatSync(candidatePath);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) return null;
-    const candidateRealPath = realpathSync(candidatePath);
-    const entryRealPath = realpathSync(entryPath);
-    if (!isPathWithin(temporaryRoot, candidateRealPath) || !isPathWithin(temporaryRoot, entryRealPath)) return null;
-    return candidateRealPath;
-  } catch {
-    return null;
-  }
-}
 
 export function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, {
