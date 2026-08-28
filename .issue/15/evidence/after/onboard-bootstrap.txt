@@ -1,0 +1,19 @@
+issue-start #15 after 수동 QA
+브랜치: feat/15-issue-onboard-sync-bootstrap
+
+$ node skills/issue-onboard/scripts/issue-onboard.mjs
+✓ sync 완료 — 노드 8개, 엣지 0개 (자동 0, 네이티브 0, 승인 0)
+SYNCED=8
+SNAPSHOT_STATUS=complete
+GRAPH_SYNC=ok
+GRAPH_BOOTSTRAP=issue-sync
+GRAPH_BOOTSTRAP_REASON=missing
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	issue-onboard에서 그래프 캐시가 없을 때 issue-sync 자동 부트스트랩
+PRIORITY=#16	issue-board 스킬을 issue-viz로 이름 변경하고 README 동기화
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+관찰: 캐시가 없는 상태에서 issue-sync를 자동 실행했고, 동일한 onboard 실행에서 완전
+snapshot 기반 우선순위 2건을 출력했다.

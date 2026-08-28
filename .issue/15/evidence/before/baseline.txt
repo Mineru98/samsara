@@ -1,0 +1,21 @@
+issue-start #15 before 기준선
+커밋: 42cfb3101bc33827ab3489b328379a3da50b2f74
+브랜치: feat/15-issue-onboard-sync-bootstrap
+
+$ git status --short --branch
+## feat/15-issue-onboard-sync-bootstrap...origin/main
+
+$ node skills/issue-onboard/scripts/issue-onboard.mjs
+OPEN_ISSUES=2
+ONBOARD_COUNT=0
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+관찰: GitHub 열린 이슈는 2건이지만 기존 graph.json에서 최신 이슈를 온보딩하지 못해 우선순위가 0건이다. 그래프 파일이 존재하므로 issue-sync 자동 부트스트랩도 실행되지 않는다.
+
+$ node --test skills/issue-onboard/scripts/*.test.mjs
+tests 14
+pass 12
+fail 2
+
+기존 실패 2건: tools/issue-ontology의 Ajv 패키지가 설치되지 않아 link-roundtrip.test.mjs와 native-deps.test.mjs의 스키마 검증 단계가 실패한다. 이는 이슈 #15 변경 전 기준선이다.
