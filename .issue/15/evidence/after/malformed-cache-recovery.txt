@@ -1,0 +1,22 @@
+issue-start #15 after review-fix 수동 QA
+브랜치: feat/15-issue-onboard-sync-bootstrap
+
+사전 조건: `.issue/graph.json`에 `{ malformed`를 기록
+
+$ node skills/issue-onboard/scripts/issue-onboard.mjs
+✗ .issue/graph.json 파싱 실패: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+✓ sync 완료 — 노드 8개, 엣지 0개 (자동 0, 네이티브 0, 승인 0)
+SYNCED=8
+SNAPSHOT_STATUS=complete
+GRAPH_SYNC=ok
+✗ .issue/graph.json 파싱 실패: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+GRAPH_BOOTSTRAP=issue-sync
+GRAPH_BOOTSTRAP_REASON=invalid
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	issue-onboard에서 그래프 캐시가 없을 때 issue-sync 자동 부트스트랩
+PRIORITY=#16	issue-board 스킬을 issue-viz로 이름 변경하고 README 동기화
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+결과: exit code 0. malformed cache가 자동 sync로 유효한 V2 graph로 교체된 뒤 추천이 출력됐다.
