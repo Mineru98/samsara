@@ -12,7 +12,7 @@ GitHub 이슈와 구조화된 결정 코멘트가 정본이다. `.issue/graph.js
   "version": 2,
   "provider": "github",
   "repository": "owner/repo",
-  "snapshot": { "status": "complete", "fetchedAt": "ISO-8601", "digest": "sha256:..." },
+  "snapshot": { "status": "complete", "fetchedAt": "ISO-8601", "digest": "sha256:...", "graphDigest": "sha256:..." },
   "nodes": {
     "78": {
       "id": "github:owner/repo#78",
@@ -49,8 +49,13 @@ sync는 이전 캐시 노드를 보존하지 않고 GitHub snapshot에서 다시
 tools/issue-ontology가 graph-v2 JSON Schema와 create/start/end/merge action schema의
 정본이다. Ajv는 문서 shape, 필수 키, 허용된 enum과 action precondition을 검사하고,
 기존 issue-graph-v2 walker는 dangling edge, parent-of 순환·중복 parent, duplicate 승인과
-close 불일치를 검사한다. Ajv가 없는 복사 설치의 경계 guard는 skip하지만, 이 저장소의
-validate와 island 테스트는 Ajv 없이는 실패한다.
+close 불일치를 검사한다. 온보딩에서 Ajv 또는 온톨로지 검증기를 사용할 수 없으면 검증을
+건너뛰지 않고 fail-closed로 추천을 거부한다. 검증기 코드는 현재 설치 루트 안의 파일만
+사용하며 저장소의 `tools/issue-ontology`나 외부 `ISSUE_ONTOLOGY_ROOT`를 자동 import하지 않는다.
+
+`snapshot.digest`는 트래커에서 읽은 원본 이슈 목록의 digest이고 `snapshot.graphDigest`는
+노드·엣지를 포함한 캐시 문서의 digest다. 온보딩은 두 digest와 현재 전체 이슈 목록을 다시
+비교하므로 구조적으로 유효하지만 내용이 바뀐 캐시를 추천에 사용하지 않는다.
 
 노드 상태를 계산할 때는 tracker state의 CLOSED 또는 MERGED가 stale status 라벨보다
 우선한다. 따라서 CLOSED 이슈에 status:open이 남아 있어도 close/done으로 분류한다.
@@ -60,7 +65,9 @@ validate와 island 테스트는 Ajv 없이는 실패한다.
 `depends-on`, `parent-of`, `duplicate-of`, `relates-to`, `supersedes`만 허용한다.
 `depends-on`(선수·후속) 엣지는 세 정본에서 온다: ① 본문 마커(`depends on #N`), ② `link`/`unlink`
 가 남긴 결정 코멘트, ③ GitHub 네이티브 이슈 의존성(blocked-by, `gh api graphql` 조회, `createdBy=github-native`).
-③ 은 실패하면 조용히 건너뛰고 `--no-native` 로 끌 수 있다. 캐시는 sync 엣지의 풍부한 맥락
+③ 은 기본 sync에서 실패하면 snapshot을 `partial`로 남겨 추천을 막는다. 명시적으로
+`--no-native`를 사용해 이 계층을 끌 수 있지만, 온보딩은 검증되지 않은 네이티브 엣지를
+신뢰하지 않는다. 캐시는 sync 엣지의 풍부한 맥락
 (`kind`·`context`·`evidence`·`status`·`schemaVersion`·`cacheKey`)과 재감지되지 않은 sync 엣지를
 옮겨 둔 `staleEdges` 배열까지 담으며, 이 shape 는 tools/issue-ontology 의 graph-v2 스키마와 일치한다.
 

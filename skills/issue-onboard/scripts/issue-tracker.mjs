@@ -32,10 +32,38 @@ import path from 'node:path';
 import process from 'node:process';
 import {
   run, fail, detectBase, listEvidence, evidenceRel, repoSlugFromRemote, readIssueSettings,
-  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode, trustedExecutable,
 } from './issue-common.mjs';
 
 export const PROVIDERS = ['github', 'jira'];
+
+const SYSTEM_COMMAND_PATH = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+];
+const COMMAND_ENV_KEYS = [
+  'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP',
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'GH_CONFIG_DIR',
+  'GH_HOST', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
+];
+
+function trustedCommandPath() {
+  return SYSTEM_COMMAND_PATH.join(path.delimiter);
+}
+
+function trustedCommandEnv(env = process.env) {
+  return Object.fromEntries([
+    ...COMMAND_ENV_KEYS.filter((key) => typeof env[key] === 'string').map((key) => [key, env[key]]),
+    ['PATH', trustedCommandPath()],
+  ]);
+}
+
+function commandRun(cmd, args, opts = {}) {
+  const executable = trustedExecutable(cmd);
+  if (!executable) return { code: 1, out: '', err: `trusted executable not found: ${cmd}` };
+  return run(executable, args, { ...opts, env: trustedCommandEnv({ ...process.env, ...(opts.env ?? {}) }) });
+}
 
 /* ------------------------------------------------------------------ 설정 */
 
@@ -53,7 +81,7 @@ export function providerType(settings) {
 /* ------------------------------------------------------------------ gitHost */
 
 function ghJson(args, opts = {}) {
-  const r = run('gh', args, opts);
+  const r = commandRun('gh', args, opts);
   if (r.code !== 0) return null;
   try {
     return JSON.parse(r.out);
@@ -69,7 +97,7 @@ export const gitHost = {
   name: 'github',
 
   auth() {
-    const r = run('gh', ['auth', 'status']);
+    const r = commandRun('gh', ['auth', 'status']);
     return { ok: r.code === 0, detail: r.code === 0 ? (r.err || r.out) : null };
   },
 
@@ -91,7 +119,7 @@ export const gitHost = {
 
   /** 'pass' | 'fail' | 'pending' | 'none' | null(조회 실패) */
   prChecks(number, opts = {}) {
-    const r = run('gh', ['pr', 'checks', String(number), '--json', 'state'], opts);
+    const r = commandRun('gh', ['pr', 'checks', String(number), '--json', 'state'], opts);
     if (r.code !== 0) return 'none';
     try {
       const states = JSON.parse(r.out).map((c) => c.state);
@@ -104,18 +132,18 @@ export const gitHost = {
   },
 
   prMerge(number, method = 'squash', opts = {}) {
-    const r = run('gh', ['pr', 'merge', String(number), `--${method}`], opts);
+    const r = commandRun('gh', ['pr', 'merge', String(number), `--${method}`], opts);
     return { ok: r.code === 0, out: r.out, err: r.err };
   },
 
   hasPrHistory(opts = {}) {
-    const r = run('gh', ['pr', 'list', '--state', 'all', '--limit', '1', '--json', 'number'], opts);
+    const r = commandRun('gh', ['pr', 'list', '--state', 'all', '--limit', '1', '--json', 'number'], opts);
     return r.code === 0 && r.out.trim() !== '[]';
   },
 
   /** gh-attach 확장(sudosubin/gh-attach) 설치 여부. private 저장소 이미지 자동 업로드에 쓴다. */
   hasAttachExtension(opts = {}) {
-    const r = run('gh', ['extension', 'list'], opts);
+    const r = commandRun('gh', ['extension', 'list'], opts);
     return r.code === 0 && /\bsudosubin\/gh-attach\b/i.test(r.out);
   },
 
@@ -128,7 +156,7 @@ export const gitHost = {
    */
   uploadAttachment(filePath, repo, opts = {}) {
     if (!this.hasAttachExtension(opts)) return { ok: false, reason: 'gh-attach 확장이 설치되어 있지 않음' };
-    const r = run('gh', ['attach', 'upload', filePath, '-R', repo, '--json', 'href,name'], opts);
+    const r = commandRun('gh', ['attach', 'upload', filePath, '-R', repo, '--json', 'href,name'], opts);
     if (r.code !== 0) return { ok: false, reason: (r.err || r.out || 'gh attach 실패').split('\n')[0] };
     try {
       const [item] = JSON.parse(r.out);
@@ -151,9 +179,10 @@ function githubTracker(root, cfg) {
 
   return {
     provider: 'github',
+    repository: cfg.repo ?? null,
 
     auth() {
-      const r = run('gh', ['auth', 'status']);
+      const r = commandRun('gh', ['auth', 'status']);
       return {
         ok: r.code === 0,
         detail: r.code === 0 ? '로그인 상태' : (r.err || r.out || 'gh 인증 실패'),
@@ -167,7 +196,7 @@ function githubTracker(root, cfg) {
     },
 
     hasIssueHistory() {
-      const r = run('gh', repoArgs(['issue', 'list', '--state', 'all', '--limit', '1', '--json', 'number']), opts);
+      const r = commandRun('gh', repoArgs(['issue', 'list', '--state', 'all', '--limit', '1', '--json', 'number']), opts);
       return r.code === 0 && r.out.trim() !== '[]';
     },
 
@@ -179,7 +208,7 @@ function githubTracker(root, cfg) {
     labelCreate(name, { color, description } = {}) {
       const args = repoArgs(['label', 'create', name, '--color', color ?? 'ededed']);
       if (description) args.push('--description', description);
-      const r = run('gh', args, opts);
+      const r = commandRun('gh', args, opts);
       return { created: r.code === 0, noop: false, err: r.err };
     },
 
@@ -187,7 +216,7 @@ function githubTracker(root, cfg) {
       const args = repoArgs(['issue', 'create', '--title', title, '--body-file', bodyFile]);
       for (const l of labels) args.push('--label', l);
       if (assignee) args.push('--assignee', assignee);
-      const r = run('gh', args, { ...opts, stdio: ['ignore', 'pipe', 'inherit'] });
+      const r = commandRun('gh', args, { ...opts, stdio: ['ignore', 'pipe', 'inherit'] });
       if (r.code !== 0) return { ok: false, err: r.err || r.out };
       const url = (r.out.split('\n').find((l) => l.includes('/issues/')) ?? r.out).trim();
       const number = Number(url.match(/\/issues\/(\d+)/)?.[1]);
@@ -213,14 +242,14 @@ function githubTracker(root, cfg) {
     issueAddLabels(number, labels) {
       const args = repoArgs(['issue', 'edit', String(number)]);
       for (const l of labels) args.push('--add-label', l);
-      const r = run('gh', args, opts);
+      const r = commandRun('gh', args, opts);
       return { ok: r.code === 0, err: r.err };
     },
 
     issueRemoveLabels(number, labels) {
       const args = repoArgs(['issue', 'edit', String(number)]);
       for (const l of labels) args.push('--remove-label', l);
-      const r = run('gh', args, opts);
+      const r = commandRun('gh', args, opts);
       return { ok: r.code === 0, err: r.err };
     },
 
@@ -228,23 +257,23 @@ function githubTracker(root, cfg) {
       const args = repoArgs(['issue', 'edit', String(number)]);
       for (const label of add) args.push('--add-label', label);
       for (const label of remove) args.push('--remove-label', label);
-      const r = run('gh', args, opts);
+      const r = commandRun('gh', args, opts);
       return { ok: r.code === 0, err: r.err };
     },
 
     issueComment(number, bodyFile) {
-      const r = run('gh', repoArgs(['issue', 'comment', String(number), '--body-file', bodyFile]), opts);
+      const r = commandRun('gh', repoArgs(['issue', 'comment', String(number), '--body-file', bodyFile]), opts);
       return { ok: r.code === 0, err: r.err };
     },
 
     issueClose(number) {
-      const r = run('gh', repoArgs(['issue', 'close', String(number)]), opts);
+      const r = commandRun('gh', repoArgs(['issue', 'close', String(number)]), opts);
       return { ok: r.code === 0, err: r.err };
     },
 
     /** 첨부 이미지를 받을 때 쓸 토큰. */
     attachmentAuth() {
-      const token = run('gh', ['auth', 'token']).out;
+      const token = commandRun('gh', ['auth', 'token']).out;
       return token ? {
         scheme: 'Bearer',
         token,
@@ -271,9 +300,13 @@ export function curlJson({ method = 'GET', url, auth, body, timeout = 30 }) {
   }
   args.push(url);
 
-  const res = spawnSync('curl', args, {
+  const curl = trustedExecutable('curl');
+  if (!curl) return { ok: false, status: 0, err: 'trusted executable not found: curl' };
+  const res = spawnSync(curl, args, {
     encoding: 'utf8',
     input: body === undefined ? undefined : JSON.stringify(body),
+    env: trustedCommandEnv(),
+    timeout: (timeout + 5) * 1000,
   });
   if (res.status !== 0) {
     return { ok: false, status: 0, err: (res.stderr || '').trim() || `curl exit ${res.status}` };
@@ -390,6 +423,17 @@ function jiraTracker(cfg) {
 
   const call = (method, p, body) => curlJson({ method, url: api(p), auth, body });
 
+  const jiraFields = (fields) => {
+    const map = new Map([
+      ['title', 'summary'], ['state', 'status'], ['labels', 'labels'],
+      ['body', 'description'], ['comments', 'comment'], ['createdAt', 'created'],
+      ['updatedAt', 'updated'], ['author', 'reporter'],
+    ]);
+    const requested = String(fields ?? '').split(',').map((field) => field.trim()).filter(Boolean);
+    const selected = requested.length ? requested.map((field) => map.get(field) ?? field) : [];
+    return [...new Set(['summary', 'status', 'labels', 'description', 'comment', 'created', 'updated', ...selected])].join(',');
+  };
+
   const isDone = (statusName) => doneStatus.some((s) => String(s).toLowerCase() === String(statusName ?? '').toLowerCase());
 
   /** Jira 이슈를 gh JSON 과 같은 모양으로 맞춘다. 호출부를 안 고치기 위해서다. */
@@ -495,7 +539,7 @@ function jiraTracker(cfg) {
       return r.ok ? normalize(r.json) : null;
     },
 
-    issueList({ state = 'open', limit = 50, search } = {}) {
+    issueListPage({ state = 'open', limit = 50, search, fields, startAt = 0 } = {}) {
       const clauses = [`project = ${projectKey}`];
       if (state === 'open') clauses.push('statusCategory != Done');
       else if (state === 'closed') clauses.push('statusCategory = Done');
@@ -503,10 +547,28 @@ function jiraTracker(cfg) {
       const jql = `${clauses.join(' AND ')} ORDER BY created DESC`;
       const r = call(
         'GET',
-        `/search?jql=${encodeURIComponent(jql)}&maxResults=${limit}&fields=summary,status,labels,created`,
+        `/search?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${limit}&fields=${encodeURIComponent(jiraFields(fields))}`,
       );
-      if (!r.ok) return null;
-      return (r.json?.issues ?? []).map(normalize);
+      if (!r.ok || !Array.isArray(r.json?.issues)) return null;
+      const items = r.json.issues.map(normalize);
+      const totalValue = r.json.total;
+      const startValue = r.json.startAt;
+      const maxValue = r.json.maxResults;
+      const total = totalValue != null && Number.isSafeInteger(Number(totalValue)) ? Number(totalValue) : null;
+      const actualStart = startValue != null && Number.isSafeInteger(Number(startValue)) ? Number(startValue) : startAt;
+      const maxResults = maxValue != null && Number.isSafeInteger(Number(maxValue)) ? Number(maxValue) : null;
+      const complete = total !== null
+        && actualStart >= 0
+        && actualStart <= total
+        && actualStart === startAt
+        && items.length <= limit
+        && actualStart + items.length >= total;
+      return { items, startAt: actualStart, maxResults, total, complete };
+    },
+
+    issueList({ state = 'open', limit = 50, search, fields } = {}) {
+      const page = this.issueListPage({ state, limit, search, fields });
+      return page?.items ?? null;
     },
 
     issueAddLabels(number, labels) {

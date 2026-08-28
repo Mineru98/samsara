@@ -101,7 +101,10 @@ export function applyEnrichment(edge, item, verdict, { model = DEFAULT_LLM_MODEL
     promptVersion: LLM_PROMPT_VERSION,
     confidence,
   };
-  return { ...edge, kind: item.kind, rationale: item.summary, context, cacheKey };
+  // rationale 는 라이브 본문에서 결정론적으로 만든 출처 설명을 유지한다.
+  // 모델 요약은 표시용 context 에만 두어 캐시가 자체 digest 를 다시 계산해도
+  // 온보딩의 관계 근거를 바꿀 수 없게 한다.
+  return { ...edge, kind: item.kind, context, cacheKey };
 }
 
 /**

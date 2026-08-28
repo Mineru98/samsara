@@ -7,6 +7,7 @@
     "status": "complete",
     "fetchedAt": "2026-08-26T00:00:00.000Z",
     "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "graphDigest": "sha256:ca1598a667bda454f00156d6940c263be38ed04a17b83ca2804605e68c9036f0",
     "reason": null
   },
   "nodes": {

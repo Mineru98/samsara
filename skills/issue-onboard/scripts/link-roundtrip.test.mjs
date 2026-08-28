@@ -47,7 +47,7 @@ test('cmdLink approval comment round-trips into a valid depends-on edge', () => 
   });
   const graph = {
     version: 2, provider: 'github', repository: 'o/r', updatedAt: '2026-08-26T00:00:00.000Z',
-    snapshot: { status: 'complete', fetchedAt: '2026-08-26T00:00:00.000Z', digest: `sha256:${'a'.repeat(64)}`, reason: null },
+    snapshot: { status: 'complete', fetchedAt: '2026-08-26T00:00:00.000Z', digest: `sha256:${'a'.repeat(64)}`, graphDigest: `sha256:${'b'.repeat(64)}`, reason: null },
     nodes: { 5: node(5), 9: node(9) }, edges: [edge],
   };
   assert.deepEqual(validateGraphDocument(graph).errors, []);
