@@ -85,7 +85,7 @@ export function emptyGraph(provider = 'github') {
   return { version: GRAPH_VERSION, provider, repository: null, updatedAt: null, snapshot: { status: 'missing' }, nodes: {}, edges: [] };
 }
 
-export function loadGraph(root, provider = 'github') {
+export function loadGraph(root, provider = 'github', { tolerateParseError = false } = {}) {
   const file = graphPath(root);
   if (!existsSync(file)) return emptyGraph(provider);
   try {
@@ -93,6 +93,7 @@ export function loadGraph(root, provider = 'github') {
     return { ...emptyGraph(provider), ...g, nodes: g.nodes ?? {}, edges: g.edges ?? [] };
   } catch (e) {
     console.error(`✗ ${WORKSPACE_DIR}/${GRAPH_FILE} 파싱 실패: ${e.message}`);
+    if (tolerateParseError) return { ...emptyGraph(provider), snapshot: { status: 'invalid', reason: 'graph parse failed' } };
     process.exit(1);
   }
 }
@@ -287,7 +288,7 @@ function cmdSync(root, tracker, opts) {
     console.log('SYNC_FAILED=1');
     return;
   }
-  const graph = loadGraph(root, tracker.provider);
+  const graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
   graph.version = GRAPH_VERSION;
   graph.provider = tracker.provider;
   graph.repository = opts.repo ?? graph.repository ?? null;
@@ -685,6 +686,7 @@ function missingSkill(skill) {
  */
 export function graphBootstrapReason(graph, { fileExists = true, openIssues = [] } = {}) {
   if (!fileExists) return 'missing';
+  if (graph.snapshot?.status === 'invalid') return 'invalid';
   if (graph.snapshot?.status !== 'complete') return 'snapshot-incomplete';
 
   const nodeCount = Object.keys(graph.nodes ?? {}).length;
@@ -697,7 +699,7 @@ export function graphBootstrapReason(graph, { fileExists = true, openIssues = []
     const node = graph.nodes[String(issue.number)];
     if (!node) return 'open-issue-missing';
     if (issue.title && node.title !== issue.title) return 'open-issue-changed';
-    if (issue.updatedAt && node.provenance?.revision && node.provenance.revision !== issue.updatedAt) return 'open-issue-changed';
+    if (issue.updatedAt && node.provenance?.revision !== issue.updatedAt) return 'open-issue-changed';
   }
   return null;
 }
@@ -708,17 +710,28 @@ export function runSyncBootstrap(root, { resolve = siblingSkill, spawn = spawnSy
   return spawn(process.execPath, [sync], { cwd: root, encoding: 'utf8' });
 }
 
+export function syncBootstrapComplete(result) {
+  const stdout = String(result.stdout ?? '');
+  return result.status === 0
+    && stdout.includes('SNAPSHOT_STATUS=complete')
+    && stdout.includes('GRAPH_SYNC=ok');
+}
+
 function bootstrapWithSync(root, reason) {
   const result = runSyncBootstrap(root);
   process.stdout.write(result.stdout ?? '');
   process.stderr.write(result.stderr ?? '');
   if (result.status !== 0) process.exit(result.status ?? 1);
+  if (!syncBootstrapComplete(result)) {
+    console.error('✗ issue-sync가 complete snapshot과 GRAPH_SYNC=ok를 확인하지 못했다.');
+    process.exit(1);
+  }
   console.log('GRAPH_BOOTSTRAP=issue-sync');
   console.log('GRAPH_BOOTSTRAP_REASON=' + reason);
 }
 
 function cmdOnboard(root, tracker, opts) {
-  let graph = loadGraph(root, tracker.provider);
+  let graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
   let openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
   if (openIssues === null) throw new Error('GitHub 열린 이슈를 조회하지 못했다.');
   const reason = graphBootstrapReason(graph, { fileExists: existsSync(graphPath(root)), openIssues });
@@ -727,6 +740,8 @@ function cmdOnboard(root, tracker, opts) {
     graph = loadGraph(root, tracker.provider);
     openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
     if (openIssues === null) throw new Error('동기화 후 GitHub 열린 이슈를 조회하지 못했다.');
+    const postSyncReason = graphBootstrapReason(graph, { openIssues });
+    if (postSyncReason) throw new Error(`동기화 후 그래프가 최신 열린 이슈와 일치하지 않는다: ${postSyncReason}`);
   }
   const problems = auditGraph(graph);
   problems.push(...ontologyProblems(graph));
