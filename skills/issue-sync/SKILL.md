@@ -1,6 +1,6 @@
 ---
 name: issue-sync
-description: GitHub 이슈 완전 스냅샷으로 .issue/graph.json 캐시를 생성·갱신합니다. "$issue-sync", "이슈 그래프 갱신", "그래프 만들기" 요청과 issue-onboard 가 그래프 없이 시작될 때 사용.
+description: GitHub 이슈 완전 스냅샷으로 .issue/graph.json 캐시를 생성·갱신합니다. "$issue-sync", "이슈 그래프 갱신", "그래프 만들기" 요청과 issue-onboard의 자동 부트스트랩에 사용.
 ---
 
 # Issue Sync
@@ -21,5 +21,6 @@ node <issue-sync>/scripts/issue-sync.mjs
 `SNAPSHOT_STATUS=complete`와 `GRAPH_SYNC=ok`가 함께 나와야 한다. partial·실패 결과는
 온보딩 추천에 사용하지 않는다.
 
-`issue-onboard`는 graph.json이 없을 때 이 스킬을 먼저 호출한다. 상태 전이 뒤의 선택적 캐시
-갱신은 `setTrackerStatus` 내부에서 자동으로 처리한다.
+`issue-onboard`는 graph.json이 없거나 캐시가 불완전·유효하지 않거나 열린 이슈와 불일치할 때
+이 스킬을 먼저 호출한다. 상태 전이 뒤의 선택적 캐시 갱신은 `setTrackerStatus` 내부에서
+자동으로 처리한다.

@@ -679,19 +679,55 @@ function missingSkill(skill) {
   return `${skill} 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.`;
 }
 
-function cmdOnboard(root, tracker, opts) {
-  if (!existsSync(graphPath(root))) {
-    const sync = siblingSkill(root, 'issue-sync', 'issue-sync.mjs');
-    if (!sync) throw new Error(missingSkill('issue-sync'));
-    const result = spawnSync(process.execPath, [sync], { cwd: root, encoding: 'utf8' });
-    process.stdout.write(result.stdout);
-    process.stderr.write(result.stderr);
-    if (result.status !== 0) process.exit(result.status ?? 1);
-    console.log('GRAPH_BOOTSTRAP=issue-sync');
+/**
+ * 온보딩 전에 그래프 캐시를 다시 만들어야 하는 이유를 반환한다.
+ * null 이면 완전한 캐시가 현재 열린 이슈 목록과 일치한다.
+ */
+export function graphBootstrapReason(graph, { fileExists = true, openIssues = [] } = {}) {
+  if (!fileExists) return 'missing';
+  if (graph.snapshot?.status !== 'complete') return 'snapshot-incomplete';
+
+  const nodeCount = Object.keys(graph.nodes ?? {}).length;
+  if (!nodeCount) return openIssues.length ? 'empty' : null;
+
+  const problems = auditGraph(graph);
+  if (problems.length) return 'invalid';
+
+  for (const issue of openIssues) {
+    const node = graph.nodes[String(issue.number)];
+    if (!node) return 'open-issue-missing';
+    if (issue.title && node.title !== issue.title) return 'open-issue-changed';
+    if (issue.updatedAt && node.provenance?.revision && node.provenance.revision !== issue.updatedAt) return 'open-issue-changed';
   }
-  const graph = loadGraph(root, tracker.provider);
-  const openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
+  return null;
+}
+
+export function runSyncBootstrap(root, { resolve = siblingSkill, spawn = spawnSync } = {}) {
+  const sync = resolve(root, 'issue-sync', 'issue-sync.mjs');
+  if (!sync) throw new Error(missingSkill('issue-sync'));
+  return spawn(process.execPath, [sync], { cwd: root, encoding: 'utf8' });
+}
+
+function bootstrapWithSync(root, reason) {
+  const result = runSyncBootstrap(root);
+  process.stdout.write(result.stdout ?? '');
+  process.stderr.write(result.stderr ?? '');
+  if (result.status !== 0) process.exit(result.status ?? 1);
+  console.log('GRAPH_BOOTSTRAP=issue-sync');
+  console.log('GRAPH_BOOTSTRAP_REASON=' + reason);
+}
+
+function cmdOnboard(root, tracker, opts) {
+  let graph = loadGraph(root, tracker.provider);
+  let openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
   if (openIssues === null) throw new Error('GitHub 열린 이슈를 조회하지 못했다.');
+  const reason = graphBootstrapReason(graph, { fileExists: existsSync(graphPath(root)), openIssues });
+  if (reason) {
+    bootstrapWithSync(root, reason);
+    graph = loadGraph(root, tracker.provider);
+    openIssues = tracker.issueList({ state: 'open', limit: 200, fields: 'number,title,labels,url,state,updatedAt' });
+    if (openIssues === null) throw new Error('동기화 후 GitHub 열린 이슈를 조회하지 못했다.');
+  }
   const problems = auditGraph(graph);
   problems.push(...ontologyProblems(graph));
   const cycle = findCycle(graph);
