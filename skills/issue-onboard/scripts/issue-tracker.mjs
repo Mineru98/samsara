@@ -28,12 +28,11 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import {
   run, fail, detectBase, listEvidence, evidenceRel, repoSlugFromRemote, readIssueSettings,
-  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode, testFixtureCommandDir,
 } from './issue-common.mjs';
 
 export const PROVIDERS = ['github', 'jira'];
@@ -51,26 +50,15 @@ const COMMAND_ENV_KEYS = [
   'GH_HOST', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
 ];
 
-function trustedCommandPath(env = process.env) {
-  // 테스트 fixture만 임시 디렉터리의 명령 mock을 명시적으로 주입할 수 있다.
-  // 일반 실행에서는 저장소·호출자 PATH를 절대 다시 추가하지 않는다.
-  const fixtureDir = env.ISSUE_ONBOARD_TEST_MODE === '1'
-    ? env.ISSUE_ONBOARD_TEST_COMMAND_DIR
-    : null;
-  const fixtureRoot = path.resolve(os.tmpdir());
-  const fixturePath = fixtureDir ? path.resolve(fixtureDir) : null;
-  const relative = fixturePath ? path.relative(fixtureRoot, fixturePath) : '..';
-  const allowedFixture = fixturePath
-    && relative !== '..'
-    && !relative.startsWith(`..${path.sep}`)
-    && !path.isAbsolute(relative);
-  return [...(allowedFixture ? [fixturePath] : []), ...SYSTEM_COMMAND_PATH].join(path.delimiter);
+function trustedCommandPath() {
+  const fixtureDir = testFixtureCommandDir();
+  return [...(fixtureDir ? [fixtureDir] : []), ...SYSTEM_COMMAND_PATH].join(path.delimiter);
 }
 
 function trustedCommandEnv(env = process.env) {
   return Object.fromEntries([
     ...COMMAND_ENV_KEYS.filter((key) => typeof env[key] === 'string').map((key) => [key, env[key]]),
-    ['PATH', trustedCommandPath(env)],
+    ['PATH', trustedCommandPath()],
   ]);
 }
 

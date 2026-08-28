@@ -131,16 +131,13 @@ console.log('GRAPH_SYNC=ok');
     entry: path.join(root, 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs'),
     env: {
       ...process.env,
-      PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
-      ISSUE_ONBOARD_TEST_MODE: '1',
-      ISSUE_ONBOARD_TEST_COMMAND_DIR: bin,
       ISSUE_ONTOLOGY_ROOT: ontologyPath === ontologyRoot ? fixtureOntology : ontologyPath,
     },
   };
 }
 
 function runCliOnboard(fixture) {
-  return spawnSync(process.execPath, [fixture.entry, 'onboard', '--all', '--no-llm'], {
+  return spawnSync(process.execPath, [fixture.entry, 'onboard', '--all', '--no-llm', '--test-command-dir', path.join(fixture.root, 'bin')], {
     cwd: fixture.root,
     env: fixture.env,
     encoding: 'utf8',
@@ -148,7 +145,7 @@ function runCliOnboard(fixture) {
 }
 
 function runCliMode(fixture, mode, args = []) {
-  return spawnSync(process.execPath, [fixture.entry, mode, ...args], {
+  return spawnSync(process.execPath, [fixture.entry, mode, ...args, '--test-command-dir', path.join(fixture.root, 'bin')], {
     cwd: fixture.root,
     env: fixture.env,
     encoding: 'utf8',
@@ -190,9 +187,6 @@ console.log('GRAPH_SYNC=ok');
     observed,
     env: {
       ...process.env,
-      PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
-      ISSUE_ONBOARD_TEST_MODE: '1',
-      ISSUE_ONBOARD_TEST_COMMAND_DIR: bin,
       ISSUE_ONTOLOGY_ROOT: ontology,
       BOOTSTRAP_SENTINEL: 'must-not-reach-repository-script',
     },

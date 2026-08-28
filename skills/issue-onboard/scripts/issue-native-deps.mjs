@@ -13,8 +13,8 @@
 //   온보딩 추천을 막는다. 방향 규약은 onboard 와 동일하다:
 //     issue X 가 Y 에 blocked-by  ⇒  Y 가 선수(predecessor)  ⇒  X --depends-on--> Y.
 import { spawnSync } from 'node:child_process';
-import os from 'node:os';
 import path from 'node:path';
+import { testFixtureCommandDir } from './issue-common.mjs';
 
 const SYSTEM_PATH = [
   '/opt/homebrew/bin', '/opt/homebrew/sbin',
@@ -30,19 +30,8 @@ const COMMAND_ENV_KEYS = [
 ];
 
 function trustedPath() {
-  // 테스트 fixture만 임시 디렉터리의 명령 mock을 명시적으로 주입할 수 있다.
-  // 일반 실행에서는 저장소·호출자 PATH를 절대 다시 추가하지 않는다.
-  const fixtureDir = process.env.ISSUE_ONBOARD_TEST_MODE === '1'
-    ? process.env.ISSUE_ONBOARD_TEST_COMMAND_DIR
-    : null;
-  const fixtureRoot = path.resolve(os.tmpdir());
-  const fixturePath = fixtureDir ? path.resolve(fixtureDir) : null;
-  const relative = fixturePath ? path.relative(fixtureRoot, fixturePath) : '..';
-  const allowedFixture = fixturePath
-    && relative !== '..'
-    && !relative.startsWith(`..${path.sep}`)
-    && !path.isAbsolute(relative);
-  return [...(allowedFixture ? [fixturePath] : []), ...SYSTEM_PATH].join(path.delimiter);
+  const fixtureDir = testFixtureCommandDir();
+  return [...(fixtureDir ? [fixtureDir] : []), ...SYSTEM_PATH].join(path.delimiter);
 }
 
 function trustedCommandEnv() {
