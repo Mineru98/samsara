@@ -22,17 +22,20 @@
 
 ## 검증
 
-- `node --test skills/issue-onboard/scripts/*.test.mjs` — 17개 통과
+- `node --test skills/issue-onboard/scripts/*.test.mjs` — 19개 통과
 - `node tools/issue-ontology/ontology.test.mjs` — 13개 통과
 - `node --check skills/issue-onboard/scripts/issue-onboard.mjs` — 통과
 - `git diff --check` — 통과
 - 캐시를 제거한 상태에서 `node skills/issue-onboard/scripts/issue-onboard.mjs` 수동 실행 —
   `GRAPH_BOOTSTRAP=issue-sync`, `SNAPSHOT_STATUS=complete`, `ONBOARD_COUNT=2` 확인
+- malformed `.issue/graph.json` 상태에서 같은 명령을 수동 실행 — `GRAPH_BOOTSTRAP_REASON=invalid`와
+  유효한 graph 재생성, `ONBOARD_COUNT=2` 확인
 
 ## 증거
 
 - 변경 전: `.issue/15/evidence/before/baseline.txt`
 - 변경 후: `.issue/15/evidence/after/onboard-bootstrap.txt`
+- review 보완 후: `.issue/15/evidence/after/malformed-cache-recovery.txt`
 - 텍스트 기반 CLI 변경이라 webp 캡처는 생략했습니다.
 
 ## 남은 이슈
