@@ -110,7 +110,7 @@
 ## 제4장 · 결인의 순서 (Skills)
 
 핵심 결인은 `issue-create → issue-start → issue-end → issue-merge` 순서로 이어집니다.
-`issue-onboard`와 `issue-sync`는 명부를 읽고 갱신하는 보조 술식이므로 필요한 시점에 호출할 수 있습니다.
+`issue-onboard`, `issue-sync`, `issue-viz`는 명부를 읽고 갱신하거나 시각화하는 보조 술식이므로 필요한 시점에 호출할 수 있습니다.
 아래 **[설화]** 는 세계관을 위한 서사이며, **[술식]** 이 실제로 수행되는 동작입니다. 설화는 술식의 동작을 바꾸지 않습니다.
 
 ### 1. `issue-onboard` — 개안(開眼)
@@ -125,25 +125,37 @@
 >
 > **[술식]** GitHub 이슈 그래프 스냅샷을 갱신합니다.
 
-### 3. `issue-create` — 결인 (結印 · 寅)
+### 3. `issue-viz` — 경락도 시각화
+
+> **[설화]** 명부에 새겨진 인과를 한눈에 읽기 위해 경락의 흐름을 화면에 펼칩니다. 어느 인이 열려 있고, 무엇이 막혀 있으며, 서로 어떤 실로 연결되는지 보드와 관계망으로 확인합니다.
+>
+> **[술식]** `.issue/graph.json`을 칸반·관계 연결선·상세 패널이 포함된 자체완결 `.issue/graph.html`로 렌더링합니다.
+
+그래프를 확인할 때 `$issue-viz [--sync] [--no-open]`을 호출합니다. `--sync`는 GitHub에서 스냅샷을 다시 만들고, `--no-open`은 파일만 생성합니다.
+
+```sh
+node skills/issue-viz/scripts/issue-viz.mjs --no-open
+```
+
+### 4. `issue-create` — 결인 (結印 · 寅)
 
 > **[설화]** 새로운 인을 세상에 세웁니다. 그러나 그 전에 반드시 명부를 뒤져야 합니다 — **이미 같은 얼굴의 인이 어딘가에서 숨 쉬고 있지는 않은가.** 중복된 인은 경락을 둘로 찢고 술법을 폭주시킵니다. 대조가 끝난 뒤에야 비로소 호랑이의 인이 맺힙니다.
 >
 > **[술식]** 중복을 확인한 뒤 이슈를 등록합니다.
 
-### 4. `issue-start` — 술법 발동 (印術發動)
+### 5. `issue-start` — 술법 발동 (印術發動)
 
 > **[설화]** 맺어진 인에 차크라가 흘러 들어가고, 술자는 분신을 내어 자신만의 결계(워크트리) 안으로 들어섭니다. 그곳에서 문제의 기원을 꿰뚫어 보고, 손을 대고, 자신이 무엇을 했는지에 대한 **증거를 인의 표면에 새깁니다.** 증거 없는 술법은 아무도 믿지 않습니다.
 >
 > **[술식]** 이슈를 분석하고 구현한 뒤, 증거를 게시합니다.
 
-### 5. `issue-end` — 인의 해방 (解印)
+### 6. `issue-end` — 인의 해방 (解印)
 
 > **[설화]** 술자가 스스로 술법을 끝냈다고 선언할 수는 없습니다. 오직 **심판을 통과한 인만이** 풀려나 세상 앞에 자신의 결과를 내놓을 자격을 얻습니다. 여기서 인은 봉인의 형태를 벗고, 모두가 검토할 수 있는 하나의 제안(PR)이 됩니다.
 >
 > **[술식]** 승인된 작업에 대해 PR을 생성합니다.
 
-### 6. `issue-merge` — 창조재생 (創造再生)
+### 7. `issue-merge` — 창조재생 (創造再生)
 
 > **[설화]** 흩어져 있던 여러 결계를 하나의 몸으로 되돌리는 최후의 술식입니다. 서로 다른 술자가 같은 경락을 건드렸다면 여기서 충돌이 터집니다. 목둔이 갈라진 줄기를 하나로 엮고, 검증이 끝나야 비로소 인은 명부로 내려가 잠듭니다. **소멸이 아니라, 잠드는 것입니다.**
 >
@@ -221,14 +233,16 @@ claude  agents/neji-verifier.md            codex  agents/neji-verifier.toml
 
 ```
 issue-onboard ─┐
-issue-sync    ─┴─▶ issue-create → issue-start → 검토·승인 → issue-end → issue-merge
-                    (결인 · 寅)    (술법 발동)    (neji)      (해인)      (창조재생)
+issue-sync    ─┼─▶ issue-viz (필요 시)
+                  │
+                  └────────▶ issue-create → issue-start → 검토·승인 → issue-end → issue-merge
+                               (결인 · 寅)    (술법 발동)    (neji)      (해인)      (창조재생)
                                                                        shikamaru
                                                                         yamato
                                                                         itachi
 ```
 
-* **`issue-onboard`** 는 현재 판을 읽는 선택적 진입점이고, **`issue-sync`** 는 그래프 스냅샷이 필요할 때 갱신하는 보조 술식입니다.
+* **`issue-onboard`** 는 현재 판을 읽는 선택적 진입점이고, **`issue-sync`** 는 그래프 스냅샷을 갱신하며, **`issue-viz`** 는 그 스냅샷을 브라우저에서 읽는 보조 술식입니다.
 
 ---
 
@@ -303,8 +317,11 @@ codex plugin add samsara@samsara
 ### Grok Build
 
 SAMSARA는 Grok Build 공식 플러그인 형식인 `.grok-plugin/plugin.json`을 제공합니다. Grok은
-플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 8개 스킬과 4개 에이전트를
+플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 9개 스킬과 4개 에이전트를
 읽습니다. 이 저장소에는 현재 Grok 전용 commands, hooks, MCP servers, LSP servers는 없습니다.
+
+현재 포함된 스킬은 `gh-setup`, `github-issue-pr-convention`, `issue-create`, `issue-start`,
+`issue-end`, `issue-merge`, `issue-onboard`, `issue-sync`, `issue-viz`입니다.
 
 SAMSARA의 플러그인 원본 저장소와 xAI 공식 marketplace 카탈로그 등록은 별개입니다. 이 이슈
 범위에서는 `xai-org/plugin-marketplace`에 등록하는 외부 PR을 제출하지 않으므로, 카탈로그에

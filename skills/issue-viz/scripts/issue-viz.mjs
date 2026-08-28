@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * issue-board.mjs — .issue/graph.json 을 그대로 칸반 HTML(graph.html)로 렌더링해 바로 연다.
+ * issue-viz.mjs — .issue/graph.json 을 그대로 칸반 HTML(graph.html)로 렌더링해 바로 연다.
  *
  *   1) fetch: 그래프를 최신화한다. `.issue/graph.json` 이 없거나 `--sync` 면 issue-onboard sync 로 재생성한다.
  *   2) render: 렌더러 자산(assets/board.html)에 graph.json 을 <script> 로 인라인해
@@ -10,7 +10,7 @@
  * graph.html 은 외부 참조가 0 인 자체완결 파일이다(외부 라이브러리·웹폰트·사이드카 0).
  * 이 파일 하나만 다른 머신으로 옮겨도 그대로 열린다. `.issue/` 는 재생성 캐시라 커밋되지 않는다.
  *
- *   node issue-board.mjs [--sync] [--no-open]
+ *   node issue-viz.mjs [--sync] [--no-open]
  *     --sync     : graph.json 이 있어도 GitHub 에서 새로 fetch(재생성)한다.
  *     --no-open  : 파일만 생성하고 브라우저를 열지 않는다(경로만 출력).
  */
@@ -20,7 +20,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));               // skills/issue-board/scripts
+const HERE = path.dirname(fileURLToPath(import.meta.url));               // skills/issue-viz/scripts
 const ASSET = path.join(HERE, '..', 'assets', 'board.html');
 
 function repoRoot() {

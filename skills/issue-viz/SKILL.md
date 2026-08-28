@@ -1,9 +1,9 @@
 ---
-name: issue-board
-description: .issue/graph.json 을 칸반 HTML(graph.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 보드", "보드 열어줘", "$issue-board" 요청에 사용.
+name: issue-viz
+description: .issue/graph.json 을 칸반 HTML(graph.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 보드", "그래프 보여줘", "$issue-viz" 요청에 사용.
 ---
 
-# Issue Board
+# Issue Viz
 
 `.issue/graph.json` 을 **그대로 칸반 형태 HTML 로 렌더링**해 브라우저로 바로 보는 스킬이다.
 GitHub 이슈가 정본이고 graph.json 은 재생성 캐시다. 이 스킬은 그래프를 **fetch(sync)** 한 뒤
@@ -13,7 +13,7 @@ self-contained HTML 이라 `file://` 더블클릭으로도 동작한다.
 ## 입력
 
 ```text
-$issue-board [--sync] [--no-open]
+$issue-viz [--sync] [--no-open]
 ```
 
 - `--sync`: graph.json 이 있어도 GitHub 에서 새로 fetch(재생성)한다. (없으면 어차피 자동 sync)
@@ -46,9 +46,9 @@ $issue-board [--sync] [--no-open]
 ## 실행
 
 ```bash
-node <skill>/scripts/issue-board.mjs            # 있으면 그대로, 없으면 fetch 후 열기
-node <skill>/scripts/issue-board.mjs --sync     # 항상 최신 fetch 후 열기
-node <skill>/scripts/issue-board.mjs --no-open  # 생성만(경로 출력)
+node <skill>/scripts/issue-viz.mjs            # 있으면 그대로, 없으면 fetch 후 열기
+node <skill>/scripts/issue-viz.mjs --sync     # 항상 최신 fetch 후 열기
+node <skill>/scripts/issue-viz.mjs --no-open  # 생성만(경로 출력)
 ```
 
 ## 보고 형식
