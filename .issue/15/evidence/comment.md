@@ -16,7 +16,7 @@ snapshot을 다시 검증한 뒤 우선순위를 안내합니다.
   test override도 거부합니다.
 - CLI 동작 변경이라 화면 캡처 대신 명령 원문과 출력 로그를 증거로 남겼습니다.
 
-## 변경 파일 (현재 PR 기준 18개)
+## 변경 파일 (현재 PR 기준 19개)
 
 - `skills/issue-onboard/scripts/issue-onboard.mjs` — 캐시 상태·열린 이슈 revision 비교·sync 부트스트랩
 - `skills/issue-onboard/scripts/issue-common.mjs` — 스킬 탐색 필터와 trusted executable 경계
@@ -33,16 +33,18 @@ snapshot을 다시 검증한 뒤 우선순위를 안내합니다.
 
 ## 검증
 
-- 검증 기준 SHA: `dad84badb53a286423cf434c8ebb8cdd9a22cbac`
+- PR tip의 exact SHA와 각 리뷰·runtime audit 결과는
+  `.omo/evidence/issue-15-review-ledger.md`에 전체 SHA와 함께 기록합니다.
 - `node --test skills/issue-onboard/scripts/*.test.mjs` — 42/42 통과
 - `node --test tools/issue-ontology/ontology.test.mjs` — 13/13 통과
 - 변경된 JS 전부 `node --check` — 통과
-- `git diff --check dad84bad^ dad84bad` — 통과
+- `git diff --check origin/main..HEAD` — 통과
 - 런타임 감사 — `RUNTIME_AUDIT=pass`, untrusted resolver skip, bootstrap environment 경계,
   trusted executable 경계 확인
 - 캐시를 제거한 상태에서 `node skills/issue-onboard/scripts/issue-onboard.mjs` 수동 실행 —
   `GRAPH_BOOTSTRAP=issue-sync`, `SNAPSHOT_STATUS=complete`, `ONBOARD_COUNT` 확인
 - malformed `.issue/graph.json` 상태에서 같은 명령을 수동 실행 — `GRAPH_BOOTSTRAP_REASON=invalid`와
+  유효한 graph 재생성 및 추천 경로 확인
 - project `.codex/skills` split 설치 — sync 실행과 `fake-project-token` 비전달 확인
 - partial·failed·stale·ontology unavailable·bare repository fallback — 추천 없이 fail-closed 확인
 
@@ -55,10 +57,8 @@ snapshot을 다시 검증한 뒤 우선순위를 안내합니다.
 
 ## 리뷰
 
-- 최종 exact-SHA 리뷰와 debugging runtime audit 결과는 PR handoff 시
-  `.omo/evidence/issue-15-review-ledger.md`에 전체 SHA와 함께 기록합니다.
-- 현재 검증 기준 SHA에서 goal / code / security / context / manual QA 및
-  runtime audit 대상 경계를 확인할 수 있습니다.
+- goal / code / security / context / manual QA 다섯 레인의 exact-SHA 결과와
+  debugging runtime audit은 위 ledger 및 개별 report artifact에 기록합니다.
 
 ## 남은 이슈
 
