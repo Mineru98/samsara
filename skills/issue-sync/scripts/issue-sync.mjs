@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
-import { resolveSkillScript } from './issue-common.mjs';
+import { readIssueSettings, resolveSkillScript } from './issue-common.mjs';
 
 const TRUSTED_PATH = [
   '/opt/homebrew/bin', '/opt/homebrew/sbin',
@@ -18,10 +18,23 @@ const CHILD_ENV_KEYS = [
   'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
   'JIRA_API_TOKEN',
 ];
+const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function configuredJiraTokenEnv() {
+  try {
+    const tokenEnv = readIssueSettings()?.provider?.jira?.tokenEnv;
+    return ENV_KEY_PATTERN.test(String(tokenEnv ?? '')) ? tokenEnv : null;
+  } catch {
+    return null;
+  }
+}
 
 function childEnvironment(env = process.env) {
+  const keys = new Set(CHILD_ENV_KEYS);
+  const tokenEnv = configuredJiraTokenEnv();
+  if (tokenEnv) keys.add(tokenEnv);
   return Object.fromEntries([
-    ...CHILD_ENV_KEYS.filter((key) => typeof env[key] === 'string').map((key) => [key, env[key]]),
+    ...[...keys].filter((key) => typeof env[key] === 'string').map((key) => [key, env[key]]),
     ['PATH', TRUSTED_PATH],
   ]);
 }

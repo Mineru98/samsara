@@ -123,9 +123,10 @@ export function run(cmd, args, opts = {}) {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
     ...opts,
-    env: opts.env
-      ? { ...process.env, ...opts.env }
-      : { ...process.env, PATH: TRUSTED_COMMAND_PATH },
+    // 호출자가 환경을 제한했으면 그 집합을 그대로 사용한다. process.env 를
+    // 다시 합치면 tracker 의 allowlist 가 무력화되어 임의의 비밀값이 자식에게
+    // 새어 나간다.
+    env: opts.env ?? { ...process.env, PATH: TRUSTED_COMMAND_PATH },
   });
   return { code: r.status ?? 1, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }

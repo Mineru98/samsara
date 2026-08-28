@@ -17,6 +17,8 @@ import {
   saveGraph,
   syncBootstrapComplete,
 } from './issue-onboard.mjs';
+import { run } from './issue-common.mjs';
+import { digest, extractQuote } from './issue-graph-v2.mjs';
 
 const now = '2026-08-28T00:00:00.000Z';
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -307,6 +309,37 @@ test('complete caches reject graph edges that are absent from the live issue sou
   assert.equal(graphBootstrapReason(graph, live), 'edge-source-changed');
 });
 
+test('complete caches reject forged metadata on a live relationship edge', () => {
+  const body = 'depends on #2';
+  const issue1 = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r', body, comments: [] };
+  const issue2 = { number: 2, title: 'Issue 2', labels: [], url: 'https://github.com/o/r/issues/2', state: 'OPEN', updatedAt: 'r', body: '', comments: [] };
+  const quote = extractQuote(body, 0, body.length);
+  const graph = completeGraph({ '1': validNode(1), '2': validNode(2) });
+  graph.snapshot.digest = issueSnapshotDigest([issue1, issue2]);
+  graph.edges = [{
+    from: 1, to: 2, type: 'depends-on', kind: 'blocked-by',
+    rationale: '#1 본문이 "depends on #2" 로 #2 을(를) 참조',
+    context: { generatedBy: 'deterministic', confidence: 'high', generatedAt: now },
+    evidence: [{ issue: 1, field: 'body', commentId: null, author: null, authoredAt: null, quote: quote.quote, start: quote.start, end: quote.end, url: issue1.url, digest: digest(body) }],
+    status: 'active', schemaVersion: 1, createdBy: 'sync', createdAt: now,
+    provenance: { url: issue1.url, digest: digest(body) },
+  }];
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const live = { openIssues: [issue1, issue2], allIssues: [issue1, issue2], allIssuesComplete: true };
+  assert.equal(graphBootstrapReason(graph, live), null);
+
+  for (const change of [
+    (edge) => { edge.rationale = 'attacker rationale'; },
+    (edge) => { edge.createdBy = 'attacker'; },
+    (edge) => { edge.provenance.digest = digest('attacker provenance'); },
+  ]) {
+    const tampered = structuredClone(graph);
+    change(tampered.edges[0]);
+    tampered.snapshot.graphDigest = graphDocumentDigest(tampered);
+    assert.equal(graphBootstrapReason(tampered, live), 'edge-source-changed');
+  }
+});
+
 test('an empty complete cache still requires both integrity digests', () => {
   const graph = completeGraph({});
   graph.snapshot.digest = issueSnapshotDigest([]);
@@ -478,6 +511,21 @@ test('bootstrap subprocess receives only the explicit environment allowlist', ()
   assert.notEqual(env.PATH, '/bin');
   assert.ok(env.PATH.split(path.delimiter).includes('/bin'));
   assert.doesNotMatch(env.PATH, /attacker/);
+});
+
+test('explicit command environments do not regain ambient variables in the shared runner', () => {
+  const key = 'ISSUE_ONBOARD_TEST_UNTRUSTED_SENTINEL';
+  const previous = process.env[key];
+  process.env[key] = 'must-not-leak';
+  try {
+    const result = run(process.execPath, ['-e', `process.stdout.write(process.env[${JSON.stringify(key)}] ?? '')`], {
+      env: { PATH: process.env.PATH ?? '/bin' },
+    });
+    assert.equal(result.out, '');
+  } finally {
+    if (previous === undefined) delete process.env[key];
+    else process.env[key] = previous;
+  }
 });
 
 test('runSyncBootstrap executes the discovered issue-sync entrypoint with bounded output and time', () => {

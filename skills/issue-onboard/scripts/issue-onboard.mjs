@@ -31,7 +31,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber } from './issue-common.mjs';
+import { repoRoot, WORKSPACE_DIR, GRAPH_FILE_NAME, isStatusLabel, typeLabels, parseIssueNumber, readIssueSettings } from './issue-common.mjs';
 import { createTracker, gitHost } from './issue-tracker.mjs';
 import { GRAPH_VERSION as V2_GRAPH_VERSION, EDGE_TYPES as V2_EDGE_TYPES, ORDERING_TYPES as V2_ORDERING_TYPES, CONTEXT_FIELDS, EDGE_CONTEXT_VERSION, DECISION_MARKER, digest, normalizeEdge, edgeKey, parseDecisionComments, decisionEdge, resolveDecisions, auditGraph, migrateGraphV1, kindOfType, extractQuote, sharedConcepts, carryStaleEdges } from './issue-graph-v2.mjs';
 import { detectLlmCommand, enrichEdges } from './issue-llm.mjs';
@@ -65,6 +65,16 @@ const BOOTSTRAP_ENV_KEYS = [
   'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
   'JIRA_API_TOKEN',
 ];
+const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function configuredJiraTokenEnv() {
+  try {
+    const tokenEnv = readIssueSettings()?.provider?.jira?.tokenEnv;
+    return ENV_KEY_PATTERN.test(String(tokenEnv ?? '')) ? tokenEnv : null;
+  } catch {
+    return null;
+  }
+}
 function unknownField(reason, source) { return { value: 'unknown', reason, source }; }
 
 function isPathWithin(parent, target) {
@@ -410,6 +420,58 @@ export function issueSourceEdgeKeys(issues = []) {
     keys.add(edgeKey(edge));
   }
   return keys;
+}
+
+/** 라이브 이슈에서 관계의 출처·근거를 재구성한다. 키만 비교하면 캐시가
+ * self-digest 를 다시 계산해 rationale/createdBy/provenance 를 위조할 수 있다. */
+function issueSourceEdgeDescriptors(issues = []) {
+  const sources = new Map();
+  for (const issue of issues) {
+    for (const ref of parseDependencies(issue.body ?? '')) {
+      const from = ref.reverse ? ref.from : issue.number;
+      const to = ref.reverse ? issue.number : ref.to;
+      if (to === from) continue;
+      const key = edgeKey({ from, to, type: ref.type });
+      if (sources.has(key)) continue;
+      const extracted = extractQuote(issue.body ?? '', ref.index, ref.matched.length);
+      const summary = `#${issue.number} 본문이 "${ref.matched}" 로 #${ref.reverse ? from : to} 을(를) 참조`;
+      sources.set(key, {
+        createdBy: 'sync',
+        rationale: summary,
+        provenance: { url: issue.url ?? null, digest: digest(issue.body ?? '') },
+        evidence: extracted ? [{
+          issue: issue.number,
+          field: 'body',
+          commentId: null,
+          author: issue.author?.login ?? issue.author ?? null,
+          authoredAt: issue.createdAt ?? null,
+          quote: extracted.quote,
+          start: extracted.start,
+          end: extracted.end,
+          url: issue.url,
+          digest: digest(issue.body ?? ''),
+        }] : [],
+      });
+    }
+  }
+  const decisions = issues.flatMap((issue) => parseDecisionComments(issue.comments ?? []));
+  for (const decision of resolveDecisions(decisions)) {
+    const edge = decisionEdge(decision);
+    if (!edge) continue;
+    const key = edgeKey(edge);
+    if (!sources.has(key)) sources.set(key, {
+      createdBy: edge.createdBy,
+      rationale: edge.rationale ?? '',
+      decisionId: edge.decisionId,
+      provenance: {
+        url: edge.provenance?.url ?? null,
+        digest: edge.provenance?.digest ?? null,
+        graphRevision: edge.provenance?.graphRevision ?? null,
+        evidence: edge.provenance?.evidence ?? null,
+      },
+    });
+  }
+  return sources;
 }
 
 function issueListLimit(value) {
@@ -897,17 +959,35 @@ function missingSkill(skill) {
   return `${skill} 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.`;
 }
 
+function edgeSourceDescriptorMatches(edge, source) {
+  if (!source || edge.createdBy !== source.createdBy) return false;
+  if ((edge.rationale ?? '') !== (source.rationale ?? '')) return false;
+  if ((edge.provenance?.url ?? null) !== (source.provenance?.url ?? null)
+    || (edge.provenance?.digest ?? null) !== (source.provenance?.digest ?? null)) return false;
+  if (source.decisionId !== undefined && edge.decisionId !== source.decisionId) return false;
+  if (source.provenance?.graphRevision !== undefined
+    && edge.provenance?.graphRevision !== source.provenance.graphRevision) return false;
+  if (source.provenance?.evidence !== undefined
+    && JSON.stringify(edge.provenance?.evidence ?? null) !== JSON.stringify(source.provenance.evidence)) return false;
+  if (source.status !== undefined && edge.status !== source.status) return false;
+  if (source.evidence !== undefined
+    && JSON.stringify(edge.evidence ?? []) !== JSON.stringify(source.evidence)) return false;
+  return true;
+}
+
 function edgeSourceReason(graph, issues, edgeSource = null) {
-  const expected = issueSourceEdgeKeys(issues);
+  const expected = issueSourceEdgeDescriptors(issues);
   if (edgeSource) {
     if (!edgeSource.complete) return edgeSource.reason ?? 'native-dependencies-unverified';
-    for (const key of edgeSource.edgeKeys ?? []) expected.add(key);
+    for (const [key, source] of edgeSource.sources ?? []) expected.set(key, source);
+    for (const key of edgeSource.edgeKeys ?? []) if (!expected.has(key)) expected.set(key, null);
   } else if ([...(graph.edges ?? [])].some((edge) => edge.createdBy === 'github-native')) {
     return 'native-dependencies-unverified';
   }
-  const actual = new Set((graph.edges ?? []).map(edgeKey));
-  if (actual.size !== expected.size || [...actual].some((key) => !expected.has(key))) {
-    return 'edge-source-changed';
+  const actual = new Map((graph.edges ?? []).map((edge) => [edgeKey(edge), edge]));
+  if (actual.size !== expected.size) return 'edge-source-changed';
+  for (const [key, edge] of actual) {
+    if (!expected.has(key) || !edgeSourceDescriptorMatches(edge, expected.get(key))) return 'edge-source-changed';
   }
   return null;
 }
@@ -990,7 +1070,10 @@ export function graphBootstrapReason(graph, {
 }
 
 export function bootstrapEnvironment(env = process.env) {
-  return Object.fromEntries(BOOTSTRAP_ENV_KEYS
+  const keys = new Set(BOOTSTRAP_ENV_KEYS);
+  const tokenEnv = configuredJiraTokenEnv();
+  if (tokenEnv) keys.add(tokenEnv);
+  return Object.fromEntries([...keys]
     .filter((key) => key === 'PATH' || typeof env[key] === 'string')
     .map((key) => [key, key === 'PATH' ? TRUSTED_PATH : env[key]]));
 }
@@ -1041,13 +1124,14 @@ function liveIssueSnapshot(tracker) {
 
 /** 라이브 원본에서 재생성한 엣지 집합과 캐시를 비교한다. */
 function liveEdgeSource(root, graph, issues, repository = null) {
-  const edgeKeys = issueSourceEdgeKeys(issues);
-  if (graph.provider !== 'github') return { complete: true, edgeKeys };
+  const sources = issueSourceEdgeDescriptors(issues);
+  const edgeKeys = new Set(sources.keys());
+  if (graph.provider !== 'github') return { complete: true, edgeKeys, sources };
   const currentRepository = repository ?? gitHost.repoInfo(root)?.nameWithOwner;
   const slug = splitSlug(currentRepository ?? '');
-  if (!slug) return { complete: false, reason: 'native-dependencies-repo-unknown', edgeKeys };
+  if (!slug) return { complete: false, reason: 'native-dependencies-repo-unknown', edgeKeys, sources };
   if (String(graph.repository ?? '').toLowerCase() !== currentRepository.toLowerCase()) {
-    return { complete: false, reason: 'repository-changed', edgeKeys };
+    return { complete: false, reason: 'repository-changed', edgeKeys, sources };
   }
   const native = collectNativeDependencies({
     list: issues,
@@ -1057,12 +1141,25 @@ function liveEdgeSource(root, graph, issues, repository = null) {
     root,
   });
   if (native.stats.skipped) {
-    return { complete: false, reason: `native-dependencies-${native.stats.skipped}`, edgeKeys };
+    return { complete: false, reason: `native-dependencies-${native.stats.skipped}`, edgeKeys, sources };
   }
   for (const candidate of native.candidates) {
-    edgeKeys.add(edgeKey({ ...candidate, type: 'depends-on' }));
+    const edge = { ...candidate, type: 'depends-on' };
+    const key = edgeKey(edge);
+    edgeKeys.add(key);
+    const sourceIssue = issues.find((issue) => Number(issue.number) === Number(candidate.from));
+    const toClosed = graph.nodes[String(candidate.to)]?.status === DONE;
+    sources.set(key, {
+      createdBy: 'github-native',
+      rationale: `#${candidate.from} 은(는) GitHub 네이티브 의존성에서 #${candidate.to} 에 blocked-by`,
+      status: toClosed ? 'resolved' : 'active',
+      provenance: {
+        url: sourceIssue?.url ?? graph.nodes[String(candidate.from)]?.url ?? null,
+        digest: digest({ nativeDependency: true, from: candidate.from, to: candidate.to }),
+      },
+    });
   }
-  return { complete: true, edgeKeys };
+  return { complete: true, edgeKeys, sources };
 }
 
 function snapshotBootstrapReason(root, graph, live, tracker) {
