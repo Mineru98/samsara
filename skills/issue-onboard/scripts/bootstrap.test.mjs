@@ -642,6 +642,44 @@ test('project-local bootstrap scripts do not receive provider credentials', () =
   assert.equal(env.PATH, '/usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin');
 });
 
+test('untrusted bootstrap scripts receive an empty HOME and XDG state', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-bootstrap-state-'));
+  const originalHome = path.join(root, 'original-home');
+  const originalConfig = path.join(root, 'original-config');
+  const marker = path.join(root, 'credential-store-visible');
+  const sync = path.join(root, 'issue-sync.mjs');
+  try {
+    mkdirSync(path.join(originalHome, '.config', 'gh'), { recursive: true });
+    mkdirSync(path.join(originalConfig, 'gh'), { recursive: true });
+    writeFileSync(path.join(originalHome, '.config', 'gh', 'hosts.yml'), 'sentinel-home', 'utf8');
+    writeFileSync(path.join(originalConfig, 'gh', 'hosts.yml'), 'sentinel-xdg', 'utf8');
+    writeExecutable(sync, `import { existsSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+const candidates = [
+  path.join(os.homedir(), '.config', 'gh', 'hosts.yml'),
+  path.join(process.env.XDG_CONFIG_HOME, 'gh', 'hosts.yml'),
+];
+writeFileSync(${JSON.stringify(marker)}, candidates.some(existsSync) ? 'visible' : 'isolated', 'utf8');
+`);
+
+    const result = runSyncBootstrap(root, {
+      resolve: () => sync,
+      env: {
+        ...process.env,
+        HOME: originalHome,
+        XDG_CONFIG_HOME: originalConfig,
+        GH_TOKEN: 'must-not-reach-project-skill',
+      },
+    });
+
+    assert.equal(result.status, 0);
+    assert.equal(readFileSync(marker, 'utf8'), 'isolated');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('same-installation bootstrap scripts receive the explicit provider credentials', () => {
   let childOptions;
   const result = runSyncBootstrap('/repo', {
@@ -711,20 +749,22 @@ test('runSyncBootstrap executes the discovered issue-sync entrypoint with bounde
   });
 
   assert.equal(result.status, 0);
-  assert.deepEqual(calls, [
-    { root: '/repo', skill: 'issue-sync', script: 'issue-sync.mjs' },
-    {
-      command: process.execPath,
-      args: ['/skills/issue-sync/scripts/issue-sync.mjs'],
-      options: {
-        cwd: '/repo',
-        encoding: 'utf8',
-        env: bootstrapEnvironment({ PATH: '/bin' }),
-        timeout: 120000,
-        maxBuffer: 16 * 1024 * 1024,
-      },
-    },
-  ]);
+  assert.deepEqual(calls[0], { root: '/repo', skill: 'issue-sync', script: 'issue-sync.mjs' });
+  const spawnCall = calls[1];
+  assert.equal(spawnCall.command, process.execPath);
+  assert.deepEqual(spawnCall.args, ['/skills/issue-sync/scripts/issue-sync.mjs']);
+  assert.equal(spawnCall.options.cwd, '/repo');
+  assert.equal(spawnCall.options.encoding, 'utf8');
+  assert.equal(spawnCall.options.timeout, 120000);
+  assert.equal(spawnCall.options.maxBuffer, 16 * 1024 * 1024);
+  assert.equal(spawnCall.options.env.PATH, bootstrapEnvironment({ PATH: '/bin' }).PATH);
+  assert.match(spawnCall.options.env.HOME, /issue-bootstrap-state-/);
+  assert.match(spawnCall.options.env.XDG_CONFIG_HOME, /issue-bootstrap-state-.*\/config$/);
+  assert.match(spawnCall.options.env.XDG_DATA_HOME, /issue-bootstrap-state-.*\/data$/);
+  assert.match(spawnCall.options.env.XDG_CACHE_HOME, /issue-bootstrap-state-.*\/cache$/);
+  assert.equal(spawnCall.options.env.BOOTSTRAP_SENTINEL, undefined);
+  assert.equal(existsSync(spawnCall.options.env.HOME), false);
+  assert.equal(calls.length, 2);
 });
 
 test('saveGraph rejects a symlinked .issue directory before writing outside the repository', () => {

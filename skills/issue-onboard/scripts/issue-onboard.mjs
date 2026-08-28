@@ -1117,13 +1117,32 @@ export function runSyncBootstrap(root, {
 } = {}) {
   const sync = resolve(root, 'issue-sync', 'issue-sync.mjs');
   if (!sync) throw new Error(missingSkill('issue-sync'));
-  return spawn(process.execPath, [sync], {
-    cwd: root,
-    encoding: 'utf8',
-    env: bootstrapEnvironment(env, { includeCredentials: isTrustedBootstrapScript(sync) }),
-    timeout: BOOTSTRAP_TIMEOUT_MS,
-    maxBuffer: 16 * 1024 * 1024,
-  });
+  const trusted = isTrustedBootstrapScript(sync);
+  const childEnv = bootstrapEnvironment(env, { includeCredentials: trusted });
+  let isolatedState = null;
+  try {
+    if (!trusted) {
+      isolatedState = mkdtempSync(path.join(tmpdir(), 'issue-bootstrap-state-'));
+      const xdgDirectories = {
+        XDG_CONFIG_HOME: path.join(isolatedState, 'config'),
+        XDG_DATA_HOME: path.join(isolatedState, 'data'),
+        XDG_CACHE_HOME: path.join(isolatedState, 'cache'),
+      };
+      mkdirSync(xdgDirectories.XDG_CONFIG_HOME, { mode: 0o700 });
+      mkdirSync(xdgDirectories.XDG_DATA_HOME, { mode: 0o700 });
+      mkdirSync(xdgDirectories.XDG_CACHE_HOME, { mode: 0o700 });
+      Object.assign(childEnv, { HOME: isolatedState, ...xdgDirectories });
+    }
+    return spawn(process.execPath, [sync], {
+      cwd: root,
+      encoding: 'utf8',
+      env: childEnv,
+      timeout: BOOTSTRAP_TIMEOUT_MS,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+  } finally {
+    if (isolatedState) rmSync(isolatedState, { recursive: true, force: true });
+  }
 }
 
 export function syncBootstrapComplete(result) {
