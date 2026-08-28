@@ -35,7 +35,7 @@ snapshot을 다시 검증한 뒤 우선순위를 안내합니다.
 
 - PR tip의 exact SHA와 각 리뷰·runtime audit 결과는
   `.omo/evidence/issue-15-review-ledger.md`에 전체 SHA와 함께 기록합니다.
-- `node --test skills/issue-onboard/scripts/*.test.mjs` — 42/42 통과
+- `node --test skills/issue-onboard/scripts/*.test.mjs` — 43/43 통과
 - `node --test tools/issue-ontology/ontology.test.mjs` — 13/13 통과
 - 변경된 JS 전부 `node --check` — 통과
 - `git diff --check origin/main..HEAD` — 통과
