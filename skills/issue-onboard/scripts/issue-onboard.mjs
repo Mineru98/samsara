@@ -220,6 +220,18 @@ export function loadGraph(root, provider = 'github', { tolerateParseError = fals
   }
 }
 
+function graphCacheFingerprint(root) {
+  const file = safeGraphFile(root);
+  if (!existsSync(file)) return null;
+  return digest(readFileSync(file, 'utf8'));
+}
+
+function assertGraphCacheStable(root, expected) {
+  if (graphCacheFingerprint(root) !== expected) {
+    throw new Error('추천 직전 그래프 캐시가 변경되어 추천하지 않는다.');
+  }
+}
+
 /** 결정적 순서로 저장한다 — diff 가 안정되도록 노드는 번호순, 엣지는 (from,to,type) 순. */
 export function saveGraph(root, graph, { now } = {}) {
   const nodes = {};
@@ -791,53 +803,61 @@ function label(graph, num) {
 }
 
 function cmdPlan(root, tracker, opts) {
-  const { graph, groups: c } = ensureValidatedOnboardGraph(root, tracker);
+  const { graph, groups: c, cacheFingerprint } = ensureValidatedOnboardGraph(root, tracker);
   const prio = (num) => { const r = priorityRank(graph.nodes[String(num)]); return r < 9 ? ` [P${r}]` : ''; };
 
   if (opts.json) {
+    assertGraphCacheStable(root, cacheFingerprint);
     console.log(JSON.stringify({
       ready: c.ready, blocked: c.blocked, inProgress: c.inProgress, done: c.done,
     }, null, 2));
     return;
   }
 
-  console.log('# 이슈 DAG todo\n');
-  console.log(`## ▶ 착수 가능 (ready) — ${c.ready.length}개`);
-  if (c.ready.length) for (const n of c.ready) console.log(`  - ${label(graph, n)}${prio(n)}`);
-  else console.log('  (없음)');
-  console.log('');
-  console.log(`## ⏳ 진행 중 (in-progress) — ${c.inProgress.length}개`);
-  if (c.inProgress.length) for (const n of c.inProgress) console.log(`  - ${label(graph, n)} (${graph.nodes[String(n)].status})`);
-  else console.log('  (없음)');
-  console.log('');
-  console.log(`## ⛔ 막힘 (blocked) — ${c.blocked.length}개`);
-  if (c.blocked.length) for (const b of c.blocked) console.log(`  - ${label(graph, b.num)}  ← 대기: ${b.blockers.map((x) => `#${x}`).join(', ')}`);
-  else console.log('  (없음)');
-  console.log('');
-  console.log(`## ✔ 완료 (done) — ${c.done.length}개`);
-  if (c.done.length) console.log(`  ${c.done.map((x) => `#${x}`).join(', ')}`);
-  else console.log('  (없음)');
-  console.log('');
-  console.log(`READY_NUMBERS=${c.ready.join(' ')}`);
-  console.log(`BLOCKED_NUMBERS=${c.blocked.map((b) => b.num).join(' ')}`);
-  console.log(`IN_PROGRESS_NUMBERS=${c.inProgress.join(' ')}`);
-  console.log(`DONE_NUMBERS=${c.done.join(' ')}`);
+  const output = [
+    '# 이슈 DAG todo',
+    '',
+    `## ▶ 착수 가능 (ready) — ${c.ready.length}개`,
+    ...(c.ready.length ? c.ready.map((n) => `  - ${label(graph, n)}${prio(n)}`) : ['  (없음)']),
+    '',
+    `## ⏳ 진행 중 (in-progress) — ${c.inProgress.length}개`,
+    ...(c.inProgress.length ? c.inProgress.map((n) => `  - ${label(graph, n)} (${graph.nodes[String(n)].status})`) : ['  (없음)']),
+    '',
+    `## ⛔ 막힘 (blocked) — ${c.blocked.length}개`,
+    ...(c.blocked.length ? c.blocked.map((b) => `  - ${label(graph, b.num)}  ← 대기: ${b.blockers.map((x) => `#${x}`).join(', ')}`) : ['  (없음)']),
+    '',
+    `## ✔ 완료 (done) — ${c.done.length}개`,
+    ...(c.done.length ? [`  ${c.done.map((x) => `#${x}`).join(', ')}`] : ['  (없음)']),
+    '',
+    `READY_NUMBERS=${c.ready.join(' ')}`,
+    `BLOCKED_NUMBERS=${c.blocked.map((b) => b.num).join(' ')}`,
+    `IN_PROGRESS_NUMBERS=${c.inProgress.join(' ')}`,
+    `DONE_NUMBERS=${c.done.join(' ')}`,
+  ];
+  assertGraphCacheStable(root, cacheFingerprint);
+  console.log(output.join('\n'));
 }
 
 function cmdNext(root, tracker) {
-  const { graph, groups: c } = ensureValidatedOnboardGraph(root, tracker);
+  const { graph, groups: c, cacheFingerprint } = ensureValidatedOnboardGraph(root, tracker);
   if (!c.ready.length) {
-    console.log(c.inProgress.length
+    const message = c.inProgress.length
       ? `착수 가능한 이슈가 없다. 진행 중: ${c.inProgress.map((n) => `#${n}`).join(', ')}`
-      : '착수 가능한 이슈가 없다. `sync` 로 그래프를 갱신하거나 막힌 이슈의 선행을 끝내라.');
+      : '착수 가능한 이슈가 없다. `sync` 로 그래프를 갱신하거나 막힌 이슈의 선행을 끝내라.';
+    assertGraphCacheStable(root, cacheFingerprint);
+    console.log(message);
     console.log('NEXT_ISSUE=');
     return;
   }
   const n = c.ready[0];
-  console.log(`다음 착수 추천: ${label(graph, n)}`);
-  console.log('');
-  console.log(`NEXT_ISSUE=${n}`);
-  console.log(`NEXT=/issue-start #${n}`);
+  const output = [
+    `다음 착수 추천: ${label(graph, n)}`,
+    '',
+    `NEXT_ISSUE=${n}`,
+    `NEXT=/issue-start #${n}`,
+  ];
+  assertGraphCacheStable(root, cacheFingerprint);
+  console.log(output.join('\n'));
 }
 
 function graphFromFile(root, file) {
@@ -1263,27 +1283,45 @@ function ensureValidatedOnboardGraph(root, tracker) {
     }
     if (postSyncReason) throw new Error(`동기화 후 그래프가 최신 열린 이슈와 일치하지 않는다: ${postSyncReason}`);
   }
+  const beforeRecommendation = graphCacheFingerprint(root);
+  graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
+  const afterRecommendationLoad = graphCacheFingerprint(root);
+  if (beforeRecommendation !== afterRecommendationLoad) {
+    throw new Error('추천 직전 그래프 캐시가 변경되어 추천하지 않는다.');
+  }
+  const finalReason = snapshotBootstrapReason(root, graph, live, tracker);
+  if (finalReason === 'ontology-unavailable') {
+    ontologyProblems(graph, { required: true });
+    throw new Error('추천 직전 온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
+  }
+  if (finalReason) throw new Error(`추천 직전 그래프가 최신 열린 이슈와 일치하지 않는다: ${finalReason}`);
+
   const problems = auditGraph(graph);
   problems.push(...ontologyProblems(graph, { required: true }));
   const cycle = findCycle(graph);
   if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
   if (problems.length) throw new Error(`안전하지 않은 그래프: ${problems.join(' / ')}`);
   const groups = classify(graph);
+  assertGraphCacheStable(root, afterRecommendationLoad);
   const openIssues = live.items.filter(issueIsOpen);
-  return { graph, openIssues, groups };
+  return { graph, openIssues, groups, cacheFingerprint: afterRecommendationLoad };
 }
 
 function cmdOnboard(root, tracker, opts) {
-  const { graph, openIssues, groups } = ensureValidatedOnboardGraph(root, tracker);
+  const { graph, openIssues, groups, cacheFingerprint } = ensureValidatedOnboardGraph(root, tracker);
   const openNumbers = new Set(openIssues.map((issue) => issue.number));
   const ordered = [...groups.ready, ...groups.inProgress, ...groups.blocked.map((item) => item.num)]
     .filter((number) => openNumbers.has(number));
   const visible = opts.all ? ordered : ordered.slice(0, 6);
-  console.log(`OPEN_ISSUES=${openIssues.length}`);
-  console.log(`ONBOARD_COUNT=${visible.length}`);
-  for (const number of visible) console.log(`PRIORITY=#${number}\t${graph.nodes[String(number)].title}`);
-  console.log(`MORE_AVAILABLE=${ordered.length > visible.length ? 1 : 0}`);
-  console.log('NEXT_ACTIONS=issue-start,issue-merge,issue-create');
+  const output = [
+    `OPEN_ISSUES=${openIssues.length}`,
+    `ONBOARD_COUNT=${visible.length}`,
+    ...visible.map((number) => `PRIORITY=#${number}\t${graph.nodes[String(number)].title}`),
+    `MORE_AVAILABLE=${ordered.length > visible.length ? 1 : 0}`,
+    'NEXT_ACTIONS=issue-start,issue-merge,issue-create',
+  ];
+  assertGraphCacheStable(root, cacheFingerprint);
+  console.log(output.join('\n'));
 }
 
 /* ------------------------------------------------------------------- usage */

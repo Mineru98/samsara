@@ -68,15 +68,17 @@ function writeExecutable(file, contents) {
   chmodSync(file, 0o755);
 }
 
-function writeCliTestLoader(root, { rewriteGraphAfterIssueList = false } = {}) {
+function writeCliTestLoader(root, { rewriteGraphAfterIssueList = false, rewriteGraphAfterGraphRead = 0 } = {}) {
   const loader = path.join(root, 'test-loader.mjs');
   writeFileSync(loader, `import childProcess from 'node:child_process';
+import fs from 'node:fs';
 import { writeFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 
 const fixtureRoot = process.env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT;
 const rewriteGraphAfterIssueList = ${JSON.stringify(rewriteGraphAfterIssueList)};
+const rewriteGraphAfterGraphRead = ${JSON.stringify(rewriteGraphAfterGraphRead)};
 if (fixtureRoot) {
   const originalSpawnSync = childProcess.spawnSync;
   childProcess.spawnSync = (command, args, options) => {
@@ -88,6 +90,18 @@ if (fixtureRoot) {
       return result;
     }
     return originalSpawnSync(command, args, options);
+  };
+  const originalReadFileSync = fs.readFileSync;
+  let graphReadCount = 0;
+  fs.readFileSync = (file, ...args) => {
+    const result = originalReadFileSync(file, ...args);
+    if (rewriteGraphAfterGraphRead && path.basename(String(file)) === 'graph.json') {
+      graphReadCount += 1;
+      if (graphReadCount === rewriteGraphAfterGraphRead) {
+        writeFileSync(path.join(fixtureRoot, '.issue', 'graph.json'), '{ TOCTOU invalid', 'utf8');
+      }
+    }
+    return result;
   };
   syncBuiltinESMExports();
 }
@@ -101,6 +115,7 @@ function cliFixture({
   initialGraph = null,
   ontologyPath = ontologyRoot,
   rewriteGraphAfterIssueList = false,
+  rewriteGraphAfterGraphRead = 0,
 } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-cli-'));
   const bin = path.join(root, 'bin');
@@ -116,7 +131,7 @@ case "$*" in
   *) printf '%s\\n' '{}' ;;
 esac
 `);
-  const testLoader = writeCliTestLoader(root, { rewriteGraphAfterIssueList });
+  const testLoader = writeCliTestLoader(root, { rewriteGraphAfterIssueList, rewriteGraphAfterGraphRead });
 
   cpSync(
     path.join(repositoryRoot, 'skills', 'issue-onboard'),
@@ -580,6 +595,28 @@ test('the onboarding CLI reports invalid caches and fails when bootstrap fails',
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });
     }
+  }
+});
+
+test('the onboarding CLI fails closed when the graph cache changes after the final graph load', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    rewriteGraphAfterGraphRead: 4,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /추천 직전 그래프 캐시가 변경되어 추천하지 않는다/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+    assert.doesNotMatch(output, /PRIORITY=/);
+    console.log(`FINAL_CACHE_VALIDATION=changed-after-load EXIT=${result.status} RECOMMENDATION=none`);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 
