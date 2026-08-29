@@ -1,12 +1,12 @@
 Manual QA runtime transcript for issue #19 cache-integrity fix
 Branch: fix/19-onboard-cache-integrity
-Source commit: c3f508252a4ba8798a734457243d02fdb453b66d
-Base: origin/main 3f46d8a857ce9bd87714e0064a74bccd41b77d10
+Source commit: b02b1c14dedee21faf65145632415647de496b00
+Base: origin/main 901b7862106c5dc6a3dd53c0de66241efa868407
 Worktree: /Users/mineru/SourceCode/samsara-issue-19
 
 S1 surface=terminal/Node test runner
 Invocation: node --test skills/issue-onboard/scripts/*.test.mjs
-Observed: tests 52; pass 52; fail 0; skipped 0; todo 0; exit 0.
+Observed: tests 55; pass 55; fail 0; skipped 0; todo 0; exit 0.
 Observed markers: FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none; OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none; OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable.
 
 S2 surface=terminal/Node test runner
@@ -18,15 +18,15 @@ Invocation: node --check skills/issue-onboard/scripts/issue-onboard.mjs; node --
 Observed: all eight commands exit 0; git diff --check exit 0.
 
 S4 surface=terminal/Node targeted regression runner
-Invocation: node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|all graph writers reject symlinked cache paths|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open' skills/issue-onboard/scripts/bootstrap.test.mjs
-Observed: tests 9; pass 9; fail 0; skipped 0; todo 0; exit 0.
+Invocation: node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
+Observed: tests 12; pass 12; fail 0; skipped 0; todo 0; exit 0.
 Observed markers: CACHE_VALIDATION=malformed EXIT=7 RECOMMENDATION=none; CACHE_VALIDATION=schema-invalid EXIT=7 RECOMMENDATION=none; FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none; OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none; OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable.
 
 S5 surface=terminal/CLI subprocess fixture
 Observed: normal bootstrap still emits ONBOARD_COUNT=1; partial/failed, malformed, schema-invalid, stale, live-read, final-load, and symlinked-writer cases do not unlock an unsafe recommendation or external write.
 
 S6 surface=terminal/CLI subprocess plus official-writer subprocess
-Observed: during final recommendation validation/output, a saveGraph writer exits 1 on the shared lock; the onboarding command exits 0, emits a stable recommendation, and leaves graph.json unchanged. All six patchGraphNode copies reject symlinked cache paths, a final-open symlink swap, and a parent-directory symlink swap, leaving the outside graph unchanged.
+Observed: during final recommendation validation/output, a saveGraph writer exits 1 on the shared lock; the onboarding command exits 0, emits a stable recommendation, and leaves graph.json unchanged. All six patchGraphNode copies reject symlinked and hard-linked cache paths, final-open and final-replacement symlink swaps, and parent-directory swaps, leaving the outside graph unchanged. `saveGraph` rejects a parent swap during final rename without overwriting the outside graph or temporary file.
 
 S7 surface=terminal/git worktree inspection
 Invocation: git status --short --untracked-files=no; git diff --check origin/main...HEAD

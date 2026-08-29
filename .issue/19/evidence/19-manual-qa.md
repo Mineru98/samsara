@@ -2,9 +2,9 @@
 
 Overall verdict: PASS.
 
-The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output. Every supported writer also rejects symlinked `.issue` and `graph.json` paths before reading or writing, opens the final file with `O_NOFOLLOW`, and verifies the parent/file inode so a last-moment path replacement cannot redirect the write.
+The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output. Every supported writer also rejects symlinked or hard-linked `.issue/graph.json` paths before reading or writing, reads through an `O_NOFOLLOW` descriptor, and anchors temporary-file creation, cleanup, and atomic replacement to the verified parent directory.
 
-Review identity: branch `fix/19-onboard-cache-integrity`, source commit `c3f508252a4ba8798a734457243d02fdb453b66d`, base `origin/main` `3f46d8a857ce9bd87714e0064a74bccd41b77d10`.
+Review identity: branch `fix/19-onboard-cache-integrity`, source commit `b02b1c14dedee21faf65145632415647de496b00`, base `origin/main` `901b7862106c5dc6a3dd53c0de66241efa868407`.
 
 Worktree note: `git status --short --untracked-files=no` is empty. The user-requested `.local/` state remains untracked and untouched.
 
@@ -22,19 +22,22 @@ Worktree note: `git status --short --untracked-files=no` is empty. The user-requ
 | Official writer at output boundary | Parent CLI plus child `saveGraph` | Writer exits 1 on lock; output is stable and cache is unchanged | PASS |
 | Direct graph writer lock handling | Node unit test | `saveGraph` throws and `patchGraphNode` returns false while lock exists | PASS |
 | Symlinked graph writer paths | Six common-module writers | `.issue` and `graph.json` symlink cases return false and leave the outside graph unchanged | PASS |
+| Hard-linked graph writer paths | Six common-module writers | Hard-linked cache files are rejected and both linked contents remain unchanged | PASS |
 | Symlink swap at final open | Six common-module writers | `O_NOFOLLOW` rejects the swapped target and leaves the outside graph unchanged | PASS |
-| Parent-directory symlink swap at final open | Six common-module writers | Parent inode validation rejects the replacement before truncate/write and leaves the outside graph unchanged | PASS |
+| Parent-directory symlink swap at final open | Six common-module writers | Parent inode validation rejects the replacement before any graph mutation and leaves the outside graph unchanged | PASS |
+| Final-file symlink swap before replacement | Six common-module writers | Destination identity validation rejects the replacement and leaves the outside graph unchanged | PASS |
+| `saveGraph` parent swap at final rename | Node unit test | Stable-parent rename fails closed and preserves outside graph/temp files | PASS |
 | Ontology/trust regressions | Node test runners | All existing trust and ontology cases pass | PASS |
 
 ## Test results
 
 | command | exit | observed |
 | --- | ---: | --- |
-| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 52 tests, 52 pass, 0 fail |
+| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 55 tests, 55 pass, 0 fail |
 | `node --test tools/issue-ontology/ontology.test.mjs` | 0 | 13 tests, 13 pass, 0 fail |
 | syntax checks for changed JavaScript files | 0 | all eight checks pass |
 | `git diff --check origin/main...HEAD` | 0 | no whitespace errors |
-| targeted cache/lock/symlink regression command | 0 | 9 tests, 9 pass; invalid, lock, symlink, final-open, and parent-directory swap markers as recorded in `after/final-cache-validation.txt` |
+| targeted cache/lock/path-integrity regression command | 0 | 12 tests, 12 pass; invalid, lock, hard-link, symlink, final-open, final-replacement, and parent-directory rename markers as recorded in `after/final-cache-validation.txt` |
 
 ## Evidence artifacts
 
