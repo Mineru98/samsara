@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": null,
-  "updatedAt": "2026-08-29T04:44:15.423Z",
+  "updatedAt": "2026-08-29T05:10:15.803Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-27T23:21:32.064Z",
@@ -547,7 +547,7 @@
     "19": {
       "number": 19,
       "title": "issue-onboard가 동시 변경된 그래프 캐시를 검증 없이 추천에 사용함",
-      "status": "in-process",
+      "status": "review",
       "labels": [
         "bug"
       ],
