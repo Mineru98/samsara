@@ -1,0 +1,30 @@
+BEFORE_CAPTURE=pure-worktree
+BRANCH=feat/28-zcode-plugin-support
+CODE_STATUS=clean
+.claude-plugin/plugin.json sha256=6f347a31eeab584cfaf1bb000bbb0b03f0ed1457b8f77d6c01812ef234313e0e
+.codex-plugin/plugin.json sha256=ca0d0a27f1af132c0ec43f682960881ba276b7f0a58a2a201713073bc0c1743d
+.grok-plugin/plugin.json sha256=6441ea3468d14d572212bcee2b7d6e7b10af4f8a7146de61b2bbd60338a56e8d
+.claude-plugin/marketplace.json sha256=6368cf256f8ff51d6e1d5def78e86bd05108323a34031e60dfa2c2973547e012
+.agents/plugins/marketplace.json sha256=f6e12cae25b9dfc0c7786702a1fab61e21f0efd7b4b79d2e06f1f36791520d03
+README.md sha256=ce620e47f7198e82d7476e8190891ea53f29c03956fb63ff7a4b9994e0f5ef67
+ZCODE_MANIFEST_EXISTS=false
+SKILL_COUNT=9 gh-setup,github-issue-pr-convention,issue-create,issue-end,issue-merge,issue-onboard,issue-start,issue-sync,issue-viz
+AGENT_COUNT=4 itachi-merge-critic.md,neji-verifier.md,shikamaru-merge-analyst.md,yamato-merge-resolver.md
+README_INSTALL_LINES=301-317
+## 제8장 · 결계의 설치 (Plugin Installation)
+
+### Claude Code
+
+```sh
+claude plugin marketplace add Mineru98/samsara
+claude plugin install samsara@samsara
+```
+
+### Codex
+
+```sh
+codex plugin marketplace add Mineru98/samsara
+codex plugin add samsara@samsara
+```
+
+### Grok Build
