@@ -1,13 +1,13 @@
 # issue #19 final recommendation cache validation
 
-SOURCE_COMMIT=61471f3fbbddb69801fff8c43c4d7c6917b62a51
-COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|all graph writers reject symlinked cache paths' skills/issue-onboard/scripts/bootstrap.test.mjs
+SOURCE_COMMIT=6a7ccd2c9a7256bc878d35524203f4512b33d76a
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|all graph writers reject symlinked cache paths|all graph writers reject a symlink swap at the final open' skills/issue-onboard/scripts/bootstrap.test.mjs
 COMMAND_EXIT=0
-TESTS=7 PASS=7 FAIL=0
+TESTS=8 PASS=8 FAIL=0
 
 FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
 OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none
 OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
-SYMLINK_WRITERS=6 DIRECTORY_AND_FILE_LINKS_REJECTED=1 OUTSIDE_GRAPH_UNCHANGED=1
+SYMLINK_WRITERS=6 DIRECTORY_AND_FILE_LINKS_REJECTED=1 FINAL_OPEN_SYMLINK_SWAP_REJECTED=1 OUTSIDE_GRAPH_UNCHANGED=1
 
 The first two fixtures rewrite `.issue/graph.json` during final validation and fail closed before recommendation markers. The lock fixture starts an official `saveGraph` writer while the onboarding process owns the sidecar lock; that writer exits nonzero, the recommendation completes synchronously, and the cache remains unchanged.
