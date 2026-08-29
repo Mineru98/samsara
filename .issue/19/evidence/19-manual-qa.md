@@ -2,9 +2,9 @@
 
 Overall verdict: PASS.
 
-The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output. Every supported writer also rejects symlinked `.issue` and `graph.json` paths before reading or writing, and opens the final file with `O_NOFOLLOW` so a last-moment symlink swap cannot redirect the write.
+The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output. Every supported writer also rejects symlinked `.issue` and `graph.json` paths before reading or writing, opens the final file with `O_NOFOLLOW`, and verifies the parent/file inode so a last-moment path replacement cannot redirect the write.
 
-Review identity: branch `fix/19-onboard-cache-integrity`, source commit `6a7ccd2c9a7256bc878d35524203f4512b33d76a`, base `origin/main` `725fa62c9d774b635b3d9fa5d113b51896749d42`.
+Review identity: branch `fix/19-onboard-cache-integrity`, source commit `c3f508252a4ba8798a734457243d02fdb453b66d`, base `origin/main` `3f46d8a857ce9bd87714e0064a74bccd41b77d10`.
 
 Worktree note: `git status --short --untracked-files=no` is empty. The user-requested `.local/` state remains untracked and untouched.
 
@@ -23,17 +23,18 @@ Worktree note: `git status --short --untracked-files=no` is empty. The user-requ
 | Direct graph writer lock handling | Node unit test | `saveGraph` throws and `patchGraphNode` returns false while lock exists | PASS |
 | Symlinked graph writer paths | Six common-module writers | `.issue` and `graph.json` symlink cases return false and leave the outside graph unchanged | PASS |
 | Symlink swap at final open | Six common-module writers | `O_NOFOLLOW` rejects the swapped target and leaves the outside graph unchanged | PASS |
+| Parent-directory symlink swap at final open | Six common-module writers | Parent inode validation rejects the replacement before truncate/write and leaves the outside graph unchanged | PASS |
 | Ontology/trust regressions | Node test runners | All existing trust and ontology cases pass | PASS |
 
 ## Test results
 
 | command | exit | observed |
 | --- | ---: | --- |
-| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 51 tests, 51 pass, 0 fail |
+| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 52 tests, 52 pass, 0 fail |
 | `node --test tools/issue-ontology/ontology.test.mjs` | 0 | 13 tests, 13 pass, 0 fail |
 | syntax checks for changed JavaScript files | 0 | all eight checks pass |
 | `git diff --check origin/main...HEAD` | 0 | no whitespace errors |
-| targeted cache/lock/symlink regression command | 0 | 8 tests, 8 pass; invalid, lock, symlink, and final-open swap markers as recorded in `after/final-cache-validation.txt` |
+| targeted cache/lock/symlink regression command | 0 | 9 tests, 9 pass; invalid, lock, symlink, final-open, and parent-directory swap markers as recorded in `after/final-cache-validation.txt` |
 
 ## Evidence artifacts
 
