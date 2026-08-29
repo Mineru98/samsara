@@ -68,18 +68,24 @@ function writeExecutable(file, contents) {
   chmodSync(file, 0o755);
 }
 
-function writeCliTestLoader(root) {
+function writeCliTestLoader(root, { rewriteGraphAfterIssueList = false } = {}) {
   const loader = path.join(root, 'test-loader.mjs');
   writeFileSync(loader, `import childProcess from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 
 const fixtureRoot = process.env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT;
+const rewriteGraphAfterIssueList = ${JSON.stringify(rewriteGraphAfterIssueList)};
 if (fixtureRoot) {
   const originalSpawnSync = childProcess.spawnSync;
   childProcess.spawnSync = (command, args, options) => {
     if (path.basename(String(command)) === 'gh') {
-      return originalSpawnSync(path.join(fixtureRoot, 'bin', 'gh'), args, options);
+      const result = originalSpawnSync(path.join(fixtureRoot, 'bin', 'gh'), args, options);
+      if (rewriteGraphAfterIssueList && args.join(' ').includes('issue list')) {
+        writeFileSync(path.join(fixtureRoot, '.issue', 'graph.json'), '{ TOCTOU invalid', 'utf8');
+      }
+      return result;
     }
     return originalSpawnSync(command, args, options);
   };
@@ -89,7 +95,13 @@ if (fixtureRoot) {
   return loader;
 }
 
-function cliFixture({ syncMode = 'complete', graph = null, initialGraph = null, ontologyPath = ontologyRoot } = {}) {
+function cliFixture({
+  syncMode = 'complete',
+  graph = null,
+  initialGraph = null,
+  ontologyPath = ontologyRoot,
+  rewriteGraphAfterIssueList = false,
+} = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-cli-'));
   const bin = path.join(root, 'bin');
   mkdirSync(bin, { recursive: true });
@@ -104,7 +116,7 @@ case "$*" in
   *) printf '%s\\n' '{}' ;;
 esac
 `);
-  const testLoader = writeCliTestLoader(root);
+  const testLoader = writeCliTestLoader(root, { rewriteGraphAfterIssueList });
 
   cpSync(
     path.join(repositoryRoot, 'skills', 'issue-onboard'),
@@ -517,6 +529,28 @@ test('the onboarding CLI rejects a graph that remains stale after a reported-suc
     assert.notEqual(result.status, 0);
     assert.match(output, /동기화 후 그래프가 최신 열린 이슈와 일치하지 않는다: open-issue-changed/);
     assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI fails closed when the graph cache changes during live issue reads', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    syncMode: 'failed',
+    rewriteGraphAfterIssueList: true,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /SYNC_FAILED=1/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+    assert.doesNotMatch(output, /PRIORITY=/);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

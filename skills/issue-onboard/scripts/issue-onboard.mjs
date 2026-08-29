@@ -1240,6 +1240,10 @@ function ensureValidatedOnboardGraph(root, tracker) {
   let live = liveIssueSnapshot(tracker);
   if (live.items === null) throw new Error('전체 이슈 목록을 조회하지 못했다.');
   if (!live.complete) throw new Error('전체 이슈 목록이 limit 안에서 끝났다는 것을 증명하지 못했다.');
+  // live snapshot을 읽는 동안 cache가 바뀔 수 있으므로, 검증 대상은 반드시
+  // 같은 시점의 디스크 상태에서 다시 읽는다. 그렇지 않으면 오래된 메모리
+  // 객체로 깨진 graph.json을 가리고 추천을 계속할 수 있다.
+  graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
   const reason = snapshotBootstrapReason(root, graph, live, tracker);
   if (reason === 'ontology-unavailable') {
     ontologyProblems(graph, { required: true });
@@ -1251,6 +1255,7 @@ function ensureValidatedOnboardGraph(root, tracker) {
     live = liveIssueSnapshot(tracker);
     if (live.items === null) throw new Error('동기화 후 전체 이슈 목록을 조회하지 못했다.');
     if (!live.complete) throw new Error('동기화 후 전체 이슈 목록이 완전하다는 것을 증명하지 못했다.');
+    graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
     const postSyncReason = snapshotBootstrapReason(root, graph, live, tracker);
     if (postSyncReason === 'ontology-unavailable') {
       ontologyProblems(graph, { required: true });
