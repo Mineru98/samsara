@@ -1,0 +1,7 @@
+OPEN_ISSUES=1
+ONBOARD_COUNT=1
+PRIORITY=#19	Issue nineteen
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+POST_GRAPH=valid
+CLI_EXIT=0

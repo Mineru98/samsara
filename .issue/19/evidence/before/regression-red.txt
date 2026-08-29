@@ -1,0 +1,28 @@
+✖ the onboarding CLI fails closed when the graph cache changes during live issue reads (693.88175ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 787.225375
+
+✖ failing tests:
+
+test at ../../../../private/tmp/issue-19-regression-before/skills/issue-onboard/scripts/bootstrap.test.mjs:537:1
+✖ the onboarding CLI fails closed when the graph cache changes during live issue reads (693.88175ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to: 0
+      at TestContext.<anonymous> (file:///private/tmp/issue-19-regression-before/skills/issue-onboard/scripts/bootstrap.test.mjs:550:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+REGRESSION_TEST_EXIT=1

@@ -14,6 +14,10 @@ live snapshot 직후 그래프 캐시를 다시 읽고 검증하며, 캐시가 �
 
 수정 후 동일 시나리오: `.issue/19/evidence/after/toctou-cli.txt`
 
+수정 전 회귀 테스트 실패 원본: `.issue/19/evidence/before/regression-red.txt` (`REGRESSION_TEST_EXIT=1`)
+
+정상 캐시 확인 원본: `.issue/19/evidence/after/normal-cli.txt` (`CLI_EXIT=0`, `POST_GRAPH=valid`)
+
 CLI/백엔드 검증 경계의 결함이라 화면 캡처는 생략했습니다. 동일한 fixture와 명령을 사용해 상태·출력·종료 코드를 비교했습니다.
 
 ## 변경 파일
@@ -25,7 +29,7 @@ CLI/백엔드 검증 경계의 결함이라 화면 캡처는 생략했습니다.
 
 - `node --test skills/issue-onboard/scripts/*.test.mjs` — 44 passed
 - `node --test tools/issue-ontology/ontology.test.mjs` — 13 passed
-- `node --check skills/issue-onboard/scripts/issue-onboard.mjs` — passed
-- `node --check skills/issue-onboard/scripts/bootstrap.test.mjs` — passed
+- `node --check skills/issue-onboard/scripts/issue-onboard.mjs` — `CHECK_issue-onboard-syntax=pass`
+- `node --check skills/issue-onboard/scripts/bootstrap.test.mjs` — `CHECK_bootstrap-test-syntax=pass`
 
 전체 원본 출력은 `.issue/19/evidence/after/test-suite.txt`에 보존했습니다.
