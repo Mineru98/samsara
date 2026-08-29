@@ -1,0 +1,22 @@
+! issue-onboard plan --json 실패로 ready 판정을 생략합니다.
+✔ valid graph passes Ajv and the schema contains the live snapshot keys (23.971125ms)
+✔ Ajv rejects blocks and unknown graph root properties (0.228875ms)
+✔ the walker rejects a parent-of cycle after Ajv shape validation (0.230083ms)
+✔ the schema edge enum stays aligned with the onboard walker (0.05425ms)
+✔ the schema edge kind enum stays aligned with the onboard walker (0.058667ms)
+✔ Ajv accepts the rich sync edge shape and top-level staleEdges (0.151625ms)
+✔ Ajv accepts a github-native dependency edge (0.331125ms)
+✔ start requires an open tracker issue and a ready result when checked (0.416791ms)
+✔ create has only git and tracker preconditions (0.19175ms)
+✔ end and merge require complete before and after evidence (0.26425ms)
+✔ missing island is an explicit skip for the human end guard (67.686792ms)
+✔ sibling skills resolve from the plugin root without hidden install directories (0.139291ms)
+✔ a failed sibling plan probe keeps start ready unchecked (76.43325ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.847541
