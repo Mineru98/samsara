@@ -39,7 +39,7 @@ $issue-onboard [--all]
 - 자동 부트스트랩은 기존 스킬 탐색 순서를 유지하되, 현재 설치 묶음 또는 프로젝트·사용자 `.claude/.codex/skills` 아래의 심볼릭 링크가 아닌 `issue-sync` 스크립트만 실행하고, 제한된 환경 변수·시간·출력 한도로 자식 프로세스를 실행한다. 현재 설치 묶음 밖의 project/user 스크립트에는 provider credential 환경 변수를 전달하지 않으며, 다른 설치에서 실행 중인 `issue-onboard`가 저장소의 bare `skills/` fallback으로 바뀌지는 않는다.
 - 온톨로지 검증기와 Ajv를 같은 신뢰된 설치에서 사용할 수 없으면 안전을 위해 추천하지 않는다. 저장소나 외부 환경 변수의 검증기 코드를 자동으로 가져오지 않는다.
 - `.issue`와 `graph.json`은 저장소 안의 실제 디렉터리·일반 파일이어야 하며, 심볼릭 링크나 다른 경로와 하드링크된 캐시는 사용하지 않는다. 읽기는 `O_NOFOLLOW` descriptor와 inode를 확인하고, 쓰기는 검증된 부모 디렉터리 안에서 임시 파일을 만든 뒤 대상 inode와 부모가 바뀌지 않았을 때만 원자 교체한다. 부모·대상·임시 파일이 검증 사이에 바뀌면 fail-closed 한다.
-- 추천 중 `.issue/graph.json.lock`이 있으면 `saveGraph`/상태 전이 writer는 갱신을 건너뛰고, 온보딩은 추천을 중단한다. 비정상 종료 뒤 남은 lock은 실행 중인 issue 작업이 없는 것을 확인한 뒤에만 수동으로 제거한다.
+- 추천 중 살아 있는 소유자의 `.issue/graph.json.lock`이 있으면 `saveGraph`/상태 전이 writer는 갱신을 건너뛰고, 온보딩은 추천을 중단한다. 비정상 종료로 죽은 PID가 기록된 형식 검증 lock만 부모·파일 inode를 다시 확인한 뒤 한 번 회수하며, 형식이 불명확하거나 경계가 바뀐 lock은 실행 중인 issue 작업이 없는 것을 확인한 뒤 수동으로 제거한다.
 - 그래프 캐시를 직접 부분 수정하지 않는다. GitHub에서 다시 동기화한다.
 - 우선순위 목록은 처음에 6개를 넘지 않는다.
 - 이슈 생성은 issue-create, 착수는 issue-start, PR 생성은 issue-end, 병합은 issue-merge가 맡는다.

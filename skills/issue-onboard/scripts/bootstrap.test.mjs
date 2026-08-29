@@ -983,6 +983,20 @@ test('graph writers fail closed when onboarding owns the cache lock', () => {
   }
 });
 
+test('reclaims a cache lock whose recorded owner is no longer alive', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-stale-lock-'));
+  try {
+    const graph = completeGraph();
+    const file = saveGraph(root, graph);
+    const lockFile = path.join(root, '.issue', 'graph.json.lock');
+    writeFileSync(lockFile, `${process.pid + 1_000_000}:1:1\n`, 'utf8');
+    assert.equal(saveGraph(root, graph), file);
+    assert.equal(existsSync(lockFile), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('all graph writers reject symlinked cache paths', async () => {
   const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
   for (const skill of skills) {
@@ -1109,6 +1123,8 @@ test('all graph writers reject a parent-directory symlink swap at the final open
       }
       assert.equal(swapped, true, skill);
       assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText, skill);
+      assert.equal(existsSync(path.join(root, '.issue-original', 'graph.json.lock')), false, skill);
+      assert.equal(existsSync(path.join(root, '.issue-original', `graph.json.tmp-${process.pid}`)), false, skill);
     } finally {
       rmSync(root, { recursive: true, force: true });
       rmSync(outside, { recursive: true, force: true });
@@ -1147,6 +1163,8 @@ test('saveGraph rejects a parent-directory swap at the final rename', () => {
     assert.equal(swapped, true);
     assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText);
     assert.equal(readFileSync(path.join(outside, temporaryName), 'utf8'), outsideTemporaryText);
+    assert.equal(existsSync(path.join(root, '.issue-original', 'graph.json.lock')), false);
+    assert.equal(existsSync(path.join(root, '.issue-original', temporaryName)), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
