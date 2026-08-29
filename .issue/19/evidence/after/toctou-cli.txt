@@ -1,0 +1,5 @@
+✗ .issue/graph.json 파싱 실패: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+SYNC_FAILED=1
+CLI_EXIT=7
+POST_GRAPH=parse-error
+POST_GRAPH_ERROR=Expected property name or '}' in JSON at position 2 (line 1 column 3)
