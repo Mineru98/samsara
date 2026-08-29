@@ -1,0 +1,75 @@
+✔ missing, incomplete, or invalid caches request a sync bootstrap (26.941875ms)
+✔ malformed graph caches can be handed to the onboarding bootstrap path (67.775875ms)
+✔ only a complete issue-sync result can unlock onboarding (0.146041ms)
+✔ cache coverage and revisions are compared with current open issues (0.869208ms)
+✔ complete caches require a matching live snapshot and cache integrity digest (0.676583ms)
+✔ complete caches reject a repository identity that differs from the live checkout (0.080834ms)
+✔ complete caches reject graph edges that are absent from the live issue sources (0.491417ms)
+✔ complete caches reject forged metadata on a live relationship edge (0.792291ms)
+✔ an empty complete cache still requires both integrity digests (0.076042ms)
+✔ default issue-list probing continues past a full page before declaring completeness (0.700708ms)
+✔ Jira pagination requires authoritative totals and follows startAt (0.091583ms)
+✔ the onboarding CLI bootstraps a complete sync before recommending issues (567.2635ms)
+✔ next and plan use the same live bootstrap validation as onboard (936.6885ms)
+✔ the onboarding CLI never recommends after partial or failed sync (870.194833ms)
+✔ the onboarding CLI rejects a graph that remains stale after a reported-success sync (466.979833ms)
+✔ the onboarding CLI fails closed when the graph cache changes during live issue reads (429.509ms)
+✔ the onboarding CLI fails closed when the ontology validator is unavailable (367.6855ms)
+✔ automatic onboarding does not import an ontology outside its trusted installation (378.927541ms)
+✔ automatic bootstrap does not execute a repository-local sync outside its trusted installation (396.6915ms)
+✔ automatic bootstrap preserves project-local flavor skill discovery (482.595792ms)
+✔ issue-sync does not fall back to a project-local issue-onboard entrypoint (76.550542ms)
+✔ bootstrap subprocess receives only the explicit environment allowlist (0.216667ms)
+✔ project-local bootstrap scripts do not receive provider credentials (0.070958ms)
+✔ untrusted bootstrap scripts receive an empty HOME and XDG state (46.919458ms)
+✔ same-installation bootstrap scripts receive the explicit provider credentials (0.216958ms)
+✔ production CLI rejects test-only command directory overrides (166.100667ms)
+✔ explicit command environments do not regain ambient variables in the shared runner (43.180584ms)
+✔ runSyncBootstrap executes the discovered issue-sync entrypoint with bounded output and time (0.72075ms)
+✔ saveGraph rejects a symlinked .issue directory before writing outside the repository (0.642291ms)
+✔ tracker CLOSED and MERGED states override stale status labels (0.591875ms)
+✔ open issues retain status labels or fall back to open (0.072167ms)
+✔ a closed derived node is classified as done (0.661875ms)
+✔ cmdLink approval comment round-trips into a valid depends-on edge (28.563541ms)
+✔ cmdUnlink revoke comment drops the edge on the next resolve (0.15825ms)
+✔ splitSlug parses owner/repo and rejects garbage (1.212ms)
+✔ fetchBlockedBy returns predecessor numbers from GraphQL nodes (0.228625ms)
+✔ fetchBlockedBy flags unsupported when the field is missing (0.140959ms)
+✔ fetchBlockedBy returns null on transient failure and bad args (0.103ms)
+✔ collectNativeDependencies builds from->to (blocked-by) candidates and honors seen (0.11225ms)
+✔ collectNativeDependencies skips cleanly when repo unknown or API unsupported (0.063166ms)
+✔ collectNativeDependencies marks any later node failure as incomplete (0.058375ms)
+✔ buildNativeEdge produces a schema-valid depends-on edge (26.916792ms)
+✔ a depends-on edge blocks the successor until the predecessor closes (0.241417ms)
+✔ findCycle rejects a predecessor/successor cycle (0.204791ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5425.78225
+! issue-onboard plan --json 실패로 ready 판정을 생략합니다.
+✔ valid graph passes Ajv and the schema contains the live snapshot keys (24.355ms)
+✔ Ajv rejects blocks and unknown graph root properties (0.239583ms)
+✔ the walker rejects a parent-of cycle after Ajv shape validation (0.237125ms)
+✔ the schema edge enum stays aligned with the onboard walker (0.053542ms)
+✔ the schema edge kind enum stays aligned with the onboard walker (0.058458ms)
+✔ Ajv accepts the rich sync edge shape and top-level staleEdges (0.154167ms)
+✔ Ajv accepts a github-native dependency edge (0.123541ms)
+✔ start requires an open tracker issue and a ready result when checked (0.375042ms)
+✔ create has only git and tracker preconditions (0.352458ms)
+✔ end and merge require complete before and after evidence (0.33075ms)
+✔ missing island is an explicit skip for the human end guard (66.916791ms)
+✔ sibling skills resolve from the plugin root without hidden install directories (0.147875ms)
+✔ a failed sibling plan probe keeps start ready unchecked (74.188208ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 250.584875
+VALIDATION_EXIT=0
