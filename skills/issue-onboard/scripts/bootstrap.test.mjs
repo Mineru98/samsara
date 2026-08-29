@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import fs, { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { syncBuiltinESMExports } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
@@ -994,6 +995,46 @@ test('all graph writers reject symlinked cache paths', async () => {
     } finally {
       rmSync(linkedDirectoryRoot, { recursive: true, force: true });
       rmSync(linkedFileRoot, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('all graph writers reject a symlink swap at the final open', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-swap-`));
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-swap-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    try {
+      saveGraph(root, completeGraph());
+      const graphFile = realpathSync(path.join(root, '.issue', 'graph.json'));
+      const outsideText = 'outside graph\n';
+      writeFileSync(outsideGraph, outsideText, 'utf8');
+      let swapped = false;
+      const originalOpenSync = fs.openSync;
+      fs.openSync = (file, flags, mode) => {
+        if (!swapped && typeof flags === 'number' && path.resolve(String(file)) === graphFile) {
+          swapped = true;
+          unlinkSync(graphFile);
+          symlinkSync(outsideGraph, graphFile);
+        }
+        return originalOpenSync(file, flags, mode);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.openSync = originalOpenSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
       rmSync(outside, { recursive: true, force: true });
     }
   }

@@ -25,7 +25,7 @@
  *
  * 요구사항: git, Node 18+, (github 면 gh 로그인 / jira 면 baseUrl·projectKey·토큰)
  */
-import { mkdirSync, writeFileSync, readFileSync, writeSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, writeSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync, openSync, closeSync, constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
@@ -178,18 +178,19 @@ function safeGraphFile(root) {
   }
 
   const issueDir = path.join(resolvedRoot, WORKSPACE_DIR);
+  let realIssueDir = issueDir;
   const issueStat = optionalLstat(issueDir);
   if (issueStat) {
     if (issueStat.isSymbolicLink() || !issueStat.isDirectory()) {
       throw new Error(`${WORKSPACE_DIR} 디렉터리는 심볼릭 링크가 아닌 실제 디렉터리여야 한다.`);
     }
-    const realIssueDir = realpathSync(issueDir);
+    realIssueDir = realpathSync(issueDir);
     if (!isPathWithin(realRoot, realIssueDir)) {
       throw new Error(`${WORKSPACE_DIR} 디렉터리가 저장소 바깥을 가리킨다.`);
     }
   }
 
-  const file = path.join(issueDir, GRAPH_FILE);
+  const file = path.join(realIssueDir, GRAPH_FILE);
   const fileStat = optionalLstat(file);
   if (fileStat) {
     if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
@@ -200,7 +201,7 @@ function safeGraphFile(root) {
       throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE}이 저장소 바깥을 가리킨다.`);
     }
   }
-  return file;
+  return path.join(realIssueDir, GRAPH_FILE);
 }
 
 export function emptyGraph(provider = 'github') {
@@ -234,12 +235,40 @@ function graphCacheLockFile(root) {
   return `${safeGraphFile(root)}.lock`;
 }
 
+function noFollowFlags(flags) {
+  if (!Number.isInteger(constants.O_NOFOLLOW) || constants.O_NOFOLLOW <= 0) {
+    throw new Error('심볼릭 링크를 안전하게 차단하는 파일 플래그를 사용할 수 없다.');
+  }
+  return flags | constants.O_NOFOLLOW;
+}
+
+function writeAll(fd, content) {
+  const bytes = Buffer.from(content);
+  let offset = 0;
+  while (offset < bytes.length) offset += writeSync(fd, bytes, offset);
+}
+
+function writeExclusiveFile(file, content) {
+  let fd;
+  try {
+    fd = openSync(file, noFollowFlags(constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL), 0o600);
+    writeAll(fd, content);
+  } catch (error) {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* 원래 오류를 보존한다 */ }
+      try { unlinkSync(file); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
+  }
+  closeSync(fd);
+}
+
 function acquireGraphCacheLock(root) {
   const lockFile = graphCacheLockFile(root);
   mkdirSync(path.dirname(lockFile), { recursive: true });
   const owner = `${process.pid}:${Date.now()}:${process.hrtime.bigint()}`;
   try {
-    writeFileSync(lockFile, `${owner}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    writeExclusiveFile(lockFile, `${owner}\n`);
   } catch (error) {
     if (error.code === 'EEXIST') {
       throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 추천하지 않는다.');
@@ -251,7 +280,8 @@ function acquireGraphCacheLock(root) {
     if (released) return;
     released = true;
     try {
-      if (readFileSync(lockFile, 'utf8') === `${owner}\n`) unlinkSync(lockFile);
+      const lockStat = lstatSync(lockFile);
+      if (lockStat.isFile() && readFileSync(lockFile, 'utf8') === `${owner}\n`) unlinkSync(lockFile);
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }

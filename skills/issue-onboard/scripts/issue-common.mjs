@@ -14,7 +14,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, statSync, lstatSync, unlinkSync,
+  mkdirSync, existsSync, readFileSync, writeFileSync, writeSync, cpSync, readdirSync, rmSync, realpathSync, statSync, lstatSync, unlinkSync, openSync, closeSync, constants,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -560,7 +560,7 @@ function safeGraphFile(root) {
     throw new Error(`${WORKSPACE_DIR} 디렉터리가 저장소 바깥을 가리킨다.`);
   }
 
-  const file = path.join(issueDir, GRAPH_FILE_NAME);
+  const file = path.join(realIssueDir, GRAPH_FILE_NAME);
   let fileStat;
   try {
     fileStat = lstatSync(file);
@@ -578,6 +578,43 @@ function safeGraphFile(root) {
   return file;
 }
 
+function noFollowFlags(flags) {
+  if (!Number.isInteger(constants.O_NOFOLLOW) || constants.O_NOFOLLOW <= 0) {
+    throw new Error('심볼릭 링크를 안전하게 차단하는 파일 플래그를 사용할 수 없다.');
+  }
+  return flags | constants.O_NOFOLLOW;
+}
+
+function writeAll(fd, content) {
+  const bytes = Buffer.from(content);
+  let offset = 0;
+  while (offset < bytes.length) offset += writeSync(fd, bytes, offset);
+}
+
+function writeExclusiveFile(file, content) {
+  let fd;
+  try {
+    fd = openSync(file, noFollowFlags(constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL), 0o600);
+    writeAll(fd, content);
+  } catch (error) {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* 원래 오류를 보존한다 */ }
+      try { unlinkSync(file); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
+  }
+  closeSync(fd);
+}
+
+function overwriteRegularFile(file, content) {
+  const fd = openSync(file, noFollowFlags(constants.O_WRONLY | constants.O_TRUNC));
+  try {
+    writeAll(fd, content);
+  } finally {
+    closeSync(fd);
+  }
+}
+
 function graphCacheLockFile(root) {
   return `${safeGraphFile(root)}.lock`;
 }
@@ -587,7 +624,7 @@ function acquireGraphCacheLock(root) {
   mkdirSync(path.dirname(lockFile), { recursive: true });
   const owner = `${process.pid}:${Date.now()}:${process.hrtime.bigint()}`;
   try {
-    writeFileSync(lockFile, `${owner}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    writeExclusiveFile(lockFile, `${owner}\n`);
   } catch (error) {
     if (error.code === 'EEXIST') throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 갱신하지 않는다.');
     throw error;
@@ -597,7 +634,8 @@ function acquireGraphCacheLock(root) {
     if (released) return;
     released = true;
     try {
-      if (readFileSync(lockFile, 'utf8') === `${owner}\n`) unlinkSync(lockFile);
+      const lockStat = lstatSync(lockFile);
+      if (lockStat.isFile() && readFileSync(lockFile, 'utf8') === `${owner}\n`) unlinkSync(lockFile);
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
@@ -646,7 +684,7 @@ export function patchGraphNode(root, node) {
       g.updatedAt = new Date().toISOString();
       const writableFile = safeGraphFile(root);
       if (writableFile !== lockedFile) return false;
-      writeFileSync(writableFile, `${JSON.stringify(g, null, 2)}\n`, 'utf8');
+      overwriteRegularFile(writableFile, `${JSON.stringify(g, null, 2)}\n`);
       return true;
     });
   } catch {
