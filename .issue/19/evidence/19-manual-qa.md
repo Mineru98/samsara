@@ -1,42 +1,44 @@
-# Manual QA — issue #19 merge critique
+# Manual QA — issue #19 cache integrity
 
-Overall verdict: PASS for the revised runtime-validation plan. The branch artifacts and fresh branch-worktree runs support the 45 issue-onboard test claim, 13 ontology test claim, targeted cache evidence, and before/after behavior comparison. The branch worktree has a pre-existing untracked `.local/` directory; tracked files are clean, but the full worktree should not be described as pristine.
+Overall verdict: PASS.
 
-## manualQa.surfaceEvidence
+The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output.
 
-| Scenario | Criterion reference | Surface | Exact invocation | Verdict | Artifact refs |
-| --- | --- | --- | --- | --- | --- |
-| S1 | Revised plan: issue-onboard suite is exactly 45 passing tests | Terminal / Node test runner | `node --test skills/issue-onboard/scripts/*.test.mjs` | PASS | A1, A2 |
-| S2 | Revised plan: ontology suite is exactly 13 passing tests | Terminal / Node test runner | `node --test tools/issue-ontology/ontology.test.mjs` | PASS | A1, A3 |
-| S3 | Revised plan: both syntax checks exit 0 | Terminal / Node syntax checker | `node --check skills/issue-onboard/scripts/issue-onboard.mjs`; `node --check skills/issue-onboard/scripts/bootstrap.test.mjs` | PASS | A1, A4 |
-| S4 | Revised plan: malformed and schema-invalid caches fail closed; normal bootstrap remains valid | Terminal / Node targeted test runner | `node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync' skills/issue-onboard/scripts/bootstrap.test.mjs` | PASS | A1, A5, A6 |
-| S5 | Revised plan: TOCTOU cache mutation produces no recommendation and a non-zero result | Terminal / Node focused regression test | `node --test --test-name-pattern='fails closed when the graph cache changes during live issue reads' skills/issue-onboard/scripts/bootstrap.test.mjs` | PASS | A1, A7, A8 |
-| S6 | Revised plan: before/after output comparison demonstrates the defect and fix | Branch evidence files | Read-only inspection of `.issue/19/evidence/before/toctou-cli.txt` and `.issue/19/evidence/after/toctou-cli.txt` | PASS | A8, A9, A10 |
-| S7 | QA integrity: no tracked worktree mutation and no diff-check errors | Terminal / git worktree inspection | `git status --short --untracked-files=no`; `git diff --check origin/main...HEAD` | PASS with note | A1, A11 |
+Review identity: branch `fix/19-onboard-cache-integrity`, source commit `6abb547e3a53d948cb555cae6b36d028e5b296d5`, base `origin/main` `1e13c115117a3342f733bad7af9f050b9a814d7d`.
 
-## manualQa.adversarialCases
+Worktree note: `git status --short --untracked-files=no` is empty. The user-requested `.local/` state remains untracked and untouched.
 
-| Scenario | Criterion reference | Adversarial class | Expected behavior | Verdict | Artifact refs |
-| --- | --- | --- | --- | --- | --- |
-| S1/S2 | Test-count claims | misleading_output | Runtime totals must match the recorded 45 and 13 claims, with zero failures/skips. | PASS | A1, A2, A3 |
-| S4 | Invalid-cache criterion | malformed_input | Malformed and schema-invalid caches must exit 7, report validation failure, and emit no recommendation. | PASS | A5, A6 |
-| S5 | TOCTOU criterion | stale_state | If the cache changes during live reads, onboarding must fail closed with no `ONBOARD_COUNT` or `PRIORITY`. | PASS | A1, A7, A8 |
-| S1 | Bootstrap reliability | partial_sync | Failed or partial sync must not unlock recommendations. | PASS | A1 |
-| S1 | Process safety | hung_command | Bootstrap execution must remain bounded; the suite's bounded-output/time test passes. | PASS | A1 |
-| S7 | QA integrity | dirty_worktree | QA must detect pre-existing dirt and avoid claiming a pristine worktree; tracked files remain unchanged. | PASS with note | A11 |
+## Scenario coverage
 
-## artifactRefs
-
-| ID | Kind | Description | Path |
+| scenario | surface | observed result | verdict |
 | --- | --- | --- | --- |
-| A1 | terminal transcript | Fresh tmux terminal runs S1–S5 and read-only checks, summarized from the observed output | `.issue/19/evidence/19-manual-qa-runtime.txt` |
-| A2 | test output | Branch-recorded issue-onboard suite, 45/45 pass | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/after/test-suite.txt` |
-| A3 | test output | Branch-recorded ontology suite, 13/13 pass | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/after/test-suite.txt` |
-| A4 | test output | Branch-recorded syntax checks | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/after/test-suite.txt` |
-| A5 | targeted test output | Fresh targeted cache/bootstrap run | `.issue/19/evidence/19-manual-qa-runtime.txt` |
-| A6 | recorded evidence | Malformed/schema-invalid cache results and targeted test result | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/after/cache-validation.txt` |
-| A7 | targeted test output | Fresh focused TOCTOU regression run | `.issue/19/evidence/19-manual-qa-runtime.txt` |
-| A8 | recorded evidence | Before/after TOCTOU CLI outputs | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/before/toctou-cli.txt`; `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/after/toctou-cli.txt` |
-| A9 | recorded evidence | Historical regression test was red before the fix | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/before/regression-red.txt` |
-| A10 | recorded evidence | Normal cache remains valid and recommends successfully | `/Users/mineru/SourceCode/samsara-issue-19/.issue/19/evidence/after/normal-cli.txt` |
-| A11 | git status/diff output | Tracked-clean status, pre-existing untracked `.local/`, and clean diff check | `.issue/19/evidence/19-manual-qa-status.txt` |
+| Normal automatic bootstrap | Node CLI subprocess fixture | Complete sync followed by `ONBOARD_COUNT=1` | PASS |
+| Malformed/schema-invalid cache | Node CLI subprocess fixture | Failed bootstrap exits nonzero and emits no recommendation markers | PASS |
+| Partial/failed sync | Node CLI subprocess fixture | Recommendation is not unlocked | PASS |
+| Stale cache after successful sync | Node CLI subprocess fixture | Cache mismatch is rejected before recommendation | PASS |
+| Cache change during live issue reads | Node CLI subprocess fixture | Nonzero exit and no `ONBOARD_COUNT`/`PRIORITY` | PASS |
+| Cache change after final graph load | Node CLI subprocess fixture | `FINAL_CACHE_VALIDATION` exits 1 with no recommendation | PASS |
+| Raw cache change during final guard | Node CLI subprocess fixture | `OUTPUT_CACHE_VALIDATION` exits 1 with no recommendation | PASS |
+| Official writer at output boundary | Parent CLI plus child `saveGraph` | Writer exits 1 on lock; output is stable and cache is unchanged | PASS |
+| Direct graph writer lock handling | Node unit test | `saveGraph` throws and `patchGraphNode` returns false while lock exists | PASS |
+| Ontology/trust regressions | Node test runners | All existing trust and ontology cases pass | PASS |
+
+## Test results
+
+| command | exit | observed |
+| --- | ---: | --- |
+| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 49 tests, 49 pass, 0 fail |
+| `node --test tools/issue-ontology/ontology.test.mjs` | 0 | 13 tests, 13 pass, 0 fail |
+| syntax checks for changed JavaScript files | 0 | all eight checks pass |
+| `git diff --check origin/main...HEAD` | 0 | no whitespace errors |
+| targeted cache/lock regression command | 0 | 6 tests, 6 pass; invalid and lock markers as recorded in `after/final-cache-validation.txt` |
+
+## Evidence artifacts
+
+- Runtime transcript: `.issue/19/evidence/19-manual-qa-runtime.txt`
+- Status record: `.issue/19/evidence/19-manual-qa-status.txt`
+- Full test summary: `.issue/19/evidence/after/test-suite.txt`
+- Cache boundary summary: `.issue/19/evidence/after/final-cache-validation.txt`
+- Before/after CLI fixtures: `.issue/19/evidence/before/toctou-cli.txt`, `.issue/19/evidence/after/toctou-cli.txt`
+
+No browser screenshot was needed: this is a terminal/CLI cache-consistency defect, and the observable contract is exit status, output markers, and persisted graph contents.
