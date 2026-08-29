@@ -1,0 +1,7 @@
+Manual QA cleanup evidence for issue #15
+Target SHA: 7b5f2015700e49b13cdde9eba04c752d8e50f996
+
+Disposable fixture roots created under the system temp directory were removed after each scenario.
+The symlink rejection run was checked for outside graph writes: no `issue-15-outside-*/graph.json` existed.
+The temporary QA harness is removed after artifact handoff.
+No tracked source file was edited, reverted, reset, committed, or pushed.

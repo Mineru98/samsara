@@ -1,0 +1,37 @@
+scenario=S14-symlink-entry-env
+criterion=C1 preserve resolver under symlink entry; C2 no secret in CLI output
+surface=symlink launcher -> issue-onboard --all
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-symlink-entry-gwK8BU/launcher.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-symlink-entry-gwK8BU
+EXIT: 0
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+SNAPSHOT_STATUS=complete
+GRAPH_SYNC=ok
+GRAPH_BOOTSTRAP=issue-sync
+GRAPH_BOOTSTRAP_REASON=missing
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	Issue fifteen
+PRIORITY=#16	Issue sixteen
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+--- STDERR ---
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "snapshot": "complete",
+  "nodes": 2,
+  "edges": 0
+}
+
+OBSERVED:
+- exit=0
+- symlink target resolved=true
+- secret absent stdout/stderr=true

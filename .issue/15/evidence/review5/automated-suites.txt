@@ -1,0 +1,17 @@
+Manual QA evidence for issue #15
+Target SHA: 7b5f2015700e49b13cdde9eba04c752d8e50f996
+Worktree: /Users/mineru/SourceCode/samsara-issue-15-review5
+
+Invocation: node --test skills/issue-onboard/scripts/*.test.mjs
+Exit: 0
+Observed: tests 29, pass 29, fail 0, skipped 0
+
+Invocation: node tools/issue-ontology/ontology.test.mjs
+Exit: 0
+Observed: tests 13, pass 13, fail 0, skipped 0
+
+Invocation: node --check skills/issue-onboard/scripts/issue-onboard.mjs && git diff --check main...HEAD
+Exit: 0
+Observed: syntax and whitespace checks passed.
+
+These commands were run in the dedicated review worktree at the target SHA.

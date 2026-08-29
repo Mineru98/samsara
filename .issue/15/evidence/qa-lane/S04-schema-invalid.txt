@@ -1,0 +1,38 @@
+scenario=S04-schema-invalid
+criterion=C1/C2 cache bootstrap and complete snapshot gate
+surface=issue-onboard CLI --all
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S04-schema-invalid-obpNfG/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S04-schema-invalid-obpNfG
+EXIT: 0
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+SNAPSHOT_STATUS=complete
+GRAPH_SYNC=ok
+GRAPH_BOOTSTRAP=issue-sync
+GRAPH_BOOTSTRAP_REASON=invalid
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	Issue fifteen
+PRIORITY=#16	Issue sixteen
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+--- STDERR ---
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "snapshot": "complete",
+  "nodes": 2,
+  "edges": 0
+}
+
+OBSERVED:
+- exit=0
+- stdout markers complete/ok=true
+- recommendation count=ONBOARD_COUNT=2
+- post graph={"exists":true,"symlink":false,"snapshot":"complete","nodes":2,"edges":0}

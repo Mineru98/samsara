@@ -1,0 +1,31 @@
+scenario=S12-dangling
+criterion=C3 no recommendation on cycle or dangling graph
+surface=issue-onboard plan --json
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S12-dangling-huDP5H/skills/issue-onboard/scripts/issue-onboard.mjs plan --json
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S12-dangling-huDP5H
+EXIT: 2
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+READY_NUMBERS=
+
+--- STDERR ---
+✗ 안전하지 않은 그래프라 plan을 만들지 않는다: dangling 엣지: 101→999
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "snapshot": "complete",
+  "nodes": 2,
+  "edges": 1
+}
+
+OBSERVED:
+- exit=2
+- empty sentinel=true
+- diagnostic=READY_NUMBERS=
+✗ 안전하지 않은 그래프라 plan을 만들지 않는다: dangling 엣지: 101→999
+

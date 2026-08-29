@@ -1,0 +1,26 @@
+target source: git archive e869aa2ad0bb0f28976ae22bac8ac0f38736d267 (worktree disappeared during QA; exact SHA verified before disappearance)
+runtime: Node v24.13.0; Ajv v8 supplied via symlinked existing local node_modules outside target; no network/install.
+
+EXACT_INVOCATION: node --test skills/issue-onboard/scripts/bootstrap.test.mjs
+EXIT: 0
+STDOUT_RESULT: tests 7; pass 7; fail 0; cancelled 0; skipped 0; todo 0
+STDERR: empty
+SIDE_EFFECTS: test fixtures self-cleaned; no source changes
+
+EXACT_INVOCATION: node --test skills/issue-onboard/scripts/*.test.mjs
+EXIT: 0
+STDOUT_RESULT: tests 21; pass 21; fail 0; cancelled 0; skipped 0; todo 0
+STDERR: empty
+SIDE_EFFECTS: test fixtures self-cleaned; no source changes
+
+EXACT_INVOCATION: node tools/issue-ontology/ontology.test.mjs
+EXIT: 0
+STDOUT_RESULT: tests 13; pass 13; fail 0; cancelled 0; skipped 0; todo 0
+STDERR/DIAGNOSTIC: one expected informational line: issue-onboard plan --json failed so ready classification was omitted; test suite still all pass
+SIDE_EFFECTS: no source changes
+
+EXACT_INVOCATION: node --check skills/issue-onboard/scripts/issue-onboard.mjs
+EXIT: 0
+STDOUT: empty
+STDERR: empty
+SIDE_EFFECTS: no source changes

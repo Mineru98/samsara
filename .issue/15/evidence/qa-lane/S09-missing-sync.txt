@@ -1,0 +1,35 @@
+scenario=S09-missing-sync
+criterion=C2 preserve skill discovery failure and do not recommend
+surface=issue-onboard CLI --all
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo
+EXIT: 1
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+
+--- STDERR ---
+file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs:711
+  if (!sync) throw new Error(missingSkill('issue-sync'));
+                   ^
+
+Error: issue-sync 스킬을 찾지 못했다. 플러그인의 skills/ 또는 사용자 스킬 디렉터리에 설치돼 있는지 확인하라.
+    at runSyncBootstrap (file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs:711:20)
+    at bootstrapWithSync (file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs:723:18)
+    at cmdOnboard (file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs:741:5)
+    at main (file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs:820:27)
+    at file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-missing-sync-uOJpNo/skills/issue-onboard/scripts/issue-onboard.mjs:841:36
+
+Node.js v24.13.0
+
+--- POST_GRAPH ---
+{
+  "exists": false
+}
+
+OBSERVED:
+- nonzero exit=true
+- missing skill named=true
+- no recommendation=true

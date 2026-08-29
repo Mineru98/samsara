@@ -1,0 +1,58 @@
+scenario=S05-complete-cache-repeat
+criterion=C1 consume complete cache same run and stable repeated invocation
+surface=issue-onboard CLI --all twice
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-complete-cache-VIE3cr/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-complete-cache-VIE3cr
+EXIT: 0
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	Issue fifteen
+PRIORITY=#16	Issue sixteen
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+--- STDERR ---
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "snapshot": "complete",
+  "nodes": 2,
+  "edges": 0
+}
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-complete-cache-VIE3cr/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-complete-cache-VIE3cr
+EXIT: 0
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	Issue fifteen
+PRIORITY=#16	Issue sixteen
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+--- STDERR ---
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "snapshot": "complete",
+  "nodes": 2,
+  "edges": 0
+}
+
+OBSERVED:
+- first/second exit=0/0
+- no bootstrap first/second=true/true
+- helper invocation log empty=true
+- post graph={"exists":true,"symlink":false,"snapshot":"complete","nodes":2,"edges":0}

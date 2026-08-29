@@ -1,0 +1,25 @@
+scenario=S16-hung-sync
+criterion=C2 bounded sync failure must not recommend; timeout is not treated as pass
+surface=issue-onboard CLI --all with issue-sync entrypoint awaiting forever
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-hung-p7blAS/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-hung-p7blAS
+EXECUTOR_TIMEOUT_MS: 1000
+EXIT: 13
+SIGNAL:
+TIMED_OUT: false (child terminated with Node unsettled top-level-await exit 13)
+--- STDOUT ---
+
+--- STDERR ---
+Warning: Detected unsettled top-level await at file:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-hung-p7blAS/skills/issue-sync/scripts/issue-sync.mjs:1
+await new Promise(()=>{});
+^
+
+--- POST_RUN_EFFECT ---
+No recommendation output; fixture removed after run.
+
+OBSERVED:
+- non-zero exit 13
+- no ONBOARD_COUNT or PRIORITY markers
+- no timeout classified as success

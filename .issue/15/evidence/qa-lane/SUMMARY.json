@@ -1,0 +1,191 @@
+[
+  {
+    "id": "S01-missing-cache",
+    "criterion": "C1/C2 cache bootstrap and complete snapshot gate",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S01-missing-cache.txt",
+    "notes": [
+      "exit=0",
+      "stdout markers complete/ok=true",
+      "recommendation count=ONBOARD_COUNT=2",
+      "post graph={\"exists\":true,\"symlink\":false,\"snapshot\":\"complete\",\"nodes\":2,\"edges\":0}"
+    ]
+  },
+  {
+    "id": "S02-malformed-cache",
+    "criterion": "C1/C2 cache bootstrap and complete snapshot gate",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S02-malformed-cache.txt",
+    "notes": [
+      "exit=0",
+      "stdout markers complete/ok=true",
+      "recommendation count=ONBOARD_COUNT=2",
+      "post graph={\"exists\":true,\"symlink\":false,\"snapshot\":\"complete\",\"nodes\":2,\"edges\":0}"
+    ]
+  },
+  {
+    "id": "S03-partial-cache",
+    "criterion": "C1/C2 cache bootstrap and complete snapshot gate",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S03-partial-cache.txt",
+    "notes": [
+      "exit=0",
+      "stdout markers complete/ok=true",
+      "recommendation count=ONBOARD_COUNT=2",
+      "post graph={\"exists\":true,\"symlink\":false,\"snapshot\":\"complete\",\"nodes\":2,\"edges\":0}"
+    ]
+  },
+  {
+    "id": "S04-schema-invalid",
+    "criterion": "C1/C2 cache bootstrap and complete snapshot gate",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S04-schema-invalid.txt",
+    "notes": [
+      "exit=0",
+      "stdout markers complete/ok=true",
+      "recommendation count=ONBOARD_COUNT=2",
+      "post graph={\"exists\":true,\"symlink\":false,\"snapshot\":\"complete\",\"nodes\":2,\"edges\":0}"
+    ]
+  },
+  {
+    "id": "S05-complete-cache-repeat",
+    "criterion": "C1 consume complete cache same run and stable repeated invocation",
+    "surface": "issue-onboard CLI --all twice",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S05-complete-cache-repeat.txt",
+    "notes": [
+      "first/second exit=0/0",
+      "no bootstrap first/second=true/true",
+      "helper invocation log empty=true",
+      "post graph={\"exists\":true,\"symlink\":false,\"snapshot\":\"complete\",\"nodes\":2,\"edges\":0}"
+    ]
+  },
+  {
+    "id": "S06-spoof-no-write",
+    "criterion": "C2 reject spoofed/partial/failed issue-sync before recommendation",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S06-spoof-no-write.txt",
+    "notes": [
+      "nonzero exit=true",
+      "no recommendation=true",
+      "failure detail=SNAPSHOT_STATUS=complete\nGRAPH_SYNC=ok\nGRAPH_BOOTSTRAP=issue-sync\nGRAPH_BOOTSTRAP_REASON=missing\nfile:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S06-spoof-no-write-0otApa/skills/issue-onboard/scripts/issue-onboard.mjs:7",
+      "post graph={\"exists\":false}"
+    ]
+  },
+  {
+    "id": "S07-spoof-partial",
+    "criterion": "C2 reject spoofed/partial/failed issue-sync before recommendation",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S07-spoof-partial.txt",
+    "notes": [
+      "nonzero exit=true",
+      "no recommendation=true",
+      "failure detail=SNAPSHOT_STATUS=complete\nGRAPH_SYNC=ok\nGRAPH_BOOTSTRAP=issue-sync\nGRAPH_BOOTSTRAP_REASON=missing\nfile:///private/var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S07-spoof-partial-tDygFj/skills/issue-onboard/scripts/issue-onboard.mjs:74",
+      "post graph={\"exists\":true,\"symlink\":false,\"snapshot\":\"partial\",\"nodes\":2,\"edges\":0}"
+    ]
+  },
+  {
+    "id": "S08-failed-sync",
+    "criterion": "C2 reject spoofed/partial/failed issue-sync before recommendation",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S08-failed-sync.txt",
+    "notes": [
+      "nonzero exit=true",
+      "no recommendation=true",
+      "failure detail=SYNC_FAILED=1\n",
+      "post graph={\"exists\":false}"
+    ]
+  },
+  {
+    "id": "S09-missing-sync",
+    "criterion": "C2 preserve skill discovery failure and do not recommend",
+    "surface": "issue-onboard CLI --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S09-missing-sync.txt",
+    "notes": [
+      "nonzero exit=true",
+      "missing skill named=true",
+      "no recommendation=true"
+    ]
+  },
+  {
+    "id": "S10-cycle",
+    "criterion": "C3 no recommendation on cycle or dangling graph",
+    "surface": "issue-onboard plan --json",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S10-cycle.txt",
+    "notes": [
+      "exit=2",
+      "empty sentinel=true",
+      "diagnostic=READY_NUMBERS=\n✗ 안전하지 않은 그래프라 plan을 만들지 않는다: parent-of 순환: #102\n"
+    ]
+  },
+  {
+    "id": "S11-cycle-next",
+    "criterion": "C3 no recommendation on cycle or dangling graph",
+    "surface": "issue-onboard next",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S11-cycle-next.txt",
+    "notes": [
+      "exit=2",
+      "empty sentinel=true",
+      "diagnostic=NEXT_ISSUE=\n✗ 안전하지 않은 그래프라 next를 추천하지 않는다: parent-of 순환: #102\n"
+    ]
+  },
+  {
+    "id": "S12-dangling",
+    "criterion": "C3 no recommendation on cycle or dangling graph",
+    "surface": "issue-onboard plan --json",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S12-dangling.txt",
+    "notes": [
+      "exit=2",
+      "empty sentinel=true",
+      "diagnostic=READY_NUMBERS=\n✗ 안전하지 않은 그래프라 plan을 만들지 않는다: dangling 엣지: 101→999\n"
+    ]
+  },
+  {
+    "id": "S13-dangling-next",
+    "criterion": "C3 no recommendation on cycle or dangling graph",
+    "surface": "issue-onboard next",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S13-dangling-next.txt",
+    "notes": [
+      "exit=2",
+      "empty sentinel=true",
+      "diagnostic=NEXT_ISSUE=\n✗ 안전하지 않은 그래프라 next를 추천하지 않는다: dangling 엣지: 101→999\n"
+    ]
+  },
+  {
+    "id": "S14-symlink-entry-env",
+    "criterion": "C1 preserve resolver under symlink entry; C2 no secret in CLI output",
+    "surface": "symlink launcher -> issue-onboard --all",
+    "verdict": "PASS",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S14-symlink-entry-env.txt",
+    "notes": [
+      "exit=0",
+      "symlink target resolved=true",
+      "secret absent stdout/stderr=true"
+    ]
+  },
+  {
+    "id": "S15-toctou-cache-rewrite",
+    "criterion": "C2/C3 re-read or integrity check against cache mutation during tracker read",
+    "surface": "issue-onboard CLI --all with gh rewriting graph after list",
+    "verdict": "FAIL",
+    "file": "/Users/mineru/SourceCode/samsara/.issue/15/evidence/qa-lane/S15-toctou-cache-rewrite.txt",
+    "notes": [
+      "exit=0",
+      "post graph={\"exists\":true,\"symlink\":false,\"parseError\":\"Expected property name or '}' in JSON at position 2 (line 1 column 3)\"}",
+      "recommendation emitted=true",
+      "stderr="
+    ]
+  }
+]

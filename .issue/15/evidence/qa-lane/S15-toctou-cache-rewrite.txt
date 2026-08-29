@@ -1,0 +1,32 @@
+scenario=S15-toctou-cache-rewrite
+criterion=C2/C3 re-read or integrity check against cache mutation during tracker read
+surface=issue-onboard CLI --all with gh rewriting graph after list
+verdict=FAIL
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-toctou-2Y0hFl/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-toctou-2Y0hFl
+EXIT: 0
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+OPEN_ISSUES=2
+ONBOARD_COUNT=2
+PRIORITY=#15	Issue fifteen
+PRIORITY=#16	Issue sixteen
+MORE_AVAILABLE=0
+NEXT_ACTIONS=issue-start,issue-merge,issue-create
+
+--- STDERR ---
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "parseError": "Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+}
+
+OBSERVED:
+- exit=0
+- post graph={"exists":true,"symlink":false,"parseError":"Expected property name or '}' in JSON at position 2 (line 1 column 3)"}
+- recommendation emitted=true
+- stderr=

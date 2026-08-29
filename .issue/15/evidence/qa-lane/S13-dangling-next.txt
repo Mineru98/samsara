@@ -1,0 +1,31 @@
+scenario=S13-dangling-next
+criterion=C3 no recommendation on cycle or dangling graph
+surface=issue-onboard next
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S13-dangling-next-9o7jwN/skills/issue-onboard/scripts/issue-onboard.mjs next
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S13-dangling-next-9o7jwN
+EXIT: 2
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+NEXT_ISSUE=
+
+--- STDERR ---
+✗ 안전하지 않은 그래프라 next를 추천하지 않는다: dangling 엣지: 101→999
+
+--- POST_GRAPH ---
+{
+  "exists": true,
+  "symlink": false,
+  "snapshot": "complete",
+  "nodes": 2,
+  "edges": 1
+}
+
+OBSERVED:
+- exit=2
+- empty sentinel=true
+- diagnostic=NEXT_ISSUE=
+✗ 안전하지 않은 그래프라 next를 추천하지 않는다: dangling 엣지: 101→999
+

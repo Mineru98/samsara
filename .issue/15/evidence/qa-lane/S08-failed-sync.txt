@@ -1,0 +1,26 @@
+scenario=S08-failed-sync
+criterion=C2 reject spoofed/partial/failed issue-sync before recommendation
+surface=issue-onboard CLI --all
+verdict=PASS
+
+EXACT_INVOCATION: node /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S08-failed-sync-W6SDVl/skills/issue-onboard/scripts/issue-onboard.mjs --all
+CWD: /var/folders/2n/z27zrgrj2m7bb_s3wykhzj0r0000gn/T/qa15-S08-failed-sync-W6SDVl
+EXIT: 7
+SIGNAL: 
+TIMED_OUT: false
+--- STDOUT ---
+SYNC_FAILED=1
+
+--- STDERR ---
+
+--- POST_GRAPH ---
+{
+  "exists": false
+}
+
+OBSERVED:
+- nonzero exit=true
+- no recommendation=true
+- failure detail=SYNC_FAILED=1
+
+- post graph={"exists":false}
