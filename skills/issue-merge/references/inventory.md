@@ -96,18 +96,16 @@ gh issue view <번호> --json number,title,state,body,labels,comments
 3. PR 이 있고 CI 가 통과했는가
 ```
 
-판정 결과를 표로 정리해 사용자에게 보여준다.
+판정 결과를 **항목별 마크다운 표**로 정리해 사용자에게 보여준다.
 
-```text
-이슈   브랜치                  증거        PR    CI     판정
-----  ---------------------  ---------  ----  -----  ------------------
-#16   fix/16-login-redirect  b2/a2 ✓    #101  pass   해결 — merge 후보
-#21   feat/21-search-filter  b1/a1 ✓    #102  pass   해결 — merge 후보
-#53   fix/53-n-plus-one      b1/a1 ✓    #103  pass   해결 — merge 후보
-#64   feat/64-export-csv     b0/a1 ✗    #104  pass   보류 — before 없음
-```
+| 이슈 | 브랜치 | 증거 | PR | CI | 판정 |
+| --- | --- | --- | --- | --- | --- |
+| #16 | `fix/16-login-redirect` | b2/a2 ✓ | #101 | pass | 해결 — merge 후보 |
+| #21 | `feat/21-search-filter` | b1/a1 ✓ | #102 | pass | 해결 — merge 후보 |
+| #53 | `fix/53-n-plus-one` | b1/a1 ✓ | #103 | pass | 해결 — merge 후보 |
+| #64 | `feat/64-export-csv` | b0/a1 ✗ | #104 | pass | 보류 — before 없음 |
 
-표는 폭이 좁아야 읽히므로 번호만 쓴다. **표 아래에 링크 목록을 따로 붙인다.**
+표는 번호만 쓴다. **표 아래에 링크 목록을 따로 붙인다.**
 
 ```text
 - [#16 로그인 후 리디렉트 실패](https://github.com/owner/repo/issues/16) · [PR #101](https://github.com/owner/repo/pull/101) · `.issue/worktrees/16-login-redirect`
