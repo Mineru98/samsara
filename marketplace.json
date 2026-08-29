@@ -1,0 +1,26 @@
+{
+  "name": "samsara",
+  "description": "ZCode plugins for disciplined, evidence-backed GitHub issue workflows.",
+  "plugins": [
+    {
+      "name": "samsara",
+      "source": {
+        "source": "github",
+        "repo": "Mineru98/samsara",
+        "path": ".",
+        "ref": "main"
+      },
+      "description": "Issue ontology harness for disciplined, evidence-backed software changes.",
+      "version": "0.3.1",
+      "category": "Developer Tools",
+      "tags": [
+        "issues",
+        "ontology",
+        "workflow",
+        "github",
+        "agents",
+        "zcode"
+      ]
+    }
+  ]
+}
