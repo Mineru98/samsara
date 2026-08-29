@@ -759,10 +759,6 @@ function overwriteRegularFile(file, content, expectedFile = null, expectedParent
   }
 }
 
-function graphCacheLockFile(root) {
-  return `${safeGraphFile(root)}.lock`;
-}
-
 function acquireGraphCacheLock(root) {
   const initialTarget = safeGraphTarget(root);
   const lockFile = `${initialTarget.file}.lock`;

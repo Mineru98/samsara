@@ -246,10 +246,6 @@ function graphCacheFingerprint(root) {
     : `unstable:${digest(first)}:${second === null ? 'missing' : digest(second)}`;
 }
 
-function graphCacheLockFile(root) {
-  return `${safeGraphFile(root)}.lock`;
-}
-
 function noFollowFlags(flags) {
   if (!Number.isInteger(constants.O_NOFOLLOW) || constants.O_NOFOLLOW <= 0) {
     throw new Error('심볼릭 링크를 안전하게 차단하는 파일 플래그를 사용할 수 없다.');
