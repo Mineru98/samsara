@@ -14,7 +14,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, statSync,
+  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, statSync, unlinkSync,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -535,36 +535,73 @@ export function typeLabels(labels = []) {
  *
  * node: { number, title?, status?, labels?, url? } — labels 는 status:* 를 걸러 저장한다.
  */
+function graphCacheLockFile(root) {
+  return path.join(root, WORKSPACE_DIR, `${GRAPH_FILE_NAME}.lock`);
+}
+
+function acquireGraphCacheLock(root) {
+  const lockFile = graphCacheLockFile(root);
+  mkdirSync(path.dirname(lockFile), { recursive: true });
+  const owner = `${process.pid}:${Date.now()}:${process.hrtime.bigint()}`;
+  try {
+    writeFileSync(lockFile, `${owner}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if (error.code === 'EEXIST') throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 갱신하지 않는다.');
+    throw error;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    try {
+      if (readFileSync(lockFile, 'utf8') === `${owner}\n`) unlinkSync(lockFile);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  };
+}
+
+function withGraphCacheLock(root, action) {
+  const release = acquireGraphCacheLock(root);
+  try {
+    return action();
+  } finally {
+    release();
+  }
+}
+
 export function patchGraphNode(root, node) {
   try {
     if (!root || !node || node.number == null) return false;
     const file = path.join(root, WORKSPACE_DIR, GRAPH_FILE_NAME);
     if (!existsSync(file)) return false;
-    const g = JSON.parse(readFileSync(file, 'utf8'));
-    if (!g || typeof g !== 'object') return false;
-    g.nodes = g.nodes || {};
-    const key = String(node.number);
-    const prev = g.nodes[key] || {};
-    g.nodes[key] = {
-      number: Number(node.number),
-      title: node.title ?? prev.title ?? '',
-      status: node.status ?? prev.status ?? 'open',
-      labels: node.labels ? typeLabels(node.labels.map((l) => (typeof l === 'string' ? l : l.name))) : (prev.labels ?? []),
-      url: node.url ?? prev.url ?? '',
-      ...(prev.priority !== undefined ? { priority: prev.priority } : {}),
-    };
-    // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
-    // 안 지키면 공유 커밋 파일(base 브랜치)에 노이즈 diff 와 머지 충돌이 생긴다.
-    const sortedNodes = {};
-    for (const k of Object.keys(g.nodes).sort((a, b) => Number(a) - Number(b))) sortedNodes[k] = g.nodes[k];
-    g.nodes = sortedNodes;
-    if (Array.isArray(g.edges)) {
-      g.edges = [...g.edges].sort((a, b) =>
-        a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
-    }
-    g.updatedAt = new Date().toISOString();
-    writeFileSync(file, `${JSON.stringify(g, null, 2)}\n`, 'utf8');
-    return true;
+    return withGraphCacheLock(root, () => {
+      const g = JSON.parse(readFileSync(file, 'utf8'));
+      if (!g || typeof g !== 'object') return false;
+      g.nodes = g.nodes || {};
+      const key = String(node.number);
+      const prev = g.nodes[key] || {};
+      g.nodes[key] = {
+        number: Number(node.number),
+        title: node.title ?? prev.title ?? '',
+        status: node.status ?? prev.status ?? 'open',
+        labels: node.labels ? typeLabels(node.labels.map((l) => (typeof l === 'string' ? l : l.name))) : (prev.labels ?? []),
+        url: node.url ?? prev.url ?? '',
+        ...(prev.priority !== undefined ? { priority: prev.priority } : {}),
+      };
+      // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
+      // 안 지키면 공유 커밋 파일(base 브랜치)에 노이즈 diff 와 머지 충돌이 생긴다.
+      const sortedNodes = {};
+      for (const k of Object.keys(g.nodes).sort((a, b) => Number(a) - Number(b))) sortedNodes[k] = g.nodes[k];
+      g.nodes = sortedNodes;
+      if (Array.isArray(g.edges)) {
+        g.edges = [...g.edges].sort((a, b) =>
+          a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
+      }
+      g.updatedAt = new Date().toISOString();
+      writeFileSync(file, `${JSON.stringify(g, null, 2)}\n`, 'utf8');
+      return true;
+    });
   } catch {
     return false;
   }

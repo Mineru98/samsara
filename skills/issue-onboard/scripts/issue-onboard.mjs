@@ -25,7 +25,7 @@
  *
  * 요구사항: git, Node 18+, (github 면 gh 로그인 / jira 면 baseUrl·projectKey·토큰)
  */
-import { mkdirSync, writeFileSync, readFileSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, writeSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
@@ -223,7 +223,48 @@ export function loadGraph(root, provider = 'github', { tolerateParseError = fals
 function graphCacheFingerprint(root) {
   const file = safeGraphFile(root);
   if (!existsSync(file)) return null;
-  return digest(readFileSync(file, 'utf8'));
+  const first = readFileSync(file, 'utf8');
+  const second = readFileSync(file, 'utf8');
+  return first === second
+    ? digest(first)
+    : `unstable:${digest(first)}:${digest(second)}`;
+}
+
+function graphCacheLockFile(root) {
+  return `${safeGraphFile(root)}.lock`;
+}
+
+function acquireGraphCacheLock(root) {
+  const lockFile = graphCacheLockFile(root);
+  mkdirSync(path.dirname(lockFile), { recursive: true });
+  const owner = `${process.pid}:${Date.now()}:${process.hrtime.bigint()}`;
+  try {
+    writeFileSync(lockFile, `${owner}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 추천하지 않는다.');
+    }
+    throw error;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    try {
+      if (readFileSync(lockFile, 'utf8') === `${owner}\n`) unlinkSync(lockFile);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  };
+}
+
+function withGraphCacheLock(root, action) {
+  const release = acquireGraphCacheLock(root);
+  try {
+    return action();
+  } finally {
+    release();
+  }
 }
 
 function assertGraphCacheStable(root, expected) {
@@ -232,30 +273,41 @@ function assertGraphCacheStable(root, expected) {
   }
 }
 
+function emitStableOutput(root, expected, output) {
+  if (graphCacheFingerprint(root) !== expected) {
+    throw new Error('추천 직전 그래프 캐시가 변경되어 추천하지 않는다.');
+  }
+  const bytes = Buffer.from(`${output}\n`);
+  let offset = 0;
+  while (offset < bytes.length) offset += writeSync(1, bytes, offset);
+}
+
 /** 결정적 순서로 저장한다 — diff 가 안정되도록 노드는 번호순, 엣지는 (from,to,type) 순. */
 export function saveGraph(root, graph, { now } = {}) {
-  const nodes = {};
-  for (const k of Object.keys(graph.nodes).sort((a, b) => Number(a) - Number(b))) nodes[k] = graph.nodes[k];
-  const edges = [...graph.edges].map(normalizeEdge).sort((a, b) =>
-    a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
-  const out = { ...graph, version: GRAPH_VERSION, updatedAt: now ?? graph.updatedAt, nodes, edges };
-  const file = safeGraphFile(root);
-  mkdirSync(path.dirname(file), { recursive: true });
-  safeGraphFile(root);
-  const temporary = `${file}.tmp-${process.pid}`;
-  let temporaryCreated = false;
-  try {
-    writeFileSync(temporary, `${JSON.stringify(out, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
-    temporaryCreated = true;
+  return withGraphCacheLock(root, () => {
+    const nodes = {};
+    for (const k of Object.keys(graph.nodes).sort((a, b) => Number(a) - Number(b))) nodes[k] = graph.nodes[k];
+    const edges = [...graph.edges].map(normalizeEdge).sort((a, b) =>
+      a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
+    const out = { ...graph, version: GRAPH_VERSION, updatedAt: now ?? graph.updatedAt, nodes, edges };
+    const file = safeGraphFile(root);
+    mkdirSync(path.dirname(file), { recursive: true });
     safeGraphFile(root);
-    renameSync(temporary, file);
-  } catch (error) {
-    if (temporaryCreated) {
-      try { unlinkSync(temporary); } catch { /* 원래 오류를 보존한다 */ }
+    const temporary = `${file}.tmp-${process.pid}`;
+    let temporaryCreated = false;
+    try {
+      writeFileSync(temporary, `${JSON.stringify(out, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
+      temporaryCreated = true;
+      safeGraphFile(root);
+      renameSync(temporary, file);
+    } catch (error) {
+      if (temporaryCreated) {
+        try { unlinkSync(temporary); } catch { /* 원래 오류를 보존한다 */ }
+      }
+      throw error;
     }
-    throw error;
-  }
-  return file;
+    return file;
+  });
 }
 
 /* --------------------------------------------------------------- 상태 파생 */
@@ -803,61 +855,58 @@ function label(graph, num) {
 }
 
 function cmdPlan(root, tracker, opts) {
-  const { graph, groups: c, cacheFingerprint } = ensureValidatedOnboardGraph(root, tracker);
-  const prio = (num) => { const r = priorityRank(graph.nodes[String(num)]); return r < 9 ? ` [P${r}]` : ''; };
+  return withValidatedOnboardGraph(root, tracker, ({ graph, groups: c, cacheFingerprint }) => {
+    const prio = (num) => { const r = priorityRank(graph.nodes[String(num)]); return r < 9 ? ` [P${r}]` : ''; };
 
-  if (opts.json) {
-    assertGraphCacheStable(root, cacheFingerprint);
-    console.log(JSON.stringify({
-      ready: c.ready, blocked: c.blocked, inProgress: c.inProgress, done: c.done,
-    }, null, 2));
-    return;
-  }
+    if (opts.json) {
+      emitStableOutput(root, cacheFingerprint, JSON.stringify({
+        ready: c.ready, blocked: c.blocked, inProgress: c.inProgress, done: c.done,
+      }, null, 2));
+      return;
+    }
 
-  const output = [
-    '# 이슈 DAG todo',
-    '',
-    `## ▶ 착수 가능 (ready) — ${c.ready.length}개`,
-    ...(c.ready.length ? c.ready.map((n) => `  - ${label(graph, n)}${prio(n)}`) : ['  (없음)']),
-    '',
-    `## ⏳ 진행 중 (in-progress) — ${c.inProgress.length}개`,
-    ...(c.inProgress.length ? c.inProgress.map((n) => `  - ${label(graph, n)} (${graph.nodes[String(n)].status})`) : ['  (없음)']),
-    '',
-    `## ⛔ 막힘 (blocked) — ${c.blocked.length}개`,
-    ...(c.blocked.length ? c.blocked.map((b) => `  - ${label(graph, b.num)}  ← 대기: ${b.blockers.map((x) => `#${x}`).join(', ')}`) : ['  (없음)']),
-    '',
-    `## ✔ 완료 (done) — ${c.done.length}개`,
-    ...(c.done.length ? [`  ${c.done.map((x) => `#${x}`).join(', ')}`] : ['  (없음)']),
-    '',
-    `READY_NUMBERS=${c.ready.join(' ')}`,
-    `BLOCKED_NUMBERS=${c.blocked.map((b) => b.num).join(' ')}`,
-    `IN_PROGRESS_NUMBERS=${c.inProgress.join(' ')}`,
-    `DONE_NUMBERS=${c.done.join(' ')}`,
-  ];
-  assertGraphCacheStable(root, cacheFingerprint);
-  console.log(output.join('\n'));
+    const output = [
+      '# 이슈 DAG todo',
+      '',
+      `## ▶ 착수 가능 (ready) — ${c.ready.length}개`,
+      ...(c.ready.length ? c.ready.map((n) => `  - ${label(graph, n)}${prio(n)}`) : ['  (없음)']),
+      '',
+      `## ⏳ 진행 중 (in-progress) — ${c.inProgress.length}개`,
+      ...(c.inProgress.length ? c.inProgress.map((n) => `  - ${label(graph, n)} (${graph.nodes[String(n)].status})`) : ['  (없음)']),
+      '',
+      `## ⛔ 막힘 (blocked) — ${c.blocked.length}개`,
+      ...(c.blocked.length ? c.blocked.map((b) => `  - ${label(graph, b.num)}  ← 대기: ${b.blockers.map((x) => `#${x}`).join(', ')}`) : ['  (없음)']),
+      '',
+      `## ✔ 완료 (done) — ${c.done.length}개`,
+      ...(c.done.length ? [`  ${c.done.map((x) => `#${x}`).join(', ')}`] : ['  (없음)']),
+      '',
+      `READY_NUMBERS=${c.ready.join(' ')}`,
+      `BLOCKED_NUMBERS=${c.blocked.map((b) => b.num).join(' ')}`,
+      `IN_PROGRESS_NUMBERS=${c.inProgress.join(' ')}`,
+      `DONE_NUMBERS=${c.done.join(' ')}`,
+    ];
+    emitStableOutput(root, cacheFingerprint, output.join('\n'));
+  });
 }
 
 function cmdNext(root, tracker) {
-  const { graph, groups: c, cacheFingerprint } = ensureValidatedOnboardGraph(root, tracker);
-  if (!c.ready.length) {
-    const message = c.inProgress.length
-      ? `착수 가능한 이슈가 없다. 진행 중: ${c.inProgress.map((n) => `#${n}`).join(', ')}`
-      : '착수 가능한 이슈가 없다. `sync` 로 그래프를 갱신하거나 막힌 이슈의 선행을 끝내라.';
-    assertGraphCacheStable(root, cacheFingerprint);
-    console.log(message);
-    console.log('NEXT_ISSUE=');
-    return;
-  }
-  const n = c.ready[0];
-  const output = [
-    `다음 착수 추천: ${label(graph, n)}`,
-    '',
-    `NEXT_ISSUE=${n}`,
-    `NEXT=/issue-start #${n}`,
-  ];
-  assertGraphCacheStable(root, cacheFingerprint);
-  console.log(output.join('\n'));
+  return withValidatedOnboardGraph(root, tracker, ({ graph, groups: c, cacheFingerprint }) => {
+    if (!c.ready.length) {
+      const message = c.inProgress.length
+        ? `착수 가능한 이슈가 없다. 진행 중: ${c.inProgress.map((n) => `#${n}`).join(', ')}`
+        : '착수 가능한 이슈가 없다. `sync` 로 그래프를 갱신하거나 막힌 이슈의 선행을 끝내라.';
+      emitStableOutput(root, cacheFingerprint, `${message}\nNEXT_ISSUE=`);
+      return;
+    }
+    const n = c.ready[0];
+    const output = [
+      `다음 착수 추천: ${label(graph, n)}`,
+      '',
+      `NEXT_ISSUE=${n}`,
+      `NEXT=/issue-start #${n}`,
+    ];
+    emitStableOutput(root, cacheFingerprint, output.join('\n'));
+  });
 }
 
 function graphFromFile(root, file) {
@@ -893,6 +942,18 @@ function ontologyProblems(graph, { required = false } = {}) {
       process.exit(2);
     }
     throw error;
+  }
+}
+
+function validatedOntologyProblems(graph) {
+  if (!ontologyModule || ontologyModule.ontologyAvailable === false) {
+    const detail = ontologyLoadError ? `: ${ontologyLoadError.message}` : '';
+    throw new Error(`Ajv 온톨로지를 사용할 수 없다${detail}`);
+  }
+  try {
+    return ontologyProblems(graph);
+  } catch (error) {
+    throw new Error(`Ajv 온톨로지 검증 실패: ${error.message}`);
   }
 }
 
@@ -1283,45 +1344,68 @@ function ensureValidatedOnboardGraph(root, tracker) {
     }
     if (postSyncReason) throw new Error(`동기화 후 그래프가 최신 열린 이슈와 일치하지 않는다: ${postSyncReason}`);
   }
-  const beforeRecommendation = graphCacheFingerprint(root);
-  graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
-  const afterRecommendationLoad = graphCacheFingerprint(root);
-  if (beforeRecommendation !== afterRecommendationLoad) {
-    throw new Error('추천 직전 그래프 캐시가 변경되어 추천하지 않는다.');
-  }
-  const finalReason = snapshotBootstrapReason(root, graph, live, tracker);
-  if (finalReason === 'ontology-unavailable') {
-    ontologyProblems(graph, { required: true });
-    throw new Error('추천 직전 온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
-  }
-  if (finalReason) throw new Error(`추천 직전 그래프가 최신 열린 이슈와 일치하지 않는다: ${finalReason}`);
+  // 최종 graph reload·검증·분류·출력을 하나의 프로토콜 구간으로 묶는다.
+  // saveGraph/patchGraphNode 도 같은 sidecar lock을 사용하므로, 지원되는 모든
+  // graph writer는 이 구간에서 캐시를 교체할 수 없다.
+  const releaseGraphCacheLock = acquireGraphCacheLock(root);
+  try {
+    const beforeRecommendation = graphCacheFingerprint(root);
+    graph = loadGraph(root, tracker.provider, { tolerateParseError: true });
+    const afterRecommendationLoad = graphCacheFingerprint(root);
+    if (beforeRecommendation !== afterRecommendationLoad) {
+      throw new Error('추천 직전 그래프 캐시가 변경되어 추천하지 않는다.');
+    }
+    const finalReason = snapshotBootstrapReason(root, graph, live, tracker);
+    if (finalReason === 'ontology-unavailable') {
+      throw new Error('추천 직전 온톨로지 검증을 사용할 수 없어 그래프를 안전하게 사용할 수 없다.');
+    }
+    if (finalReason) throw new Error(`추천 직전 그래프가 최신 열린 이슈와 일치하지 않는다: ${finalReason}`);
 
-  const problems = auditGraph(graph);
-  problems.push(...ontologyProblems(graph, { required: true }));
-  const cycle = findCycle(graph);
-  if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
-  if (problems.length) throw new Error(`안전하지 않은 그래프: ${problems.join(' / ')}`);
-  const groups = classify(graph);
-  assertGraphCacheStable(root, afterRecommendationLoad);
-  const openIssues = live.items.filter(issueIsOpen);
-  return { graph, openIssues, groups, cacheFingerprint: afterRecommendationLoad };
+    const problems = auditGraph(graph);
+    problems.push(...validatedOntologyProblems(graph));
+    const cycle = findCycle(graph);
+    if (cycle) problems.push(`순환 의존: ${cycle.join(' → ')}`);
+    if (problems.length) throw new Error(`안전하지 않은 그래프: ${problems.join(' / ')}`);
+    const groups = classify(graph);
+    assertGraphCacheStable(root, afterRecommendationLoad);
+    const openIssues = live.items.filter(issueIsOpen);
+    return {
+      graph,
+      openIssues,
+      groups,
+      cacheFingerprint: afterRecommendationLoad,
+      releaseGraphCacheLock,
+    };
+  } catch (error) {
+    releaseGraphCacheLock();
+    throw error;
+  }
+}
+
+function withValidatedOnboardGraph(root, tracker, callback) {
+  const validated = ensureValidatedOnboardGraph(root, tracker);
+  try {
+    return callback(validated);
+  } finally {
+    validated.releaseGraphCacheLock();
+  }
 }
 
 function cmdOnboard(root, tracker, opts) {
-  const { graph, openIssues, groups, cacheFingerprint } = ensureValidatedOnboardGraph(root, tracker);
-  const openNumbers = new Set(openIssues.map((issue) => issue.number));
-  const ordered = [...groups.ready, ...groups.inProgress, ...groups.blocked.map((item) => item.num)]
-    .filter((number) => openNumbers.has(number));
-  const visible = opts.all ? ordered : ordered.slice(0, 6);
-  const output = [
-    `OPEN_ISSUES=${openIssues.length}`,
-    `ONBOARD_COUNT=${visible.length}`,
-    ...visible.map((number) => `PRIORITY=#${number}\t${graph.nodes[String(number)].title}`),
-    `MORE_AVAILABLE=${ordered.length > visible.length ? 1 : 0}`,
-    'NEXT_ACTIONS=issue-start,issue-merge,issue-create',
-  ];
-  assertGraphCacheStable(root, cacheFingerprint);
-  console.log(output.join('\n'));
+  return withValidatedOnboardGraph(root, tracker, ({ graph, openIssues, groups, cacheFingerprint }) => {
+    const openNumbers = new Set(openIssues.map((issue) => issue.number));
+    const ordered = [...groups.ready, ...groups.inProgress, ...groups.blocked.map((item) => item.num)]
+      .filter((number) => openNumbers.has(number));
+    const visible = opts.all ? ordered : ordered.slice(0, 6);
+    const output = [
+      `OPEN_ISSUES=${openIssues.length}`,
+      `ONBOARD_COUNT=${visible.length}`,
+      ...visible.map((number) => `PRIORITY=#${number}\t${graph.nodes[String(number)].title}`),
+      `MORE_AVAILABLE=${ordered.length > visible.length ? 1 : 0}`,
+      'NEXT_ACTIONS=issue-start,issue-merge,issue-create',
+    ];
+    emitStableOutput(root, cacheFingerprint, output.join('\n'));
+  });
 }
 
 /* ------------------------------------------------------------------- usage */

@@ -17,7 +17,7 @@ import {
   saveGraph,
   syncBootstrapComplete,
 } from './issue-onboard.mjs';
-import { run } from './issue-common.mjs';
+import { patchGraphNode, run } from './issue-common.mjs';
 import { digest, extractQuote } from './issue-graph-v2.mjs';
 
 const now = '2026-08-28T00:00:00.000Z';
@@ -68,17 +68,23 @@ function writeExecutable(file, contents) {
   chmodSync(file, 0o755);
 }
 
-function writeCliTestLoader(root, { rewriteGraphAfterIssueList = false, rewriteGraphAfterGraphRead = 0 } = {}) {
+function writeCliTestLoader(root, {
+  rewriteGraphAfterIssueList = false,
+  rewriteGraphAfterGraphRead = 0,
+  writerDuringOutputAfterGraphRead = 0,
+} = {}) {
   const loader = path.join(root, 'test-loader.mjs');
   writeFileSync(loader, `import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import { writeFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const fixtureRoot = process.env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT;
 const rewriteGraphAfterIssueList = ${JSON.stringify(rewriteGraphAfterIssueList)};
 const rewriteGraphAfterGraphRead = ${JSON.stringify(rewriteGraphAfterGraphRead)};
+const writerDuringOutputAfterGraphRead = ${JSON.stringify(writerDuringOutputAfterGraphRead)};
 if (fixtureRoot) {
   const originalSpawnSync = childProcess.spawnSync;
   childProcess.spawnSync = (command, args, options) => {
@@ -95,10 +101,29 @@ if (fixtureRoot) {
   let graphReadCount = 0;
   fs.readFileSync = (file, ...args) => {
     const result = originalReadFileSync(file, ...args);
-    if (rewriteGraphAfterGraphRead && path.basename(String(file)) === 'graph.json') {
+    if (path.basename(String(file)) === 'graph.json') {
       graphReadCount += 1;
-      if (graphReadCount === rewriteGraphAfterGraphRead) {
+      if (rewriteGraphAfterGraphRead && graphReadCount === rewriteGraphAfterGraphRead) {
         writeFileSync(path.join(fixtureRoot, '.issue', 'graph.json'), '{ TOCTOU invalid', 'utf8');
+      }
+      if (writerDuringOutputAfterGraphRead && graphReadCount === writerDuringOutputAfterGraphRead) {
+        const writerScript = [
+          "import { readFileSync } from 'node:fs';",
+          "import { saveGraph } from " + JSON.stringify(pathToFileURL(path.join(fixtureRoot, 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs')).href) + ";",
+          "const root = " + JSON.stringify(fixtureRoot) + ";",
+          "const file = " + JSON.stringify(path.join(fixtureRoot, '.issue', 'graph.json')) + ";",
+          "saveGraph(root, JSON.parse(readFileSync(file, 'utf8')));",
+        ].join('\\n');
+        const writer = originalSpawnSync(process.execPath, ['--input-type=module', '-e', writerScript], {
+          cwd: fixtureRoot,
+          encoding: 'utf8',
+          env: { ...process.env, NODE_OPTIONS: '' },
+        });
+        writeFileSync(
+          path.join(fixtureRoot, 'writer-status.txt'),
+          String(writer.status) + '\\n' + (writer.stdout ?? '') + (writer.stderr ?? ''),
+          'utf8',
+        );
       }
     }
     return result;
@@ -116,6 +141,7 @@ function cliFixture({
   ontologyPath = ontologyRoot,
   rewriteGraphAfterIssueList = false,
   rewriteGraphAfterGraphRead = 0,
+  writerDuringOutputAfterGraphRead = 0,
 } = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-cli-'));
   const bin = path.join(root, 'bin');
@@ -131,7 +157,11 @@ case "$*" in
   *) printf '%s\\n' '{}' ;;
 esac
 `);
-  const testLoader = writeCliTestLoader(root, { rewriteGraphAfterIssueList, rewriteGraphAfterGraphRead });
+  const testLoader = writeCliTestLoader(root, {
+    rewriteGraphAfterIssueList,
+    rewriteGraphAfterGraphRead,
+    writerDuringOutputAfterGraphRead,
+  });
 
   cpSync(
     path.join(repositoryRoot, 'skills', 'issue-onboard'),
@@ -605,7 +635,7 @@ test('the onboarding CLI fails closed when the graph cache changes after the fin
   graph.snapshot.graphDigest = graphDocumentDigest(graph);
   const fixture = cliFixture({
     initialGraph: graph,
-    rewriteGraphAfterGraphRead: 4,
+    rewriteGraphAfterGraphRead: 5,
   });
   try {
     const result = runCliOnboard(fixture);
@@ -615,6 +645,52 @@ test('the onboarding CLI fails closed when the graph cache changes after the fin
     assert.doesNotMatch(output, /ONBOARD_COUNT=/);
     assert.doesNotMatch(output, /PRIORITY=/);
     console.log(`FINAL_CACHE_VALIDATION=changed-after-load EXIT=${result.status} RECOMMENDATION=none`);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI fails closed when the graph cache changes during recommendation output', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    rewriteGraphAfterGraphRead: 8,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /추천 직전 그래프 캐시가 변경되어 추천하지 않는다/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+    assert.doesNotMatch(output, /PRIORITY=/);
+    console.log(`OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=${result.status} RECOMMENDATION=none`);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI holds the cache lock while official writers attempt recommendation output', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    writerDuringOutputAfterGraphRead: 10,
+  });
+  try {
+    const before = readFileSync(path.join(fixture.root, '.issue', 'graph.json'), 'utf8');
+    const result = runCliOnboard(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /ONBOARD_COUNT=1/);
+    const writerStatus = readFileSync(path.join(fixture.root, 'writer-status.txt'), 'utf8');
+    assert.match(writerStatus, /^1\n/);
+    assert.match(writerStatus, /그래프 캐시가 다른 작업에서 변경 중이라 추천하지 않는다/);
+    assert.equal(readFileSync(path.join(fixture.root, '.issue', 'graph.json'), 'utf8'), before);
+    console.log('OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable');
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -875,5 +951,21 @@ test('saveGraph rejects a symlinked .issue directory before writing outside the 
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('graph writers fail closed when onboarding owns the cache lock', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-lock-'));
+  try {
+    const graph = completeGraph();
+    const file = saveGraph(root, graph);
+    const before = readFileSync(file, 'utf8');
+    const lockFile = path.join(root, '.issue', 'graph.json.lock');
+    writeFileSync(lockFile, 'onboard-test\\n', 'utf8');
+    assert.throws(() => saveGraph(root, graph), /그래프 캐시가 다른 작업에서 변경 중이라 추천하지 않는다/);
+    assert.equal(patchGraphNode(root, { number: 1, title: 'changed' }), false);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
