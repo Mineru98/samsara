@@ -4,7 +4,7 @@ Overall verdict: PASS.
 
 The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output. Every supported writer also rejects symlinked or hard-linked `.issue/graph.json` paths before reading or writing, reads through an `O_NOFOLLOW` descriptor, and anchors temporary-file creation, cleanup, and atomic replacement to the verified parent directory.
 
-Review identity: branch `fix/19-onboard-cache-integrity`, implementation commit `8900cb9`, base `origin/main` `b9e0277e61dc56eabb5e7a19851169ef44943261`.
+Review identity: branch `fix/19-onboard-cache-integrity`, implementation commit `8900cb9ce0681a67dc49642a6db52871a3ffa00e`, base `origin/main` `b9e0277e61dc56eabb5e7a19851169ef44943261`.
 
 Worktree note: `git status --short --untracked-files=no` is empty. The user-requested `.local/` state remains untracked and untouched.
 

@@ -2,7 +2,7 @@
 
 issue #19의 `issue-onboard`가 live issue 목록을 읽거나 최종 추천을 출력하는 사이 `.issue/graph.json`이 바뀌면, 이전에 읽은 그래프로 추천할 수 있던 TOCTOU 결함을 수정했습니다.
 
-최종 검증 기준 implementation commit: `8900cb9` (`fix(issue-19): preserve lock handoff during cleanup`)
+최종 검증 기준 implementation commit: `8900cb9ce0681a67dc49642a6db52871a3ffa00e` (`fix(issue-19): preserve lock handoff during cleanup`)
 
 최종 graph reload·온톨로지/관계 검증·분류·추천 출력을 `.issue/graph.json.lock` 아래에서 수행하고, `saveGraph`와 issue-create/start/end/merge/onboard/sync의 `patchGraphNode`가 같은 exclusive sidecar lock을 사용합니다. 공식 writer가 잠금을 얻지 못하면 갱신하지 않으므로 지원되는 캐시 교체는 검증과 출력 사이에 끼어들 수 없습니다. 출력은 동기식 stdout 쓰기로 완료한 뒤 잠금을 해제합니다.
 
