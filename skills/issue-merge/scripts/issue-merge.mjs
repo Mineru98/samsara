@@ -505,12 +505,17 @@ function cmdMerge(args) {
   const issue = inferIssue(headRef);
   if (!issue) fail('PR head branch에서 연결 이슈 번호를 추론할 수 없어 merge하지 않습니다.');
   const evidence = listEvidence(root, issue);
+  const hasBefore = evidence.some((file) => file.includes('/before/'));
+  const hasAfter = evidence.some((file) => file.includes('/after/'));
+  const hasReport = evidence.some((file) => file.endsWith('comment.md'));
   const observed = {
     gitRepo: git(['rev-parse', '--show-toplevel'], { cwd: root }).code === 0,
     trackerAuth: createTracker(root).auth().ok,
     issueExists: Boolean(issue),
-    evidenceComplete: evidence.some((file) => file.includes('/before/'))
-      && evidence.some((file) => file.includes('/after/')),
+    // 문서·설정(neither) 변경은 before/after 캡처가 없는 게 정상이다.
+    // 스크린샷이 하나도 없고 리포트(comment.md)만 있으면 문서 증거로 인정한다.
+    // before/after 중 하나라도 있으면 UI/백엔드로 보고 둘 다 요구한다(회귀 방지).
+    evidenceComplete: (hasBefore && hasAfter) || (!hasBefore && !hasAfter && hasReport),
   };
   const guard = gateAction({
     action: 'merge',
