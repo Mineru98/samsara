@@ -25,7 +25,7 @@
  *
  * 요구사항: git, Node 18+, (github 면 gh 로그인 / jira 면 baseUrl·projectKey·토큰)
  */
-import { mkdirSync, writeFileSync, readFileSync, writeSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync, openSync, closeSync, constants } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, writeSync, existsSync, lstatSync, realpathSync, renameSync, unlinkSync, mkdtempSync, rmSync, openSync, closeSync, ftruncateSync, constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
@@ -242,6 +242,30 @@ function noFollowFlags(flags) {
   return flags | constants.O_NOFOLLOW;
 }
 
+function sameFile(first, second) {
+  return first.dev === second.dev && first.ino === second.ino;
+}
+
+function openWithStableParent(file, flags, mode) {
+  const parent = path.dirname(file);
+  const before = lstatSync(parent);
+  if (before.isSymbolicLink() || !before.isDirectory()) {
+    throw new Error(`${WORKSPACE_DIR} 상위 디렉터리가 안전한 일반 디렉터리가 아니다.`);
+  }
+  let fd;
+  try {
+    fd = openSync(file, flags, mode);
+    const after = lstatSync(parent);
+    if (!sameFile(before, after)) throw new Error('그래프 캐시 상위 디렉터리가 열기 중 변경되었다.');
+    return fd;
+  } catch (error) {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
+  }
+}
+
 function writeAll(fd, content) {
   const bytes = Buffer.from(content);
   let offset = 0;
@@ -251,7 +275,7 @@ function writeAll(fd, content) {
 function writeExclusiveFile(file, content) {
   let fd;
   try {
-    fd = openSync(file, noFollowFlags(constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL), 0o600);
+    fd = openWithStableParent(file, noFollowFlags(constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL), 0o600);
     writeAll(fd, content);
   } catch (error) {
     if (fd !== undefined) {
@@ -326,7 +350,7 @@ export function saveGraph(root, graph, { now } = {}) {
     const temporary = `${file}.tmp-${process.pid}`;
     let temporaryCreated = false;
     try {
-      writeFileSync(temporary, `${JSON.stringify(out, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
+      writeExclusiveFile(temporary, `${JSON.stringify(out, null, 2)}\n`);
       temporaryCreated = true;
       safeGraphFile(root);
       renameSync(temporary, file);

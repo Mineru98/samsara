@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import fs, { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import fs, { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -1021,6 +1021,46 @@ test('all graph writers reject a symlink swap at the final open', async () => {
           swapped = true;
           unlinkSync(graphFile);
           symlinkSync(outsideGraph, graphFile);
+        }
+        return originalOpenSync(file, flags, mode);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.openSync = originalOpenSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('all graph writers reject a parent-directory symlink swap at the final open', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-parent-swap-`));
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-parent-swap-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    const outsideText = 'outside graph\n';
+    try {
+      saveGraph(root, completeGraph());
+      writeFileSync(outsideGraph, outsideText, 'utf8');
+      const graphFile = realpathSync(path.join(root, '.issue', 'graph.json'));
+      const originalOpenSync = fs.openSync;
+      let swapped = false;
+      fs.openSync = (file, flags, mode) => {
+        if (!swapped && typeof flags === 'number' && path.resolve(String(file)) === graphFile) {
+          swapped = true;
+          renameSync(path.join(root, '.issue'), path.join(root, '.issue-original'));
+          symlinkSync(outside, path.join(root, '.issue'), 'dir');
         }
         return originalOpenSync(file, flags, mode);
       };
