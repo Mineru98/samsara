@@ -1,12 +1,12 @@
 Manual QA runtime transcript for issue #19 cache-integrity fix
 Branch: fix/19-onboard-cache-integrity
-Source commit: c173fe35f8bb5a57ffe8083035b0d058d16b4734
-Base: origin/main 38cef3add08dffb2df7b114006a2ba4d25107c45
+Implementation commit: 2e4d04f46a30c5c786616602312df3b794f92cb7
+Base: origin/main b9e0277e61dc56eabb5e7a19851169ef44943261
 Worktree: /Users/mineru/SourceCode/samsara-issue-19
 
 S1 surface=terminal/Node test runner
 Invocation: node --test skills/issue-onboard/scripts/*.test.mjs
-Observed: tests 56; pass 56; fail 0; skipped 0; todo 0; exit 0.
+Observed: tests 61; pass 61; fail 0; skipped 0; todo 0; exit 0.
 Observed markers: FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none; OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none; OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable.
 
 S2 surface=terminal/Node test runner

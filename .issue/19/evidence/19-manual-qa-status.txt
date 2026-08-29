@@ -1,7 +1,7 @@
 Manual QA worktree status
 Branch: fix/19-onboard-cache-integrity
-Source commit: c173fe35f8bb5a57ffe8083035b0d058d16b4734
-Base: origin/main 38cef3add08dffb2df7b114006a2ba4d25107c45
+Implementation commit: 2e4d04f46a30c5c786616602312df3b794f92cb7
+Base: origin/main b9e0277e61dc56eabb5e7a19851169ef44943261
 
 git status --short --untracked-files=no
 (empty)

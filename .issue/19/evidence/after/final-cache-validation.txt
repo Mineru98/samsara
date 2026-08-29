@@ -1,6 +1,6 @@
 # issue #19 final recommendation cache validation
 
-SOURCE_COMMIT=c173fe35f8bb5a57ffe8083035b0d058d16b4734
+SOURCE_COMMIT=2e4d04f46a30c5c786616602312df3b794f92cb7
 COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|reclaims a cache lock|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
 COMMAND_EXIT=0
 TESTS=13 PASS=13 FAIL=0

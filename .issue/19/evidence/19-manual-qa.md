@@ -4,7 +4,7 @@ Overall verdict: PASS.
 
 The onboarding CLI now serializes final graph reload, validation, classification, and synchronous recommendation output under `.issue/graph.json.lock`. `saveGraph` and every vendored `patchGraphNode` writer used by issue-create, issue-start, issue-end, issue-merge, issue-onboard, and issue-sync use the same exclusive sidecar protocol. A writer that cannot acquire the lock fails closed, so supported cache replacement cannot occur between the final validation and recommendation output. Every supported writer also rejects symlinked or hard-linked `.issue/graph.json` paths before reading or writing, reads through an `O_NOFOLLOW` descriptor, and anchors temporary-file creation, cleanup, and atomic replacement to the verified parent directory.
 
-Review identity: branch `fix/19-onboard-cache-integrity`, source commit `c173fe35f8bb5a57ffe8083035b0d058d16b4734`, base `origin/main` `38cef3add08dffb2df7b114006a2ba4d25107c45`.
+Review identity: branch `fix/19-onboard-cache-integrity`, implementation commit `2e4d04f46a30c5c786616602312df3b794f92cb7`, base `origin/main` `b9e0277e61dc56eabb5e7a19851169ef44943261`.
 
 Worktree note: `git status --short --untracked-files=no` is empty. The user-requested `.local/` state remains untracked and untouched.
 
@@ -34,7 +34,7 @@ Worktree note: `git status --short --untracked-files=no` is empty. The user-requ
 
 | command | exit | observed |
 | --- | ---: | --- |
-| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 56 tests, 56 pass, 0 fail |
+| `node --test skills/issue-onboard/scripts/*.test.mjs` | 0 | 61 tests, 61 pass, 0 fail |
 | `node --test tools/issue-ontology/ontology.test.mjs` | 0 | 13 tests, 13 pass, 0 fail |
 | syntax checks for changed JavaScript files | 0 | all eight checks pass |
 | `git diff --check origin/main...HEAD` | 0 | no whitespace errors |

@@ -1,4 +1,4 @@
-SOURCE_COMMIT=c173fe35f8bb5a57ffe8083035b0d058d16b4734
+SOURCE_COMMIT=2e4d04f46a30c5c786616602312df3b794f92cb7
 CHECK_issue-onboard-syntax=pass
 CHECK_bootstrap-test-syntax=pass
 CHECK_issue-common-syntax=pass
@@ -15,7 +15,7 @@ OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
 
 COMMAND=node --test skills/issue-onboard/scripts/*.test.mjs
 EXIT=0
-TESTS=56 PASS=56 FAIL=0 SKIPPED=0 TODO=0
+TESTS=61 PASS=61 FAIL=0 SKIPPED=0 TODO=0
 
 COMMAND=node --test tools/issue-ontology/ontology.test.mjs
 EXIT=0
