@@ -1,0 +1,8 @@
+# issue #19 final recommendation cache validation
+
+COMMAND=node --test --test-name-pattern='graph cache changes after the final graph load' skills/issue-onboard/scripts/bootstrap.test.mjs
+COMMAND_EXIT=0
+
+FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
+
+The fixture changes `.issue/graph.json` immediately after the final graph load returns. The CLI detects the changed fingerprint before emitting `ONBOARD_COUNT` or `PRIORITY`.
