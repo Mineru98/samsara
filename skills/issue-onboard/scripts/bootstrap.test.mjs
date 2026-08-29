@@ -4,7 +4,7 @@ import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rm
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   bootstrapEnvironment,
@@ -967,5 +967,34 @@ test('graph writers fail closed when onboarding owns the cache lock', () => {
     assert.equal(readFileSync(file, 'utf8'), before);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('all graph writers reject symlinked cache paths', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    const graphText = JSON.stringify(completeGraph()) + '\n';
+    writeFileSync(outsideGraph, graphText, 'utf8');
+    const linkedDirectoryRoot = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-directory-link-`));
+    const linkedFileRoot = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-file-link-`));
+    try {
+      symlinkSync(outside, path.join(linkedDirectoryRoot, '.issue'), 'dir');
+      assert.equal(writer(linkedDirectoryRoot, { number: 1, title: 'changed' }), false, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), graphText, skill);
+
+      mkdirSync(path.join(linkedFileRoot, '.issue'));
+      symlinkSync(outsideGraph, path.join(linkedFileRoot, '.issue', 'graph.json'));
+      assert.equal(writer(linkedFileRoot, { number: 1, title: 'changed' }), false, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), graphText, skill);
+    } finally {
+      rmSync(linkedDirectoryRoot, { recursive: true, force: true });
+      rmSync(linkedFileRoot, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
   }
 });

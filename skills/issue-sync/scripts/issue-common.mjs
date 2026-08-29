@@ -543,8 +543,51 @@ export function typeLabels(labels = []) {
  *
  * node: { number, title?, status?, labels?, url? } — labels 는 status:* 를 걸러 저장한다.
  */
+function safeGraphFile(root) {
+  const resolvedRoot = path.resolve(root);
+  let realRoot;
+  try {
+    realRoot = realpathSync(resolvedRoot);
+  } catch (error) {
+    throw new Error(`저장소 루트를 확인할 수 없다: ${error.message}`);
+  }
+
+  const issueDir = path.join(resolvedRoot, WORKSPACE_DIR);
+  let issueStat;
+  try {
+    issueStat = lstatSync(issueDir);
+  } catch (error) {
+    if (error.code === 'ENOENT') return path.join(issueDir, GRAPH_FILE_NAME);
+    throw error;
+  }
+  if (issueStat.isSymbolicLink() || !issueStat.isDirectory()) {
+    throw new Error(`${WORKSPACE_DIR} 디렉터리는 심볼릭 링크가 아닌 실제 디렉터리여야 한다.`);
+  }
+  const realIssueDir = realpathSync(issueDir);
+  if (!isPathWithin(realRoot, realIssueDir)) {
+    throw new Error(`${WORKSPACE_DIR} 디렉터리가 저장소 바깥을 가리킨다.`);
+  }
+
+  const file = path.join(issueDir, GRAPH_FILE_NAME);
+  let fileStat;
+  try {
+    fileStat = lstatSync(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return file;
+    throw error;
+  }
+  if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+  }
+  const realFile = realpathSync(file);
+  if (!isPathWithin(realRoot, realFile)) {
+    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}이 저장소 바깥을 가리킨다.`);
+  }
+  return file;
+}
+
 function graphCacheLockFile(root) {
-  return path.join(root, WORKSPACE_DIR, `${GRAPH_FILE_NAME}.lock`);
+  return `${safeGraphFile(root)}.lock`;
 }
 
 function acquireGraphCacheLock(root) {
@@ -581,10 +624,12 @@ function withGraphCacheLock(root, action) {
 export function patchGraphNode(root, node) {
   try {
     if (!root || !node || node.number == null) return false;
-    const file = path.join(root, WORKSPACE_DIR, GRAPH_FILE_NAME);
+    const file = safeGraphFile(root);
     if (!existsSync(file)) return false;
     return withGraphCacheLock(root, () => {
-      const g = JSON.parse(readFileSync(file, 'utf8'));
+      const lockedFile = safeGraphFile(root);
+      if (!existsSync(lockedFile)) return false;
+      const g = JSON.parse(readFileSync(lockedFile, 'utf8'));
       if (!g || typeof g !== 'object') return false;
       g.nodes = g.nodes || {};
       const key = String(node.number);
@@ -607,7 +652,9 @@ export function patchGraphNode(root, node) {
           a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
       }
       g.updatedAt = new Date().toISOString();
-      writeFileSync(file, `${JSON.stringify(g, null, 2)}\n`, 'utf8');
+      const writableFile = safeGraphFile(root);
+      if (writableFile !== lockedFile) return false;
+      writeFileSync(writableFile, `${JSON.stringify(g, null, 2)}\n`, 'utf8');
       return true;
     });
   } catch {
