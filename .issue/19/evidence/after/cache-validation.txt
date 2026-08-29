@@ -1,0 +1,15 @@
+# issue #19 cache validation targeted verification
+
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync' skills/issue-onboard/scripts/bootstrap.test.mjs
+COMMAND_EXIT=0
+
+# The test exercises both invalid cache forms with a failed issue-sync bootstrap.
+CACHE_VALIDATION=malformed EXIT=7 RECOMMENDATION=none
+CACHE_VALIDATION=schema-invalid EXIT=7 RECOMMENDATION=none
+
+# Assertions in the test also require:
+# - GRAPH_BOOTSTRAP_REASON=invalid
+# - SYNC_FAILED=1
+# - no ONBOARD_COUNT or PRIORITY output
+# - malformed input reports graph.json parse failure
+# - schema-invalid input reports the invalid bootstrap reason

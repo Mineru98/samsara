@@ -1,0 +1,9 @@
+# issue #19 automatic bootstrap targeted verification
+
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync' skills/issue-onboard/scripts/bootstrap.test.mjs
+COMMAND_EXIT=0
+
+✔ the onboarding CLI bootstraps a complete sync before recommending issues
+✔ the onboarding CLI reports invalid caches and fails when bootstrap fails
+ℹ tests 2
+ℹ pass 2
