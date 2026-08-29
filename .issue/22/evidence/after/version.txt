@@ -1,0 +1,14 @@
+CAPTURE=after
+COMMIT=2466260820ba758c9b4c4b88e182e59fcc06cdcb
+BRANCH=chore/22-patch-version
+TRACKED_STATUS_START
+TRACKED_STATUS_END
+VERSION=0.3.1
+.codex-plugin/plugin.json=0.3.1
+.claude-plugin/plugin.json=0.3.1
+.grok-plugin/plugin.json=0.3.1
+.claude-plugin/marketplace.json=0.3.1
+tools/issue-ontology/package.json=0.3.1
+README_PLUGIN_VERSION=0.3.1
+README_CACHE_VERSION=0.3.1
+CAPTURE=after-complete
