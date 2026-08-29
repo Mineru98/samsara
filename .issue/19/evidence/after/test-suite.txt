@@ -1,79 +1,25 @@
+SOURCE_COMMIT=6abb547e3a53d948cb555cae6b36d028e5b296d5
 CHECK_issue-onboard-syntax=pass
 CHECK_bootstrap-test-syntax=pass
-✔ missing, incomplete, or invalid caches request a sync bootstrap (30.178416ms)
-✔ malformed graph caches can be handed to the onboarding bootstrap path (68.582916ms)
-✔ only a complete issue-sync result can unlock onboarding (0.134791ms)
-✔ cache coverage and revisions are compared with current open issues (0.52025ms)
-✔ complete caches require a matching live snapshot and cache integrity digest (0.721334ms)
-✔ complete caches reject a repository identity that differs from the live checkout (0.089542ms)
-✔ complete caches reject graph edges that are absent from the live issue sources (0.492875ms)
-✔ complete caches reject forged metadata on a live relationship edge (0.791292ms)
-✔ an empty complete cache still requires both integrity digests (0.078833ms)
-✔ default issue-list probing continues past a full page before declaring completeness (0.676167ms)
-✔ Jira pagination requires authoritative totals and follows startAt (0.10275ms)
-✔ the onboarding CLI bootstraps a complete sync before recommending issues (468.095208ms)
-✔ next and plan use the same live bootstrap validation as onboard (955.712958ms)
-✔ the onboarding CLI never recommends after partial or failed sync (890.308625ms)
-✔ the onboarding CLI rejects a graph that remains stale after a reported-success sync (474.438458ms)
-✔ the onboarding CLI fails closed when the graph cache changes during live issue reads (441.862209ms)
-✔ the onboarding CLI fails closed when the ontology validator is unavailable (375.714125ms)
-✔ automatic onboarding does not import an ontology outside its trusted installation (379.55125ms)
-✔ automatic bootstrap does not execute a repository-local sync outside its trusted installation (398.857292ms)
-✔ automatic bootstrap preserves project-local flavor skill discovery (481.125625ms)
-✔ issue-sync does not fall back to a project-local issue-onboard entrypoint (77.776209ms)
-✔ bootstrap subprocess receives only the explicit environment allowlist (0.288208ms)
-✔ project-local bootstrap scripts do not receive provider credentials (0.092208ms)
-✔ untrusted bootstrap scripts receive an empty HOME and XDG state (46.29925ms)
-✔ same-installation bootstrap scripts receive the explicit provider credentials (0.203292ms)
-✔ production CLI rejects test-only command directory overrides (164.485125ms)
-✔ explicit command environments do not regain ambient variables in the shared runner (43.843208ms)
-✔ runSyncBootstrap executes the discovered issue-sync entrypoint with bounded output and time (0.689083ms)
-✔ saveGraph rejects a symlinked .issue directory before writing outside the repository (0.665334ms)
-✔ tracker CLOSED and MERGED states override stale status labels (0.58225ms)
-✔ open issues retain status labels or fall back to open (0.070167ms)
-✔ a closed derived node is classified as done (0.66325ms)
-✔ cmdLink approval comment round-trips into a valid depends-on edge (30.844792ms)
-✔ cmdUnlink revoke comment drops the edge on the next resolve (0.164125ms)
-✔ splitSlug parses owner/repo and rejects garbage (1.241458ms)
-✔ fetchBlockedBy returns predecessor numbers from GraphQL nodes (0.232333ms)
-✔ fetchBlockedBy flags unsupported when the field is missing (0.140209ms)
-✔ fetchBlockedBy returns null on transient failure and bad args (0.116458ms)
-✔ collectNativeDependencies builds from->to (blocked-by) candidates and honors seen (0.118125ms)
-✔ collectNativeDependencies skips cleanly when repo unknown or API unsupported (0.065875ms)
-✔ collectNativeDependencies marks any later node failure as incomplete (0.064083ms)
-✔ buildNativeEdge produces a schema-valid depends-on edge (28.391833ms)
-✔ a depends-on edge blocks the successor until the predecessor closes (0.245917ms)
-✔ findCycle rejects a predecessor/successor cycle (0.209375ms)
-ℹ tests 44
-ℹ suites 0
-ℹ pass 44
-ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 5405.7245
-CHECK_issue-onboard-tests=44-pass
-! issue-onboard plan --json 실패로 ready 판정을 생략합니다.
-✔ valid graph passes Ajv and the schema contains the live snapshot keys (24.526875ms)
-✔ Ajv rejects blocks and unknown graph root properties (0.255959ms)
-✔ the walker rejects a parent-of cycle after Ajv shape validation (0.435708ms)
-✔ the schema edge enum stays aligned with the onboard walker (0.060834ms)
-✔ the schema edge kind enum stays aligned with the onboard walker (0.056417ms)
-✔ Ajv accepts the rich sync edge shape and top-level staleEdges (0.145792ms)
-✔ Ajv accepts a github-native dependency edge (0.12475ms)
-✔ start requires an open tracker issue and a ready result when checked (0.364292ms)
-✔ create has only git and tracker preconditions (0.171125ms)
-✔ end and merge require complete before and after evidence (0.301458ms)
-✔ missing island is an explicit skip for the human end guard (67.272ms)
-✔ sibling skills resolve from the plugin root without hidden install directories (0.164042ms)
-✔ a failed sibling plan probe keeps start ready unchecked (77.721792ms)
-ℹ tests 13
-ℹ suites 0
-ℹ pass 13
-ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 260.247834
-CHECK_ontology-tests=13-pass
-VALIDATION_EXIT=0
+CHECK_issue-common-syntax=pass
+CHECK_shared-common-syntax=pass
+CACHE_VALIDATION=malformed EXIT=7 RECOMMENDATION=none
+CACHE_VALIDATION=schema-invalid EXIT=7 RECOMMENDATION=none
+FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
+OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none
+OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
+
+COMMAND=node --test skills/issue-onboard/scripts/*.test.mjs
+EXIT=0
+TESTS=49 PASS=49 FAIL=0 SKIPPED=0 TODO=0
+
+COMMAND=node --test tools/issue-ontology/ontology.test.mjs
+EXIT=0
+TESTS=13 PASS=13 FAIL=0 SKIPPED=0 TODO=0
+
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed' skills/issue-onboard/scripts/bootstrap.test.mjs
+EXIT=0
+TESTS=6 PASS=6 FAIL=0
+
+COMMAND=git diff --check origin/main...HEAD
+EXIT=0

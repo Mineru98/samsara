@@ -1,0 +1,12 @@
+# issue #19 final recommendation cache validation
+
+SOURCE_COMMIT=6abb547e3a53d948cb555cae6b36d028e5b296d5
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed' skills/issue-onboard/scripts/bootstrap.test.mjs
+COMMAND_EXIT=0
+TESTS=6 PASS=6 FAIL=0
+
+FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
+OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none
+OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
+
+The first two fixtures rewrite `.issue/graph.json` during final validation and fail closed before recommendation markers. The lock fixture starts an official `saveGraph` writer while the onboarding process owns the sidecar lock; that writer exits nonzero, the recommendation completes synchronously, and the cache remains unchanged.
