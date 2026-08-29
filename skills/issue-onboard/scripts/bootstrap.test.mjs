@@ -1047,6 +1047,55 @@ test('does not remove a live lock handed off during stale-lock recovery', async 
   }
 });
 
+test('restores a live lock replaced before stale-lock cleanup and blocks the next writer', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  const liveOwner = `${process.pid}:3:3\n`;
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-lock-pre-rename-`));
+    try {
+      const file = saveGraph(root, completeGraph());
+      const before = readFileSync(file, 'utf8');
+      const lockFile = path.join(root, '.issue', 'graph.json.lock');
+      writeFileSync(lockFile, `${process.pid + 1_000_000}:3:3\n`, 'utf8');
+      let swapped = false;
+      const originalRenameSync = fs.renameSync;
+      fs.renameSync = (source, destination) => {
+        if (!swapped && path.basename(String(source)) === 'graph.json.lock'
+          && path.basename(String(destination)).startsWith('.graph.json.lock.release-')) {
+          const handoff = `${lockFile}.handoff`;
+          writeFileSync(handoff, liveOwner, 'utf8');
+          originalRenameSync(handoff, lockFile);
+          swapped = true;
+        }
+        return originalRenameSync(source, destination);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.renameSync = originalRenameSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(lockFile, 'utf8'), liveOwner, skill);
+      assert.equal(readFileSync(file, 'utf8'), before, skill);
+      assert.deepEqual(
+        fs.readdirSync(path.dirname(lockFile)).filter((name) => name.startsWith('.graph.json.lock.release-')),
+        [],
+        skill,
+      );
+      assert.equal(writer(root, { number: 1, title: 'second' }), false, skill);
+      assert.equal(readFileSync(lockFile, 'utf8'), liveOwner, skill);
+      assert.equal(readFileSync(file, 'utf8'), before, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
 test('does not release a replacement live lock during normal writer cleanup', async () => {
   const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
   const liveOwner = `${process.pid}:2:2\n`;

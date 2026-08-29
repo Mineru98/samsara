@@ -14,7 +14,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, writeSync, cpSync, readdirSync, rmSync, realpathSync, statSync, lstatSync, unlinkSync, renameSync, openSync, closeSync, fstatSync, constants,
+  mkdirSync, existsSync, readFileSync, writeFileSync, writeSync, cpSync, readdirSync, rmSync, realpathSync, statSync, lstatSync, unlinkSync, renameSync, linkSync, openSync, closeSync, fstatSync, constants,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -904,6 +904,28 @@ function createLockQuarantine(relativeFile) {
   throw new Error('그래프 캐시 lock 임시 경로를 확보하지 못했다.');
 }
 
+function restoreLockQuarantine(relativeFile, quarantine) {
+  try {
+    const quarantined = lstatSync(quarantine);
+    if (quarantined.isSymbolicLink() || !quarantined.isFile() || quarantined.nlink !== 1) return false;
+    try {
+      lstatSync(relativeFile);
+      return false;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    linkSync(quarantine, relativeFile);
+    const restored = lstatSync(relativeFile);
+    const linked = lstatSync(quarantine);
+    if (restored.isSymbolicLink() || !restored.isFile()
+      || !sameFile(restored, linked) || restored.nlink !== 2 || linked.nlink !== 2) return false;
+    unlinkSync(quarantine);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function removeOwnedGraphCacheLock(relativeFile, owner) {
   let fd;
   try {
@@ -943,8 +965,9 @@ function removeOwnedGraphCacheLock(relativeFile, owner) {
       try { unlinkSync(quarantine); } catch { /* 경쟁자가 바꾼 quarantine을 보존한다 */ }
       return true;
     }
-    // quarantine이 경쟁 중 바뀌었으면 경로 복구를 시도하지 않는다. 새 lock은
-    // 다음 호출이 만들 수 있고, 비검증 파일을 다시 연결하면 경계가 열린다.
+    // quarantine이 경쟁 중 바뀌었으면 canonical 경로를 원자적으로 복구한다.
+    // 복구가 불확실하면 quarantine을 남겨 다음 writer도 fail closed 한다.
+    restoreLockQuarantine(relativeFile, quarantine);
     return false;
   } catch (error) {
     if (error.code === 'ENOENT') return false;
@@ -952,6 +975,13 @@ function removeOwnedGraphCacheLock(relativeFile, owner) {
   } finally {
     if (fd !== undefined) closeSync(fd);
   }
+}
+
+function lockQuarantineExists(file, expectedParent) {
+  return withStableParentDirectory(file, (relativeFile) => {
+    const prefix = `.${path.basename(relativeFile)}.release-`;
+    return readdirSync('.').some((name) => name.startsWith(prefix));
+  }, expectedParent);
 }
 
 function acquireGraphCacheLock(root) {
@@ -966,6 +996,9 @@ function acquireGraphCacheLock(root) {
   }
   const parentStat = lockTarget.parentStat ?? lstatSync(path.dirname(lockFile));
   const owner = `${process.pid}:${Date.now()}:${process.hrtime.bigint()}`;
+  if (lockQuarantineExists(lockFile, parentStat)) {
+    throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 갱신하지 않는다.');
+  }
   try {
     writeExclusiveFile(lockFile, `${owner}\n`, parentStat);
   } catch (error) {
