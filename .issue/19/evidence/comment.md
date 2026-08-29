@@ -2,11 +2,11 @@
 
 issue #19의 `issue-onboard`가 live issue 목록을 읽거나 최종 추천을 출력하는 사이 `.issue/graph.json`이 바뀌면, 이전에 읽은 그래프로 추천할 수 있던 TOCTOU 결함을 수정했습니다.
 
-최종 검증 기준 source commit: `6a7ccd2c9a7256bc878d35524203f4512b33d76a`
+최종 검증 기준 source commit: `c3f508252a4ba8798a734457243d02fdb453b66d`
 
 최종 graph reload·온톨로지/관계 검증·분류·추천 출력을 `.issue/graph.json.lock` 아래에서 수행하고, `saveGraph`와 issue-create/start/end/merge/onboard/sync의 `patchGraphNode`가 같은 exclusive sidecar lock을 사용합니다. 공식 writer가 잠금을 얻지 못하면 갱신하지 않으므로 지원되는 캐시 교체는 검증과 출력 사이에 끼어들 수 없습니다. 출력은 동기식 stdout 쓰기로 완료한 뒤 잠금을 해제합니다.
 
-모든 공식 graph writer는 `.issue` 디렉터리와 `graph.json` 심볼릭 링크도 거부하고, 최종 파일 열기에도 `O_NOFOLLOW`를 사용해 저장소 밖 파일을 변경하지 않습니다.
+모든 공식 graph writer는 `.issue` 디렉터리와 `graph.json` 심볼릭 링크도 거부하고, 최종 파일 열기에도 `O_NOFOLLOW`를 사용합니다. 최종 파일은 검증 당시 inode와 열린 파일 descriptor의 inode를 비교하고, `.issue` 부모 디렉터리도 열기 전후 inode를 비교해 교체 시 truncate/write 전에 fail-closed 합니다.
 
 ## 재현 및 검증 결과
 
@@ -18,6 +18,7 @@ issue #19의 `issue-onboard`가 live issue 목록을 읽거나 최종 추천을 
 | 최종 output 구간에 공식 `saveGraph` writer 실행 | writer `EXIT=1`, `OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable`, graph.json 불변 |
 | lock 보유 중 `saveGraph`/`patchGraphNode` 호출 | 각각 예외/false로 fail-closed |
 | 여섯 공식 `patchGraphNode`의 `.issue`/`graph.json` 링크 입력 및 최종 open 직전 링크 교체 | 모두 `false`, 외부 graph 불변 |
+| 여섯 공식 `patchGraphNode`의 최종 open 직전 `.issue` 부모 디렉터리 교체 | 모두 `false`, 외부 graph 불변 |
 
 ## 변경 파일
 
@@ -28,10 +29,10 @@ issue #19의 `issue-onboard`가 live issue 목록을 읽거나 최종 추천을 
 
 ## 검증
 
-- `node --test skills/issue-onboard/scripts/*.test.mjs` — 51/51 passed
+- `node --test skills/issue-onboard/scripts/*.test.mjs` — 52/52 passed
 - `node --test tools/issue-ontology/ontology.test.mjs` — 13/13 passed
 - 변경 JavaScript 8개 `node --check` — 모두 통과
-- targeted cache/lock/symlink 회귀 테스트 — 8/8 passed
+- targeted cache/lock/symlink 회귀 테스트 — 9/9 passed
 - `git diff --check origin/main...HEAD` — 통과
 
 전체 결과: `.issue/19/evidence/after/test-suite.txt`, 경계별 결과: `.issue/19/evidence/after/final-cache-validation.txt`.
