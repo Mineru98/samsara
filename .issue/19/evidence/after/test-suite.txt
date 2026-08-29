@@ -1,4 +1,4 @@
-SOURCE_COMMIT=b02b1c14dedee21faf65145632415647de496b00
+SOURCE_COMMIT=c173fe35f8bb5a57ffe8083035b0d058d16b4734
 CHECK_issue-onboard-syntax=pass
 CHECK_bootstrap-test-syntax=pass
 CHECK_issue-common-syntax=pass
@@ -6,6 +6,7 @@ CHECK_shared-common-syntax=pass
 CHECK_graph-writer-symlink=pass
 CHECK_graph-writer-hardlink=pass
 CHECK_graph-writer-final-replacement=pass
+CHECK_stale-lock-recovery=pass
 CACHE_VALIDATION=malformed EXIT=7 RECOMMENDATION=none
 CACHE_VALIDATION=schema-invalid EXIT=7 RECOMMENDATION=none
 FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
@@ -14,15 +15,15 @@ OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
 
 COMMAND=node --test skills/issue-onboard/scripts/*.test.mjs
 EXIT=0
-TESTS=55 PASS=55 FAIL=0 SKIPPED=0 TODO=0
+TESTS=56 PASS=56 FAIL=0 SKIPPED=0 TODO=0
 
 COMMAND=node --test tools/issue-ontology/ontology.test.mjs
 EXIT=0
 TESTS=13 PASS=13 FAIL=0 SKIPPED=0 TODO=0
 
-COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|reclaims a cache lock|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
 EXIT=0
-TESTS=12 PASS=12 FAIL=0
+TESTS=13 PASS=13 FAIL=0
 
 COMMAND=git diff --check origin/main...HEAD
 EXIT=0
