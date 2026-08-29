@@ -314,6 +314,25 @@ codex plugin marketplace add Mineru98/samsara
 codex plugin add samsara@samsara
 ```
 
+### ZCode
+
+SAMSARA는 ZCode가 우선 탐색하는 `.zcode-plugin/plugin.json`을 제공합니다. ZCode는
+저장소 루트의 `skills/`와 `agents/`를 읽어 현재 SAMSARA의 9개 스킬과 4개 에이전트를
+플러그인 컴포넌트로 노출합니다. 현재 저장소에는 ZCode용 commands, hooks, MCP servers가
+없으므로 이 세 가지는 선언하지 않습니다.
+
+ZCode에서 설치하려면 먼저 workspace를 연 뒤 Settings → Plugins → Create → Add marketplace를
+선택하고 GitHub repository로 `Mineru98/samsara`를 입력합니다. Personal marketplace에서
+SAMSARA를 찾아 Install하면 새 플러그인은 기본적으로 활성화되고, 상세 화면에서 포함된
+skills와 agents를 확인할 수 있습니다. 이 저장소 루트의 `marketplace.json`은 별도 이슈에서
+추가하며, 목록이 오래되어 보이면 Marketplace sources 패널에서 해당 source를 Refresh하세요.
+
+플러그인을 활성화하면 skills는 관련 작업에서 자동으로 사용되거나 입력창의 `/` 메뉴에서
+선택할 수 있고, agents는 플러그인 subagents로 표시됩니다. ZCode 플러그인은 로컬 프로세스를
+실행하고 Agent 환경 변수를 읽을 수 있으므로, 활성화하기 전에 매니페스트와 구성 요소를
+검토하고 신뢰할 수 있을 때만 Enable을 선택하세요. 필요하면 플러그인 상세 화면 또는
+Manage installed에서 Disable하거나 Uninstall할 수 있습니다.
+
 ### Grok Build
 
 SAMSARA는 Grok Build 공식 플러그인 형식인 `.grok-plugin/plugin.json`을 제공합니다. Grok은
@@ -371,7 +390,7 @@ Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기
 marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
 PR 규칙을 따릅니다.
 
-Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.3.1`입니다.
+Claude Code, Codex, Grok Build, ZCode 플러그인 버전은 모두 `v0.3.1`입니다.
 
 공식 안내: [Grok Build Plugin Marketplace](https://x.ai/news/grok-plugin-marketplace),
 [Skills, Plugins & Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces),
