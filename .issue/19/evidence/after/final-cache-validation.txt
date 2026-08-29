@@ -1,13 +1,13 @@
 # issue #19 final recommendation cache validation
 
-SOURCE_COMMIT=b02b1c14dedee21faf65145632415647de496b00
-COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
+SOURCE_COMMIT=c173fe35f8bb5a57ffe8083035b0d058d16b4734
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|reclaims a cache lock|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
 COMMAND_EXIT=0
-TESTS=12 PASS=12 FAIL=0
+TESTS=13 PASS=13 FAIL=0
 
 FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
 OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none
 OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
 SYMLINK_WRITERS=6 HARDLINK_WRITERS=6 DIRECTORY_AND_FILE_LINKS_REJECTED=1 FINAL_OPEN_SYMLINK_SWAP_REJECTED=1 FINAL_REPLACEMENT_SYMLINK_SWAP_REJECTED=1 PARENT_DIRECTORY_SYMLINK_SWAP_REJECTED=1 SAVE_RENAME_PARENT_SWAP_REJECTED=1 OUTSIDE_GRAPH_UNCHANGED=1 OUTSIDE_TEMP_UNCHANGED=1
 
-The first two fixtures rewrite `.issue/graph.json` during final validation and fail closed before recommendation markers. The lock fixture starts an official `saveGraph` writer while the onboarding process owns the sidecar lock; that writer exits nonzero, the recommendation completes synchronously, and the cache remains unchanged. The six shared writers reject symlinked and hard-linked graph files, final-open and final-replacement symlink swaps, and parent-directory replacements. `saveGraph` performs temporary-file creation and final rename under the verified parent directory, and its parent-swap fixture preserves both outside files.
+The first two fixtures rewrite `.issue/graph.json` during final validation and fail closed before recommendation markers. The lock fixture starts an official `saveGraph` writer while the onboarding process owns the sidecar lock; that writer exits nonzero, the recommendation completes synchronously, and the cache remains unchanged. A valid dead-owner lock is reclaimed, while malformed or live-owner locks remain blocking. The six shared writers reject symlinked and hard-linked graph files, final-open and final-replacement symlink swaps, and parent-directory replacements. `saveGraph` performs temporary-file creation and final rename under the verified parent directory, and its parent-swap fixture preserves both outside files and removes the old-parent lock/temp files.
