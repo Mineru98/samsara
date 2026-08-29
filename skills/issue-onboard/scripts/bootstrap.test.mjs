@@ -556,6 +556,33 @@ test('the onboarding CLI fails closed when the graph cache changes during live i
   }
 });
 
+test('the onboarding CLI reports invalid caches and fails when bootstrap fails', () => {
+  const schemaInvalid = completeGraph();
+  schemaInvalid.nodes['1'].labels = 'bug';
+  const cases = [
+    ['malformed', null],
+    ['schema-invalid', schemaInvalid],
+  ];
+
+  for (const [kind, initialGraph] of cases) {
+    const fixture = cliFixture({ initialGraph: initialGraph ?? completeGraph(), syncMode: 'failed' });
+    try {
+      if (kind === 'malformed') writeFileSync(path.join(fixture.root, '.issue', 'graph.json'), '{ malformed', 'utf8');
+      const result = runCliOnboard(fixture);
+      const output = result.stdout + result.stderr;
+      assert.notEqual(result.status, 0);
+      assert.match(output, /GRAPH_BOOTSTRAP_REASON=invalid/);
+      assert.match(output, /SYNC_FAILED=1/);
+      assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+      assert.doesNotMatch(output, /PRIORITY=/);
+      if (kind === 'malformed') assert.match(output, /graph\.json 파싱 실패/);
+      console.log(`CACHE_VALIDATION=${kind} EXIT=${result.status} RECOMMENDATION=none`);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
 test('the onboarding CLI fails closed when the ontology validator is unavailable', () => {
   const fixture = cliFixture({
     initialGraph: completeGraph(),

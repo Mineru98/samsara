@@ -1154,6 +1154,7 @@ export function syncBootstrapComplete(result) {
 }
 
 function bootstrapWithSync(root, reason) {
+  console.log('GRAPH_BOOTSTRAP_REASON=' + reason);
   const result = runSyncBootstrap(root);
   process.stdout.write(result.stdout ?? '');
   process.stderr.write(result.stderr ?? '');
@@ -1163,7 +1164,6 @@ function bootstrapWithSync(root, reason) {
     process.exit(1);
   }
   console.log('GRAPH_BOOTSTRAP=issue-sync');
-  console.log('GRAPH_BOOTSTRAP_REASON=' + reason);
 }
 
 function liveIssueSnapshot(tracker) {
