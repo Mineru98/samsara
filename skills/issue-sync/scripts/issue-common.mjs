@@ -1,20 +1,21 @@
-// !!! VENDORED FILE — DO NOT EDIT !!!
-// canonical: tools/issue-common.mjs
-// resync   : sh scripts/sync-shared.sh
+// !!! VENDORED FILE — shared cache-safety block must stay identical !!!
+// shared block: from function safeGraphTarget(root) to end of file
+// verify     : sh scripts/check-shared.sh
 /**
  * issue-common.mjs — issue-create / issue-start / issue-end / issue-merge 공용 모듈.
  *
- * 이 파일이 정본이다. 각 스킬의 scripts/ 아래 사본은 scripts/sync-shared.sh 가 만든다.
- * 사본을 직접 고치지 말고 이 파일을 고친 뒤 sync 를 다시 돌려라.
+ * 여섯 독립 스킬은 이 모듈을 각각 vendored copy로 포함한다. `safeGraphTarget`부터 파일
+ * 끝까지의 graph cache-safety block은 모두 동일해야 하며 scripts/check-shared.sh가 확인한다.
+ * 앞부분의 스킬별 helper는 각 사본의 호출면에 맞을 수 있다.
  *
  * 스킬은 폴더 단위로 독립 설치되므로 스킬 간 import 는 불가능하다.
- * 그래서 "정본 1벌 + 기계적 사본" 구조를 쓰고 scripts/check-shared.sh 로 드리프트를 막는다.
+ * 그래서 공통 안전 블록과 스킬별 helper를 한 파일에 함께 두되, 공통 블록의 드리프트를 막는다.
  *
  * 의존성 없음. Node 18+.
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, statSync, lstatSync,
+  mkdirSync, existsSync, readFileSync, writeFileSync, writeSync, cpSync, readdirSync, rmSync, realpathSync, statSync, lstatSync, unlinkSync, renameSync, linkSync, openSync, closeSync, fstatSync, constants,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -543,36 +544,553 @@ export function typeLabels(labels = []) {
  *
  * node: { number, title?, status?, labels?, url? } — labels 는 status:* 를 걸러 저장한다.
  */
+function safeGraphTarget(root) {
+  const resolvedRoot = path.resolve(root);
+  let rootStat;
+  try {
+    rootStat = lstatSync(resolvedRoot);
+  } catch (error) {
+    throw new Error(`저장소 루트를 확인할 수 없다: ${error.message}`);
+  }
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+    throw new Error('저장소 루트는 심볼릭 링크가 아닌 실제 디렉터리여야 한다.');
+  }
+  let realRoot;
+  try {
+    realRoot = realpathSync(resolvedRoot);
+  } catch (error) {
+    throw new Error(`저장소 루트를 확인할 수 없다: ${error.message}`);
+  }
+
+  const issueDir = path.join(resolvedRoot, WORKSPACE_DIR);
+  let issueStat;
+  try {
+    issueStat = lstatSync(issueDir);
+  } catch (error) {
+    if (error.code === 'ENOENT') return { file: path.join(issueDir, GRAPH_FILE_NAME), parentStat: null, fileStat: null };
+    throw error;
+  }
+  if (issueStat.isSymbolicLink() || !issueStat.isDirectory()) {
+    throw new Error(`${WORKSPACE_DIR} 디렉터리는 심볼릭 링크가 아닌 실제 디렉터리여야 한다.`);
+  }
+  const realIssueDir = realpathSync(issueDir);
+  if (!isPathWithin(realRoot, realIssueDir)) {
+    throw new Error(`${WORKSPACE_DIR} 디렉터리가 저장소 바깥을 가리킨다.`);
+  }
+  const parentStat = lstatSync(realIssueDir);
+  if (!sameFile(issueStat, parentStat)) {
+    throw new Error(`${WORKSPACE_DIR} 디렉터리가 검증 중 변경되었다.`);
+  }
+
+  const file = path.join(realIssueDir, GRAPH_FILE_NAME);
+  let fileStat;
+  try {
+    fileStat = lstatSync(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return { file, parentStat, fileStat: null };
+    throw error;
+  }
+  if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+  }
+  if (fileStat.nlink !== 1) {
+    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+  }
+  const realFile = realpathSync(file);
+  if (!isPathWithin(realRoot, realFile)) {
+    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}이 저장소 바깥을 가리킨다.`);
+  }
+  return { file, parentStat, fileStat };
+}
+
+function safeGraphFile(root) {
+  return safeGraphTarget(root).file;
+}
+
+function noFollowFlags(flags) {
+  if (!Number.isInteger(constants.O_NOFOLLOW) || constants.O_NOFOLLOW <= 0) {
+    throw new Error('심볼릭 링크를 안전하게 차단하는 파일 플래그를 사용할 수 없다.');
+  }
+  return flags | constants.O_NOFOLLOW;
+}
+
+function sameFile(first, second) {
+  return first.dev === second.dev && first.ino === second.ino;
+}
+
+function sameFileVersion(first, second) {
+  return sameFile(first, second)
+    && first.size === second.size
+    && first.mtimeMs === second.mtimeMs
+    && first.ctimeMs === second.ctimeMs;
+}
+
+function withStableRootDirectory(root, action) {
+  const resolvedRoot = path.resolve(root);
+  const before = lstatSync(resolvedRoot);
+  if (before.isSymbolicLink() || !before.isDirectory()) {
+    throw new Error('저장소 루트는 심볼릭 링크가 아닌 실제 디렉터리여야 한다.');
+  }
+  const previousCwd = process.cwd();
+  const alreadyInRoot = path.resolve(previousCwd) === resolvedRoot;
+  let changedCwd = false;
+  try {
+    if (!alreadyInRoot) {
+      process.chdir(resolvedRoot);
+      changedCwd = true;
+    }
+    if (!sameFile(before, lstatSync('.'))) throw new Error('저장소 루트가 열기 중 변경되었다.');
+    const result = action();
+    if (!sameFile(before, lstatSync('.'))) throw new Error('저장소 루트가 작업 중 변경되었다.');
+    const after = lstatSync(resolvedRoot);
+    if (after.isSymbolicLink() || !after.isDirectory() || !sameFile(before, after)) {
+      throw new Error('저장소 루트 경로가 작업 중 변경되었다.');
+    }
+    return result;
+  } finally {
+    if (changedCwd) process.chdir(previousCwd);
+  }
+}
+
+// Node 18에는 openat/renameat API가 없다. 모든 graph writer는 동기식이므로
+// 검증한 부모 디렉터리를 cwd로 고정한 뒤 상대 경로 syscall을 수행한다.
+function withStableParentDirectory(file, action, expectedParent = null, onError = null) {
+  const parent = path.dirname(file);
+  const before = expectedParent ?? lstatSync(parent);
+  if (before.isSymbolicLink() || !before.isDirectory()) {
+    throw new Error(`${WORKSPACE_DIR} 상위 디렉터리가 안전한 일반 디렉터리가 아니다.`);
+  }
+  const previousCwd = process.cwd();
+  const alreadyInParent = path.resolve(previousCwd) === path.resolve(parent);
+  let changedCwd = false;
+  let parentVerified = false;
+  try {
+    if (!alreadyInParent) {
+      process.chdir(parent);
+      changedCwd = true;
+    }
+    if (!sameFile(before, lstatSync('.'))) throw new Error('그래프 캐시 상위 디렉터리가 열기 중 변경되었다.');
+    parentVerified = true;
+    const result = action(path.basename(file));
+    if (!sameFile(before, lstatSync('.'))) throw new Error('그래프 캐시 상위 디렉터리가 작업 중 변경되었다.');
+    const after = lstatSync(parent);
+    if (after.isSymbolicLink() || !sameFile(before, after)) throw new Error('그래프 캐시 상위 디렉터리 경로가 작업 중 변경되었다.');
+    return result;
+  } catch (error) {
+    if (onError && parentVerified) {
+      try { onError(path.basename(file)); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
+  } finally {
+    if (changedCwd) process.chdir(previousCwd);
+  }
+}
+
+function readStableFile(target) {
+  if (!target.fileStat) {
+    if (!target.parentStat) return null;
+    return withStableParentDirectory(target.file, (relativeFile) => {
+      try {
+        lstatSync(relativeFile);
+      } catch (error) {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      }
+      throw new Error('그래프 캐시 파일이 읽기 중 변경되었다.');
+    }, target.parentStat);
+  }
+
+  let fd;
+  let verificationFd;
+  try {
+    return withStableParentDirectory(target.file, (relativeFile) => {
+      fd = openSync(relativeFile, noFollowFlags(constants.O_RDONLY));
+      const openedFile = fstatSync(fd);
+      if (!sameFileVersion(openedFile, target.fileStat) || openedFile.nlink !== 1) {
+        throw new Error('그래프 캐시 파일이 열기 중 변경되었다.');
+      }
+      const content = readFileSync(fd, 'utf8');
+      const readFileStat = fstatSync(fd);
+      verificationFd = openSync(relativeFile, noFollowFlags(constants.O_RDONLY));
+      const verificationFile = fstatSync(verificationFd);
+      const verificationContent = readFileSync(verificationFd, 'utf8');
+      const verificationStat = fstatSync(verificationFd);
+      const pathStat = lstatSync(relativeFile);
+      if (!sameFileVersion(readFileStat, openedFile) || readFileStat.nlink !== 1
+        || !sameFileVersion(verificationFile, openedFile)
+        || !sameFileVersion(verificationStat, verificationFile) || verificationStat.nlink !== 1
+        || content !== verificationContent
+        || pathStat.isSymbolicLink() || !sameFileVersion(pathStat, target.fileStat) || pathStat.nlink !== 1) {
+        throw new Error('그래프 캐시 파일이 읽기 중 변경되었다.');
+      }
+      return content;
+    }, target.parentStat);
+  } finally {
+    if (verificationFd !== undefined) closeSync(verificationFd);
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+function sameGraphTarget(first, second) {
+  const sameFileState = first.fileStat && second.fileStat
+    ? sameFileVersion(first.fileStat, second.fileStat)
+    : !first.fileStat && !second.fileStat;
+  return Boolean(first.file === second.file
+    && first.parentStat && second.parentStat
+    && sameFile(first.parentStat, second.parentStat)
+    && sameFileState);
+}
+
+function writeAll(fd, content) {
+  const bytes = Buffer.from(content);
+  let offset = 0;
+  while (offset < bytes.length) offset += writeSync(fd, bytes, offset);
+}
+
+function removeOwnedFile(relativeFile, expectedFile) {
+  try {
+    const currentStat = lstatSync(relativeFile);
+    if (!currentStat.isSymbolicLink() && currentStat.isFile() && currentStat.nlink === 1
+      && sameFileVersion(currentStat, expectedFile)) {
+      unlinkSync(relativeFile);
+      return true;
+    }
+  } catch { /* 원래 오류를 보존한다 */ }
+  return false;
+}
+
+function writeExclusiveFile(file, content, expectedParent = null) {
+  let fd;
+  let created = false;
+  let createdFile;
+  try {
+    withStableParentDirectory(file, (relativeFile) => {
+      fd = openSync(relativeFile, noFollowFlags(constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL), 0o600);
+      created = true;
+      createdFile = fstatSync(fd);
+      try {
+        writeAll(fd, content);
+      } finally {
+        try { createdFile = fstatSync(fd); } catch { /* 원래 오류를 보존한다 */ }
+        closeSync(fd);
+        fd = undefined;
+      }
+    }, expectedParent, (relativeFile) => {
+      if (created && createdFile && removeOwnedFile(relativeFile, createdFile)) created = false;
+    });
+  } catch (error) {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* 원래 오류를 보존한다 */ }
+    }
+    if (created && createdFile) {
+      try {
+        withStableParentDirectory(file, (relativeFile) => {
+          if (removeOwnedFile(relativeFile, createdFile)) created = false;
+        }, expectedParent);
+      } catch { /* 원래 오류를 보존한다 */ }
+    }
+    throw error;
+  }
+  return createdFile;
+}
+
+function unlinkOwnedWithStableParent(file, expectedFile, expectedParent = null) {
+  return withStableParentDirectory(file, (relativeFile) => removeOwnedFile(relativeFile, expectedFile), expectedParent);
+}
+
+function renameWithStableParent(source, destination, expectedFile = null, expectedParent = null, expectedSource = null) {
+  if (path.resolve(path.dirname(source)) !== path.resolve(path.dirname(destination))) {
+    throw new Error('그래프 캐시 임시 파일과 대상 파일의 부모 디렉터리가 다르다.');
+  }
+  let sourceStat;
+  return withStableParentDirectory(source, (relativeSource) => {
+    const relativeDestination = path.basename(destination);
+    sourceStat = lstatSync(relativeSource);
+    if (sourceStat.isSymbolicLink() || !sourceStat.isFile() || sourceStat.nlink !== 1
+      || (expectedSource && !sameFileVersion(sourceStat, expectedSource))) {
+      throw new Error('그래프 캐시 임시 파일이 안전한 일반 파일이 아니다.');
+    }
+    let destinationStat;
+    try {
+      destinationStat = lstatSync(relativeDestination);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    if (expectedFile) {
+      if (!destinationStat || destinationStat.isSymbolicLink() || !destinationStat.isFile()
+        || destinationStat.nlink !== 1 || !sameFileVersion(destinationStat, expectedFile)) {
+        throw new Error('그래프 캐시 대상 파일이 교체 중 변경되었다.');
+      }
+    } else if (destinationStat) {
+      throw new Error('그래프 캐시 대상 파일이 예기치 않게 생성되었다.');
+    }
+    renameSync(relativeSource, relativeDestination);
+    const replacedStat = lstatSync(relativeDestination);
+    if (replacedStat.isSymbolicLink() || !replacedStat.isFile() || replacedStat.nlink !== 1
+      || !sameFile(replacedStat, sourceStat)
+      || replacedStat.size !== sourceStat.size || replacedStat.mtimeMs !== sourceStat.mtimeMs) {
+      throw new Error('그래프 캐시 대상 파일이 교체 중 변경되었다.');
+    }
+  }, expectedParent, (relativeSource) => {
+    if (!sourceStat) return;
+    try {
+      const currentStat = lstatSync(relativeSource);
+      if (!currentStat.isSymbolicLink() && currentStat.isFile() && currentStat.nlink === 1
+        && sameFileVersion(currentStat, expectedSource ?? sourceStat)) unlinkSync(relativeSource);
+    } catch { /* 원래 오류를 보존한다 */ }
+  });
+}
+
+function overwriteRegularFile(file, content, expectedFile = null, expectedParent = null) {
+  expectedFile ??= lstatSync(file);
+  if (!expectedFile.isFile()) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 일반 파일이어야 한다.`);
+  if (expectedFile.nlink !== 1) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+  const temporary = `${file}.tmp-${process.pid}`;
+  let temporaryCreated = false;
+  let temporaryFile;
+  try {
+    temporaryFile = writeExclusiveFile(temporary, content, expectedParent);
+    temporaryCreated = true;
+    renameWithStableParent(temporary, file, expectedFile, expectedParent, temporaryFile);
+    temporaryCreated = false;
+  } finally {
+    if (temporaryCreated && temporaryFile) {
+      try { unlinkOwnedWithStableParent(temporary, temporaryFile, expectedParent); } catch { /* 원래 오류를 보존한다 */ }
+    }
+  }
+}
+
+function graphCacheOwnerPid(content) {
+  const match = /^(\d+):\d+:\d+\n$/.exec(content);
+  if (!match) return null;
+  const pid = Number(match[1]);
+  return Number.isSafeInteger(pid) && pid > 0 ? pid : null;
+}
+
+function graphCacheOwnerAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== 'ESRCH';
+  }
+}
+
+function reclaimStaleGraphCacheLock(file, expectedParent) {
+  return withStableParentDirectory(file, (relativeFile) => {
+    let lockStat;
+    try {
+      lockStat = lstatSync(relativeFile);
+    } catch (error) {
+      if (error.code === 'ENOENT') return false;
+      throw error;
+    }
+    if (lockStat.isSymbolicLink() || !lockStat.isFile() || lockStat.nlink !== 1) return false;
+    const target = { file, parentStat: expectedParent, fileStat: lockStat };
+    const owner = readStableFile(target);
+    const pid = graphCacheOwnerPid(owner);
+    if (pid === null || graphCacheOwnerAlive(pid)) return false;
+    return removeOwnedGraphCacheLock(relativeFile, owner.slice(0, -1));
+  }, expectedParent);
+}
+
+function createLockQuarantine(relativeFile) {
+  const base = path.basename(relativeFile);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const quarantine = `.${base}.release-${process.pid}-${process.hrtime.bigint()}-${attempt}`;
+    let fd;
+    try {
+      fd = openSync(quarantine, noFollowFlags(constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL), 0o600);
+      closeSync(fd);
+      return quarantine;
+    } catch (error) {
+      if (fd !== undefined) {
+        try { closeSync(fd); } catch { /* 원래 오류를 보존한다 */ }
+      }
+      if (error.code !== 'EEXIST') throw error;
+    }
+  }
+  throw new Error('그래프 캐시 lock 임시 경로를 확보하지 못했다.');
+}
+
+function restoreLockQuarantine(relativeFile, quarantine) {
+  try {
+    const quarantined = lstatSync(quarantine);
+    if (quarantined.isSymbolicLink() || !quarantined.isFile() || quarantined.nlink !== 1) return false;
+    try {
+      lstatSync(relativeFile);
+      return false;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    linkSync(quarantine, relativeFile);
+    const restored = lstatSync(relativeFile);
+    const linked = lstatSync(quarantine);
+    if (restored.isSymbolicLink() || !restored.isFile()
+      || !sameFile(restored, linked) || restored.nlink !== 2 || linked.nlink !== 2) return false;
+    unlinkSync(quarantine);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeOwnedGraphCacheLock(relativeFile, owner) {
+  let fd;
+  try {
+    fd = openSync(relativeFile, noFollowFlags(constants.O_RDONLY));
+    const openedStat = fstatSync(fd);
+    if (!openedStat.isFile() || openedStat.nlink !== 1) return false;
+    const content = readFileSync(fd, 'utf8');
+    const currentStat = fstatSync(fd);
+    if (!sameFile(openedStat, currentStat) || currentStat.nlink !== 1 || content !== `${owner}\n`) return false;
+    closeSync(fd);
+    fd = undefined;
+    const quarantine = createLockQuarantine(relativeFile);
+    try {
+      renameSync(relativeFile, quarantine);
+    } catch (error) {
+      try { unlinkSync(quarantine); } catch { /* 원래 오류를 보존한다 */ }
+      if (error.code === 'ENOENT') return false;
+      throw error;
+    }
+    let detachedFd;
+    let detachedOwned = false;
+    try {
+      detachedFd = openSync(quarantine, noFollowFlags(constants.O_RDONLY));
+      const detachedStat = fstatSync(detachedFd);
+      const detachedContent = readFileSync(detachedFd, 'utf8');
+      const latestDetachedStat = fstatSync(detachedFd);
+      detachedOwned = latestDetachedStat.nlink === 1
+        && sameFile(detachedStat, openedStat)
+        && sameFile(latestDetachedStat, openedStat)
+        && detachedContent === `${owner}\n`;
+    } catch {
+      detachedOwned = false;
+    } finally {
+      if (detachedFd !== undefined) closeSync(detachedFd);
+    }
+    if (detachedOwned) {
+      try { unlinkSync(quarantine); } catch { /* 경쟁자가 바꾼 quarantine을 보존한다 */ }
+      return true;
+    }
+    // quarantine이 경쟁 중 바뀌었으면 canonical 경로를 원자적으로 복구한다.
+    // 복구가 불확실하면 quarantine을 남겨 다음 writer도 fail closed 한다.
+    restoreLockQuarantine(relativeFile, quarantine);
+    return false;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+function lockQuarantineExists(file, expectedParent) {
+  return withStableParentDirectory(file, (relativeFile) => {
+    const prefix = `.${path.basename(relativeFile)}.release-`;
+    return readdirSync('.').some((name) => name.startsWith(prefix));
+  }, expectedParent);
+}
+
+function acquireGraphCacheLock(root) {
+  const initialTarget = safeGraphTarget(root);
+  const lockFile = `${initialTarget.file}.lock`;
+  if (!initialTarget.parentStat) {
+    withStableRootDirectory(root, () => mkdirSync(WORKSPACE_DIR, { recursive: true }));
+  }
+  const lockTarget = safeGraphTarget(root);
+  if (initialTarget.parentStat && (!lockTarget.parentStat || !sameFile(initialTarget.parentStat, lockTarget.parentStat))) {
+    throw new Error('그래프 캐시 상위 디렉터리가 검증 중 변경되었다.');
+  }
+  const parentStat = lockTarget.parentStat ?? lstatSync(path.dirname(lockFile));
+  const owner = `${process.pid}:${Date.now()}:${process.hrtime.bigint()}`;
+  if (lockQuarantineExists(lockFile, parentStat)) {
+    throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 갱신하지 않는다.');
+  }
+  try {
+    writeExclusiveFile(lockFile, `${owner}\n`, parentStat);
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    if (!reclaimStaleGraphCacheLock(lockFile, parentStat)) {
+      throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 갱신하지 않는다.');
+    }
+    try {
+      writeExclusiveFile(lockFile, `${owner}\n`, parentStat);
+    } catch (retryError) {
+      if (retryError.code === 'EEXIST') throw new Error('그래프 캐시가 다른 작업에서 변경 중이라 갱신하지 않는다.');
+      throw retryError;
+    }
+  }
+  let released = false;
+  const release = (inVerifiedParent = false) => {
+    if (released) return;
+    released = true;
+    if (inVerifiedParent) {
+      removeOwnedGraphCacheLock(path.basename(lockFile), owner);
+      return;
+    }
+    try {
+      withStableParentDirectory(lockFile, (relativeFile) => {
+        removeOwnedGraphCacheLock(relativeFile, owner);
+      }, parentStat, (relativeFile) => {
+        removeOwnedGraphCacheLock(relativeFile, owner);
+      });
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  };
+  release.file = lockFile;
+  release.parentStat = parentStat;
+  return release;
+}
+
+function withGraphCacheLock(root, action) {
+  const release = acquireGraphCacheLock(root);
+  try {
+    return withStableParentDirectory(release.file, () => action(), release.parentStat, () => release(true));
+  } finally {
+    release();
+  }
+}
+
 export function patchGraphNode(root, node) {
   try {
     if (!root || !node || node.number == null) return false;
-    const file = path.join(root, WORKSPACE_DIR, GRAPH_FILE_NAME);
-    if (!existsSync(file)) return false;
-    const g = JSON.parse(readFileSync(file, 'utf8'));
-    if (!g || typeof g !== 'object') return false;
-    g.nodes = g.nodes || {};
-    const key = String(node.number);
-    const prev = g.nodes[key] || {};
-    g.nodes[key] = {
-      number: Number(node.number),
-      title: node.title ?? prev.title ?? '',
-      status: node.status ?? prev.status ?? 'open',
-      labels: node.labels ? typeLabels(node.labels.map((l) => (typeof l === 'string' ? l : l.name))) : (prev.labels ?? []),
-      url: node.url ?? prev.url ?? '',
-      ...(prev.priority !== undefined ? { priority: prev.priority } : {}),
-    };
-    // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
-    // 안 지키면 공유 커밋 파일(base 브랜치)에 노이즈 diff 와 머지 충돌이 생긴다.
-    const sortedNodes = {};
-    for (const k of Object.keys(g.nodes).sort((a, b) => Number(a) - Number(b))) sortedNodes[k] = g.nodes[k];
-    g.nodes = sortedNodes;
-    if (Array.isArray(g.edges)) {
-      g.edges = [...g.edges].sort((a, b) =>
-        a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
-    }
-    g.updatedAt = new Date().toISOString();
-    writeFileSync(file, `${JSON.stringify(g, null, 2)}\n`, 'utf8');
-    return true;
+    const target = safeGraphTarget(root);
+    if (readStableFile(target) === null) return false;
+    return withGraphCacheLock(root, () => {
+      const lockedTarget = safeGraphTarget(root);
+      const graphText = readStableFile(lockedTarget);
+      if (graphText === null) return false;
+      const g = JSON.parse(graphText);
+      if (!g || typeof g !== 'object') return false;
+      g.nodes = g.nodes || {};
+      const key = String(node.number);
+      const prev = g.nodes[key] || {};
+      g.nodes[key] = {
+        number: Number(node.number),
+        title: node.title ?? prev.title ?? '',
+        status: node.status ?? prev.status ?? 'open',
+        labels: node.labels ? typeLabels(node.labels.map((l) => (typeof l === 'string' ? l : l.name))) : (prev.labels ?? []),
+        url: node.url ?? prev.url ?? '',
+        ...(prev.priority !== undefined ? { priority: prev.priority } : {}),
+      };
+      // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
+      // 안 지키면 공유 커밋 파일(base 브랜치)에 노이즈 diff 와 머지 충돌이 생긴다.
+      const sortedNodes = {};
+      for (const k of Object.keys(g.nodes).sort((a, b) => Number(a) - Number(b))) sortedNodes[k] = g.nodes[k];
+      g.nodes = sortedNodes;
+      if (Array.isArray(g.edges)) {
+        g.edges = [...g.edges].sort((a, b) =>
+          a.from - b.from || a.to - b.to || String(a.type).localeCompare(String(b.type)));
+      }
+      g.updatedAt = new Date().toISOString();
+      const writableTarget = safeGraphTarget(root);
+      if (!sameGraphTarget(lockedTarget, writableTarget)) return false;
+      overwriteRegularFile(writableTarget.file, `${JSON.stringify(g, null, 2)}\n`, writableTarget.fileStat, writableTarget.parentStat);
+      return true;
+    });
   } catch {
     return false;
   }

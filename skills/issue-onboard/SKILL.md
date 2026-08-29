@@ -23,7 +23,13 @@ $issue-onboard [--all]
 
 1. GitHub의 전체 이슈 snapshot과 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 현재 이슈의 내용·상태·라벨·revision과 맞지 않거나, GitHub에서 닫힌 비종료 노드가 남아 있으면 `$issue-sync`를 자동 실행해 전체 snapshot을 만든다. 기본 목록 한도가 찼으면 다음 페이지를 더 조회하고, 전체 조회를 증명하지 못하면 캐시를 사용하지 않는다.
 2. 자동 동기화가 성공한 뒤 완전 snapshot과 일치·검증된 캐시만 읽는다. `plan`과 `next`도 이
-   동일한 라이브 조회·bootstrap·온톨로지·관계 출처 검증을 거친다. sync 실패·partial·cycle·dangling·무결성 digest 불일치이면 순위와 다음 추천을 내지 않고 이유를 알린다.
+   동일한 라이브 조회·bootstrap·온톨로지·관계 출처 검증을 거친다. 최종 graph reload부터 추천
+   출력까지 `.issue/graph.json.lock`을 유지하며, 같은 잠금 프로토콜을 따르는 graph writer와
+   캐시 교체를 직렬화한다. sync 실패·partial·cycle·dangling·무결성 digest 불일치이면 순위와
+   다음 추천을 내지 않고 이유를 알린다.
+   추천 marker는 명령이 exit 0일 때만 소비한다. 잠금에 참여하지 않는 외부 프로세스가
+   stdout 쓰기 직전에 캐시를 바꾸면 이미 전송된 바이트를 회수할 수 없으므로, post-write
+   검증은 명령을 nonzero로 종료시켜 호출자가 해당 출력을 폐기하도록 한다.
 3. GitHub의 열린 이슈와 그래프 상태를 함께 읽어 ready → in-progress → blocked 순, P0~P3·번호 순으로 정렬한다.
 4. 최대 6개를 먼저 보여 준다. 더 있으면 `--all` 요청으로 같은 형식의 전체 목록을 이어서 낸다.
 5. 최우선 이슈 착수, 열린 PR 병합, 새 이슈 등록 중 하나를 선택받는다.
@@ -35,7 +41,9 @@ $issue-onboard [--all]
 - 기본 전체 이슈 목록을 끝까지 확인할 수 없으면 안전을 위해 추천하지 않는다. `--limit`은 명시적으로 사용할 때만 단일 페이지 조회로 취급한다.
 - 자동 부트스트랩은 기존 스킬 탐색 순서를 유지하되, 현재 설치 묶음 또는 프로젝트·사용자 `.claude/.codex/skills` 아래의 심볼릭 링크가 아닌 `issue-sync` 스크립트만 실행하고, 제한된 환경 변수·시간·출력 한도로 자식 프로세스를 실행한다. 현재 설치 묶음 밖의 project/user 스크립트에는 provider credential 환경 변수를 전달하지 않으며, 다른 설치에서 실행 중인 `issue-onboard`가 저장소의 bare `skills/` fallback으로 바뀌지는 않는다.
 - 온톨로지 검증기와 Ajv를 같은 신뢰된 설치에서 사용할 수 없으면 안전을 위해 추천하지 않는다. 저장소나 외부 환경 변수의 검증기 코드를 자동으로 가져오지 않는다.
-- `.issue`와 `graph.json`이 심볼릭 링크이면 저장하지 않는다.
+- `.issue`와 `graph.json`은 저장소 안의 실제 디렉터리·일반 파일이어야 하며, 심볼릭 링크나 다른 경로와 하드링크된 캐시는 사용하지 않는다. 읽기는 `O_NOFOLLOW` descriptor와 inode를 확인하고, 쓰기는 검증된 부모 디렉터리 안에서 임시 파일을 만든 뒤 대상 inode와 부모가 바뀌지 않았을 때만 원자 교체한다. 부모·대상·임시 파일이 검증 사이에 바뀌면 fail-closed 한다.
+- 추천 중 살아 있는 소유자의 `.issue/graph.json.lock`이 있으면 `saveGraph`/상태 전이 writer는 갱신을 건너뛰고, 온보딩은 추천을 중단한다. 비정상 종료로 죽은 PID가 기록된 형식 검증 lock만 부모·파일 inode를 다시 확인한 뒤 한 번 회수하며, 형식이 불명확하거나 경계가 바뀐 lock은 실행 중인 issue 작업이 없는 것을 확인한 뒤 수동으로 제거한다.
+- stale lock 회수 중 canonical 경로에 새 lock이 인계되면 원자적 no-replace 복구를 시도하고, 복구를 확정할 수 없으면 release 표식을 남겨 후속 writer도 fail-closed 한다.
 - 그래프 캐시를 직접 부분 수정하지 않는다. GitHub에서 다시 동기화한다.
 - 우선순위 목록은 처음에 6개를 넘지 않는다.
 - 이슈 생성은 issue-create, 착수는 issue-start, PR 생성은 issue-end, 병합은 issue-merge가 맡는다.

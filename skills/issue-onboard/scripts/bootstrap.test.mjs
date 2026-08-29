@@ -1,10 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import fs, { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { syncBuiltinESMExports } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   bootstrapEnvironment,
@@ -17,7 +18,7 @@ import {
   saveGraph,
   syncBootstrapComplete,
 } from './issue-onboard.mjs';
-import { run } from './issue-common.mjs';
+import { patchGraphNode, run } from './issue-common.mjs';
 import { digest, extractQuote } from './issue-graph-v2.mjs';
 
 const now = '2026-08-28T00:00:00.000Z';
@@ -68,20 +69,77 @@ function writeExecutable(file, contents) {
   chmodSync(file, 0o755);
 }
 
-function writeCliTestLoader(root) {
+function writeCliTestLoader(root, {
+  rewriteGraphAfterIssueList = false,
+  rewriteGraphAfterGraphRead = 0,
+  writerDuringOutputAfterGraphRead = 0,
+} = {}) {
   const loader = path.join(root, 'test-loader.mjs');
   writeFileSync(loader, `import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const fixtureRoot = process.env.ISSUE_ONBOARD_TEST_FIXTURE_ROOT;
+const rewriteGraphAfterIssueList = ${JSON.stringify(rewriteGraphAfterIssueList)};
+const rewriteGraphAfterGraphRead = ${JSON.stringify(rewriteGraphAfterGraphRead)};
+const writerDuringOutputAfterGraphRead = ${JSON.stringify(writerDuringOutputAfterGraphRead)};
 if (fixtureRoot) {
   const originalSpawnSync = childProcess.spawnSync;
   childProcess.spawnSync = (command, args, options) => {
     if (path.basename(String(command)) === 'gh') {
-      return originalSpawnSync(path.join(fixtureRoot, 'bin', 'gh'), args, options);
+      const result = originalSpawnSync(path.join(fixtureRoot, 'bin', 'gh'), args, options);
+      if (rewriteGraphAfterIssueList && args.join(' ').includes('issue list')) {
+        writeFileSync(path.join(fixtureRoot, '.issue', 'graph.json'), '{ TOCTOU invalid', 'utf8');
+      }
+      return result;
     }
     return originalSpawnSync(command, args, options);
+  };
+  const originalReadFileSync = fs.readFileSync;
+  const graphDescriptors = new Set();
+  const originalOpenSync = fs.openSync;
+  fs.openSync = (file, ...args) => {
+    const descriptor = originalOpenSync(file, ...args);
+    if (path.basename(String(file)) === 'graph.json') graphDescriptors.add(descriptor);
+    return descriptor;
+  };
+  const originalCloseSync = fs.closeSync;
+  fs.closeSync = (descriptor) => {
+    graphDescriptors.delete(descriptor);
+    return originalCloseSync(descriptor);
+  };
+  let graphReadCount = 0;
+  fs.readFileSync = (file, ...args) => {
+    const result = originalReadFileSync(file, ...args);
+    if (path.basename(String(file)) === 'graph.json' || graphDescriptors.has(file)) {
+      graphReadCount += 1;
+      if (rewriteGraphAfterGraphRead && graphReadCount === rewriteGraphAfterGraphRead) {
+        writeFileSync(path.join(fixtureRoot, '.issue', 'graph.json'), '{ TOCTOU invalid', 'utf8');
+      }
+      if (writerDuringOutputAfterGraphRead && graphReadCount === writerDuringOutputAfterGraphRead) {
+        const writerScript = [
+          "import { readFileSync } from 'node:fs';",
+          "import { saveGraph } from " + JSON.stringify(pathToFileURL(path.join(fixtureRoot, 'skills', 'issue-onboard', 'scripts', 'issue-onboard.mjs')).href) + ";",
+          "const root = " + JSON.stringify(fixtureRoot) + ";",
+          "const file = " + JSON.stringify(path.join(fixtureRoot, '.issue', 'graph.json')) + ";",
+          "saveGraph(root, JSON.parse(readFileSync(file, 'utf8')));",
+        ].join('\\n');
+        const writer = originalSpawnSync(process.execPath, ['--input-type=module', '-e', writerScript], {
+          cwd: fixtureRoot,
+          encoding: 'utf8',
+          env: { ...process.env, NODE_OPTIONS: '' },
+        });
+        writeFileSync(
+          path.join(fixtureRoot, 'writer-status.txt'),
+          String(writer.status) + '\\n' + (writer.stdout ?? '') + (writer.stderr ?? ''),
+          'utf8',
+        );
+      }
+    }
+    return result;
   };
   syncBuiltinESMExports();
 }
@@ -89,7 +147,15 @@ if (fixtureRoot) {
   return loader;
 }
 
-function cliFixture({ syncMode = 'complete', graph = null, initialGraph = null, ontologyPath = ontologyRoot } = {}) {
+function cliFixture({
+  syncMode = 'complete',
+  graph = null,
+  initialGraph = null,
+  ontologyPath = ontologyRoot,
+  rewriteGraphAfterIssueList = false,
+  rewriteGraphAfterGraphRead = 0,
+  writerDuringOutputAfterGraphRead = 0,
+} = {}) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-cli-'));
   const bin = path.join(root, 'bin');
   mkdirSync(bin, { recursive: true });
@@ -104,7 +170,11 @@ case "$*" in
   *) printf '%s\\n' '{}' ;;
 esac
 `);
-  const testLoader = writeCliTestLoader(root);
+  const testLoader = writeCliTestLoader(root, {
+    rewriteGraphAfterIssueList,
+    rewriteGraphAfterGraphRead,
+    writerDuringOutputAfterGraphRead,
+  });
 
   cpSync(
     path.join(repositoryRoot, 'skills', 'issue-onboard'),
@@ -522,6 +592,123 @@ test('the onboarding CLI rejects a graph that remains stale after a reported-suc
   }
 });
 
+test('the onboarding CLI fails closed when the graph cache changes during live issue reads', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    syncMode: 'failed',
+    rewriteGraphAfterIssueList: true,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /SYNC_FAILED=1/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+    assert.doesNotMatch(output, /PRIORITY=/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI reports invalid caches and fails when bootstrap fails', () => {
+  const schemaInvalid = completeGraph();
+  schemaInvalid.nodes['1'].labels = 'bug';
+  const cases = [
+    ['malformed', null],
+    ['schema-invalid', schemaInvalid],
+  ];
+
+  for (const [kind, initialGraph] of cases) {
+    const fixture = cliFixture({ initialGraph: initialGraph ?? completeGraph(), syncMode: 'failed' });
+    try {
+      if (kind === 'malformed') writeFileSync(path.join(fixture.root, '.issue', 'graph.json'), '{ malformed', 'utf8');
+      const result = runCliOnboard(fixture);
+      const output = result.stdout + result.stderr;
+      assert.notEqual(result.status, 0);
+      assert.match(output, /GRAPH_BOOTSTRAP_REASON=invalid/);
+      assert.match(output, /SYNC_FAILED=1/);
+      assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+      assert.doesNotMatch(output, /PRIORITY=/);
+      if (kind === 'malformed') assert.match(output, /graph\.json 파싱 실패/);
+      console.log(`CACHE_VALIDATION=${kind} EXIT=${result.status} RECOMMENDATION=none`);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('the onboarding CLI fails closed when the graph cache changes after the final graph load', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    rewriteGraphAfterGraphRead: 5,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /추천 직전 그래프 캐시가 변경되어 추천하지 않는다/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+    assert.doesNotMatch(output, /PRIORITY=/);
+    console.log(`FINAL_CACHE_VALIDATION=changed-after-load EXIT=${result.status} RECOMMENDATION=none`);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI fails closed when the graph cache changes before recommendation output', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    rewriteGraphAfterGraphRead: 8,
+  });
+  try {
+    const result = runCliOnboard(fixture);
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0);
+    assert.match(output, /추천 직전 그래프 캐시가 변경되어 추천하지 않는다/);
+    assert.doesNotMatch(output, /ONBOARD_COUNT=/);
+    assert.doesNotMatch(output, /PRIORITY=/);
+    console.log(`OUTPUT_CACHE_VALIDATION=changed-before-emission EXIT=${result.status} RECOMMENDATION=none`);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the onboarding CLI holds the cache lock while official writers attempt recommendation output', () => {
+  const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
+  const graph = completeGraph();
+  graph.snapshot.digest = issueSnapshotDigest([issue]);
+  graph.snapshot.graphDigest = graphDocumentDigest(graph);
+  const fixture = cliFixture({
+    initialGraph: graph,
+    writerDuringOutputAfterGraphRead: 10,
+  });
+  try {
+    const before = readFileSync(path.join(fixture.root, '.issue', 'graph.json'), 'utf8');
+    const result = runCliOnboard(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /ONBOARD_COUNT=1/);
+    const writerStatus = readFileSync(path.join(fixture.root, 'writer-status.txt'), 'utf8');
+    assert.match(writerStatus, /^1\n/);
+    assert.match(writerStatus, /그래프 캐시가 다른 작업에서 변경 중이라 추천하지 않는다/);
+    assert.equal(readFileSync(path.join(fixture.root, '.issue', 'graph.json'), 'utf8'), before);
+    console.log('OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable');
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('the onboarding CLI fails closed when the ontology validator is unavailable', () => {
   const fixture = cliFixture({
     initialGraph: completeGraph(),
@@ -777,5 +964,502 @@ test('saveGraph rejects a symlinked .issue directory before writing outside the 
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('graph writers fail closed when onboarding owns the cache lock', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-lock-'));
+  try {
+    const graph = completeGraph();
+    const file = saveGraph(root, graph);
+    const before = readFileSync(file, 'utf8');
+    const lockFile = path.join(root, '.issue', 'graph.json.lock');
+    writeFileSync(lockFile, 'onboard-test\\n', 'utf8');
+    assert.throws(() => saveGraph(root, graph), /그래프 캐시가 다른 작업에서 변경 중이라 추천하지 않는다/);
+    assert.equal(patchGraphNode(root, { number: 1, title: 'changed' }), false);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('reclaims a cache lock whose recorded owner is no longer alive', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-stale-lock-'));
+  try {
+    const graph = completeGraph();
+    const file = saveGraph(root, graph);
+    const lockFile = path.join(root, '.issue', 'graph.json.lock');
+    writeFileSync(lockFile, `${process.pid + 1_000_000}:1:1\n`, 'utf8');
+    assert.equal(saveGraph(root, graph), file);
+    assert.equal(existsSync(lockFile), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('does not remove a live lock handed off during stale-lock recovery', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  const liveOwner = `${process.pid}:1:1\n`;
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-lock-handoff-`));
+    try {
+      const file = saveGraph(root, completeGraph());
+      const before = readFileSync(file, 'utf8');
+      const lockFile = path.join(root, '.issue', 'graph.json.lock');
+      writeFileSync(lockFile, `${process.pid + 1_000_000}:1:1\n`, 'utf8');
+      let swapped = false;
+      const originalRenameSync = fs.renameSync;
+      fs.renameSync = (source, destination) => {
+        if (!swapped && path.basename(String(source)) === 'graph.json.lock'
+          && path.basename(String(destination)).startsWith('.graph.json.lock.release-')) {
+          swapped = true;
+        }
+        const result = originalRenameSync(source, destination);
+        if (swapped && path.basename(String(source)) === 'graph.json.lock'
+          && path.basename(String(destination)).startsWith('.graph.json.lock.release-')) {
+          const handoff = `${lockFile}.handoff`;
+          writeFileSync(handoff, liveOwner, 'utf8');
+          originalRenameSync(handoff, lockFile);
+        }
+        return result;
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.renameSync = originalRenameSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(lockFile, 'utf8'), liveOwner, skill);
+      assert.equal(readFileSync(file, 'utf8'), before, skill);
+      assert.deepEqual(
+        fs.readdirSync(path.dirname(lockFile)).filter((name) => name.startsWith('.graph.json.lock.release-')),
+        [],
+        skill,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('restores a live lock replaced before stale-lock cleanup and blocks the next writer', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  const liveOwner = `${process.pid}:3:3\n`;
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-lock-pre-rename-`));
+    try {
+      const file = saveGraph(root, completeGraph());
+      const before = readFileSync(file, 'utf8');
+      const lockFile = path.join(root, '.issue', 'graph.json.lock');
+      writeFileSync(lockFile, `${process.pid + 1_000_000}:3:3\n`, 'utf8');
+      let swapped = false;
+      const originalRenameSync = fs.renameSync;
+      fs.renameSync = (source, destination) => {
+        if (!swapped && path.basename(String(source)) === 'graph.json.lock'
+          && path.basename(String(destination)).startsWith('.graph.json.lock.release-')) {
+          const handoff = `${lockFile}.handoff`;
+          writeFileSync(handoff, liveOwner, 'utf8');
+          originalRenameSync(handoff, lockFile);
+          swapped = true;
+        }
+        return originalRenameSync(source, destination);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.renameSync = originalRenameSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(lockFile, 'utf8'), liveOwner, skill);
+      assert.equal(readFileSync(file, 'utf8'), before, skill);
+      assert.deepEqual(
+        fs.readdirSync(path.dirname(lockFile)).filter((name) => name.startsWith('.graph.json.lock.release-')),
+        [],
+        skill,
+      );
+      assert.equal(writer(root, { number: 1, title: 'second' }), false, skill);
+      assert.equal(readFileSync(lockFile, 'utf8'), liveOwner, skill);
+      assert.equal(readFileSync(file, 'utf8'), before, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('does not release a replacement live lock during normal writer cleanup', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  const liveOwner = `${process.pid}:2:2\n`;
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-lock-release-`));
+    try {
+      saveGraph(root, completeGraph());
+      const lockFile = path.join(root, '.issue', 'graph.json.lock');
+      let swapped = false;
+      const originalRenameSync = fs.renameSync;
+      fs.renameSync = (source, destination) => {
+        if (!swapped && path.basename(String(source)) === 'graph.json.lock'
+          && path.basename(String(destination)).startsWith('.graph.json.lock.release-')) {
+          swapped = true;
+        }
+        const result = originalRenameSync(source, destination);
+        if (swapped && path.basename(String(source)) === 'graph.json.lock'
+          && path.basename(String(destination)).startsWith('.graph.json.lock.release-')) {
+          const handoff = `${lockFile}.handoff`;
+          writeFileSync(handoff, liveOwner, 'utf8');
+          originalRenameSync(handoff, lockFile);
+        }
+        return result;
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), true, skill);
+      } finally {
+        fs.renameSync = originalRenameSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(lockFile, 'utf8'), liveOwner, skill);
+      assert.match(readFileSync(path.join(root, '.issue', 'graph.json'), 'utf8'), /"title": "changed"/u, skill);
+      assert.deepEqual(
+        fs.readdirSync(path.dirname(lockFile)).filter((name) => name.startsWith('.graph.json.lock.release-')),
+        [],
+        skill,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('all graph writers reject symlinked cache paths', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    const graphText = JSON.stringify(completeGraph()) + '\n';
+    writeFileSync(outsideGraph, graphText, 'utf8');
+    const linkedDirectoryRoot = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-directory-link-`));
+    const linkedFileRoot = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-file-link-`));
+    try {
+      symlinkSync(outside, path.join(linkedDirectoryRoot, '.issue'), 'dir');
+      assert.equal(writer(linkedDirectoryRoot, { number: 1, title: 'changed' }), false, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), graphText, skill);
+
+      mkdirSync(path.join(linkedFileRoot, '.issue'));
+      symlinkSync(outsideGraph, path.join(linkedFileRoot, '.issue', 'graph.json'));
+      assert.equal(writer(linkedFileRoot, { number: 1, title: 'changed' }), false, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), graphText, skill);
+    } finally {
+      rmSync(linkedDirectoryRoot, { recursive: true, force: true });
+      rmSync(linkedFileRoot, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('all graph writers reject hard-linked cache files', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-hardlink-`));
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-hardlink-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    const graphText = JSON.stringify(completeGraph()) + '\n';
+    try {
+      mkdirSync(path.join(root, '.issue'));
+      writeFileSync(outsideGraph, graphText, 'utf8');
+      fs.linkSync(outsideGraph, path.join(root, '.issue', 'graph.json'));
+      assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), graphText, skill);
+      assert.equal(readFileSync(path.join(root, '.issue', 'graph.json'), 'utf8'), graphText, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('all graph writers reject a symlink swap at the final open', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-swap-`));
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-swap-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    try {
+      saveGraph(root, completeGraph());
+      const graphFile = realpathSync(path.join(root, '.issue', 'graph.json'));
+      const outsideText = 'outside graph\n';
+      writeFileSync(outsideGraph, outsideText, 'utf8');
+      let swapped = false;
+      const originalOpenSync = fs.openSync;
+      fs.openSync = (file, flags, mode) => {
+        if (!swapped && typeof flags === 'number' && path.resolve(String(file)) === graphFile) {
+          swapped = true;
+          unlinkSync(graphFile);
+          symlinkSync(outsideGraph, graphFile);
+        }
+        return originalOpenSync(file, flags, mode);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.openSync = originalOpenSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('all graph writers reject a parent-directory symlink swap at the final open', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-parent-swap-`));
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-parent-swap-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    const outsideText = 'outside graph\n';
+    try {
+      saveGraph(root, completeGraph());
+      writeFileSync(outsideGraph, outsideText, 'utf8');
+      const graphFile = realpathSync(path.join(root, '.issue', 'graph.json'));
+      const originalOpenSync = fs.openSync;
+      let swapped = false;
+      fs.openSync = (file, flags, mode) => {
+        if (!swapped && typeof flags === 'number' && path.resolve(String(file)) === graphFile) {
+          swapped = true;
+          renameSync(path.join(root, '.issue'), path.join(root, '.issue-original'));
+          symlinkSync(outside, path.join(root, '.issue'), 'dir');
+        }
+        return originalOpenSync(file, flags, mode);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.openSync = originalOpenSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText, skill);
+      assert.equal(existsSync(path.join(root, '.issue-original', 'graph.json.lock')), false, skill);
+      assert.equal(existsSync(path.join(root, '.issue-original', `graph.json.tmp-${process.pid}`)), false, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('saveGraph rejects a parent-directory swap at the final rename', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-save-parent-swap-'));
+  const outside = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-save-parent-swap-outside-'));
+  const outsideGraph = path.join(outside, 'graph.json');
+  const outsideText = 'outside graph\n';
+  const outsideTemporaryText = 'outside temporary\n';
+  try {
+    saveGraph(root, completeGraph());
+    writeFileSync(outsideGraph, outsideText, 'utf8');
+    const temporaryName = `graph.json.tmp-${process.pid}`;
+    let swapped = false;
+    const originalRenameSync = fs.renameSync;
+    fs.renameSync = (source, destination) => {
+      if (!swapped && path.basename(String(source)) === temporaryName) {
+        swapped = true;
+        renameSync(path.join(root, '.issue'), path.join(root, '.issue-original'));
+        symlinkSync(outside, path.join(root, '.issue'), 'dir');
+        writeFileSync(path.join(outside, temporaryName), outsideTemporaryText, 'utf8');
+      }
+      return originalRenameSync(source, destination);
+    };
+    syncBuiltinESMExports();
+    try {
+      assert.throws(() => saveGraph(root, completeGraph()), /그래프 캐시 상위 디렉터리/);
+    } finally {
+      fs.renameSync = originalRenameSync;
+      syncBuiltinESMExports();
+    }
+    assert.equal(swapped, true);
+    assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText);
+    assert.equal(readFileSync(path.join(outside, temporaryName), 'utf8'), outsideTemporaryText);
+    assert.equal(existsSync(path.join(root, '.issue-original', 'graph.json.lock')), false);
+    assert.equal(existsSync(path.join(root, '.issue-original', temporaryName)), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('all graph writers reject a final-file symlink swap before replacement', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-replace-swap-`));
+    const outside = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-replace-swap-outside-`));
+    const outsideGraph = path.join(outside, 'graph.json');
+    try {
+      saveGraph(root, completeGraph());
+      const graphFile = realpathSync(path.join(root, '.issue', 'graph.json'));
+      const temporaryName = `graph.json.tmp-${process.pid}`;
+      const outsideText = 'outside graph\n';
+      writeFileSync(outsideGraph, outsideText, 'utf8');
+      let armed = false;
+      let swapped = false;
+      const originalLstatSync = fs.lstatSync;
+      fs.lstatSync = (file, ...args) => {
+        if (!swapped && armed && path.basename(String(file)) === 'graph.json') {
+          swapped = true;
+          unlinkSync(graphFile);
+          symlinkSync(outsideGraph, graphFile);
+        }
+        const result = originalLstatSync(file, ...args);
+        if (!swapped && path.basename(String(file)) === temporaryName) armed = true;
+        return result;
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.lstatSync = originalLstatSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(outsideGraph, 'utf8'), outsideText, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
+  }
+});
+
+test('saveGraph does not create cache data through a swapped repository root', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-root-swap-'));
+  const originalRoot = `${root}-original`;
+  const outside = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-root-swap-outside-'));
+  let swapped = false;
+  let outsideCacheExists = false;
+  const originalMkdirSync = fs.mkdirSync;
+  try {
+    fs.mkdirSync = (directory, ...args) => {
+      if (!swapped && String(directory) === '.issue') {
+        swapped = true;
+        renameSync(root, originalRoot);
+        symlinkSync(outside, root, 'dir');
+      }
+      return originalMkdirSync(directory, ...args);
+    };
+    syncBuiltinESMExports();
+    assert.throws(() => saveGraph(root, completeGraph()), /저장소 루트/);
+    outsideCacheExists = existsSync(path.join(outside, '.issue', 'graph.json'));
+  } finally {
+    fs.mkdirSync = originalMkdirSync;
+    syncBuiltinESMExports();
+    rmSync(root, { recursive: true, force: true });
+    rmSync(originalRoot, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+  assert.equal(swapped, true);
+  assert.equal(outsideCacheExists, false);
+});
+
+test('all graph writers reject an attacker-replaced temporary file', async () => {
+  const skills = ['issue-create', 'issue-start', 'issue-end', 'issue-merge', 'issue-onboard', 'issue-sync'];
+  for (const skill of skills) {
+    const writer = skill === 'issue-onboard'
+      ? patchGraphNode
+      : (await import(pathToFileURL(path.join(repositoryRoot, 'skills', skill, 'scripts', 'issue-common.mjs')).href)).patchGraphNode;
+    const root = mkdtempSync(path.join(os.tmpdir(), `issue-${skill}-temporary-swap-`));
+    try {
+      const graphFile = saveGraph(root, completeGraph());
+      const before = readFileSync(graphFile, 'utf8');
+      const temporaryName = `graph.json.tmp-${process.pid}`;
+      const temporaryFile = path.join(root, '.issue', temporaryName);
+      const attackerText = 'attacker temporary content\n';
+      let swapped = false;
+      const originalLstatSync = fs.lstatSync;
+      fs.lstatSync = (file, ...args) => {
+        if (!swapped && path.basename(String(file)) === temporaryName) {
+          swapped = true;
+          unlinkSync(temporaryFile);
+          writeFileSync(temporaryFile, attackerText, 'utf8');
+        }
+        return originalLstatSync(file, ...args);
+      };
+      syncBuiltinESMExports();
+      try {
+        assert.equal(writer(root, { number: 1, title: 'changed' }), false, skill);
+      } finally {
+        fs.lstatSync = originalLstatSync;
+        syncBuiltinESMExports();
+      }
+      assert.equal(swapped, true, skill);
+      assert.equal(readFileSync(graphFile, 'utf8'), before, skill);
+      assert.equal(readFileSync(temporaryFile, 'utf8'), attackerText, skill);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('saveGraph rejects an attacker-replaced temporary file', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'issue-onboard-save-temporary-swap-'));
+  try {
+    const graphFile = saveGraph(root, completeGraph());
+    const before = readFileSync(graphFile, 'utf8');
+    const temporaryName = `graph.json.tmp-${process.pid}`;
+    const temporaryFile = path.join(root, '.issue', temporaryName);
+    const attackerText = 'attacker temporary content\n';
+    let swapped = false;
+    const originalLstatSync = fs.lstatSync;
+    fs.lstatSync = (file, ...args) => {
+      if (!swapped && path.basename(String(file)) === temporaryName) {
+        swapped = true;
+        unlinkSync(temporaryFile);
+        writeFileSync(temporaryFile, attackerText, 'utf8');
+      }
+      return originalLstatSync(file, ...args);
+    };
+    syncBuiltinESMExports();
+    try {
+      assert.throws(() => saveGraph(root, completeGraph()), /그래프 캐시 임시 파일/);
+    } finally {
+      fs.lstatSync = originalLstatSync;
+      syncBuiltinESMExports();
+    }
+    assert.equal(swapped, true);
+    assert.equal(readFileSync(graphFile, 'utf8'), before);
+    assert.equal(readFileSync(temporaryFile, 'utf8'), attackerText);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
