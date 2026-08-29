@@ -1,0 +1,14 @@
+Manual QA worktree status
+Branch: fix/19-onboard-cache-integrity
+HEAD: dc3822be9f799d681f4a8d533140e7e4775cfaeb
+
+Before and after runtime checks:
+git status --short --untracked-files=no
+(empty)
+
+git status --short --branch
+## fix/19-onboard-cache-integrity...origin/fix/19-onboard-cache-integrity
+?? .local/
+
+git diff --check origin/main...HEAD
+(exit 0)

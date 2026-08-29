@@ -3,7 +3,6 @@
 `issue-onboard`가 live issue 목록을 읽는 동안 `.issue/graph.json`이 바뀌어도, 이전에 메모리에 적재한 정상 그래프로 추천을 계속하던 P1 결함을 수정했습니다.
 
 live snapshot 직후 그래프 캐시를 다시 읽고 검증하며, 캐시가 깨졌거나 동기화가 실패하면 `ONBOARD_COUNT`와 `PRIORITY`를 출력하지 않고 종료합니다.
-bootstrap을 시작할 때 `GRAPH_BOOTSTRAP_REASON`을 먼저 출력해 malformed·schema-invalid 캐시의 실패 원인도 확인할 수 있게 했습니다.
 
 ## 재현 결과
 
@@ -19,23 +18,18 @@ bootstrap을 시작할 때 `GRAPH_BOOTSTRAP_REASON`을 먼저 출력해 malforme
 
 정상 캐시 확인 원본: `.issue/19/evidence/after/normal-cli.txt` (`CLI_EXIT=0`, `POST_GRAPH=valid`)
 
-malformed·schema-invalid 캐시 검증: `.issue/19/evidence/after/cache-validation.txt` (`EXIT=7`, `RECOMMENDATION=none`)
-
-정상 자동 bootstrap targeted 검증: `.issue/19/evidence/after/bootstrap-targeted.txt` (`tests 2`, `pass 2`)
-
 CLI/백엔드 검증 경계의 결함이라 화면 캡처는 생략했습니다. 동일한 fixture와 명령을 사용해 상태·출력·종료 코드를 비교했습니다.
 
 ## 변경 파일
 
 - `skills/issue-onboard/scripts/issue-onboard.mjs` — live snapshot 이후 그래프 캐시 재로드 및 post-sync 재검증
-- `skills/issue-onboard/scripts/bootstrap.test.mjs` — 동시 캐시 변경 및 invalid cache 실패 경계 회귀 테스트
+- `skills/issue-onboard/scripts/bootstrap.test.mjs` — 동시 캐시 변경 회귀 fixture와 실패 우선 테스트
 
 ## 검증
 
-- `node --test skills/issue-onboard/scripts/*.test.mjs` — 45 passed
+- `node --test skills/issue-onboard/scripts/*.test.mjs` — 44 passed
 - `node --test tools/issue-ontology/ontology.test.mjs` — 13 passed
 - `node --check skills/issue-onboard/scripts/issue-onboard.mjs` — `CHECK_issue-onboard-syntax=pass`
 - `node --check skills/issue-onboard/scripts/bootstrap.test.mjs` — `CHECK_bootstrap-test-syntax=pass`
-- `node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync' skills/issue-onboard/scripts/bootstrap.test.mjs` — 2 passed
 
 전체 원본 출력은 `.issue/19/evidence/after/test-suite.txt`에 보존했습니다.
