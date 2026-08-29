@@ -1,0 +1,35 @@
+Manual QA runtime transcript for fix/19-onboard-cache-integrity
+Branch: dc3822be9f799d681f4a8d533140e7e4775cfaeb
+Worktree: /Users/mineru/SourceCode/samsara-issue-19
+
+S1 surface=terminal/Node test runner
+Invocation: node --test skills/issue-onboard/scripts/*.test.mjs
+Observed: tests 45; pass 45; fail 0; skipped 0; todo 0; exit 0.
+
+S2 surface=terminal/Node test runner
+Invocation: node --test tools/issue-ontology/ontology.test.mjs
+Observed: tests 13; pass 13; fail 0; skipped 0; todo 0; exit 0.
+
+S3 surface=terminal/Node syntax checker
+Invocation: node --check skills/issue-onboard/scripts/issue-onboard.mjs
+Observed: exit 0.
+Invocation: node --check skills/issue-onboard/scripts/bootstrap.test.mjs
+Observed: exit 0.
+
+S4 surface=terminal/Node targeted test runner
+Invocation: node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync' skills/issue-onboard/scripts/bootstrap.test.mjs
+Observed: tests 2; pass 2; fail 0; skipped 0; exit 0.
+Observed markers: CACHE_VALIDATION=malformed EXIT=7 RECOMMENDATION=none; CACHE_VALIDATION=schema-invalid EXIT=7 RECOMMENDATION=none.
+
+S5 surface=terminal/Node focused regression test
+Invocation: node --test --test-name-pattern='fails closed when the graph cache changes during live issue reads' skills/issue-onboard/scripts/bootstrap.test.mjs
+Observed: tests 1; pass 1; fail 0; skipped 0; exit 0.
+
+S6 surface=filesystem artifact comparison
+Invocation: read-only inspection of .issue/19/evidence/before/toctou-cli.txt and after/toctou-cli.txt
+Observed before: CLI_EXIT=0, ONBOARD_COUNT=1, PRIORITY=#19, POST_GRAPH=parse-error.
+Observed after: SYNC_FAILED=1, CLI_EXIT=7, POST_GRAPH=parse-error, with no ONBOARD_COUNT or PRIORITY.
+
+S7 surface=terminal/git worktree inspection
+Invocation: git status --short --untracked-files=no; git diff --check origin/main...HEAD
+Observed: no tracked worktree changes; diff check exit 0. Full status reports pre-existing untracked .local/.
