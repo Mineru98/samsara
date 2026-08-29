@@ -1,14 +1,15 @@
-// !!! VENDORED FILE — DO NOT EDIT !!!
-// canonical: tools/issue-common.mjs
-// resync   : sh scripts/sync-shared.sh
+// !!! VENDORED FILE — shared cache-safety block must stay identical !!!
+// shared block: from function safeGraphTarget(root) to end of file
+// verify     : sh scripts/check-shared.sh
 /**
  * issue-common.mjs — issue-create / issue-start / issue-end / issue-merge 공용 모듈.
  *
- * 이 파일이 정본이다. 각 스킬의 scripts/ 아래 사본은 scripts/sync-shared.sh 가 만든다.
- * 사본을 직접 고치지 말고 이 파일을 고친 뒤 sync 를 다시 돌려라.
+ * 여섯 독립 스킬은 이 모듈을 각각 vendored copy로 포함한다. `safeGraphTarget`부터 파일
+ * 끝까지의 graph cache-safety block은 모두 동일해야 하며 scripts/check-shared.sh가 확인한다.
+ * 앞부분의 스킬별 helper는 각 사본의 호출면에 맞을 수 있다.
  *
  * 스킬은 폴더 단위로 독립 설치되므로 스킬 간 import 는 불가능하다.
- * 그래서 "정본 1벌 + 기계적 사본" 구조를 쓰고 scripts/check-shared.sh 로 드리프트를 막는다.
+ * 그래서 공통 안전 블록과 스킬별 helper를 한 파일에 함께 두되, 공통 블록의 드리프트를 막는다.
  *
  * 의존성 없음. Node 18+.
  */

@@ -27,6 +27,9 @@ $issue-onboard [--all]
    출력까지 `.issue/graph.json.lock`을 유지하며, 같은 잠금 프로토콜을 따르는 graph writer와
    캐시 교체를 직렬화한다. sync 실패·partial·cycle·dangling·무결성 digest 불일치이면 순위와
    다음 추천을 내지 않고 이유를 알린다.
+   추천 marker는 명령이 exit 0일 때만 소비한다. 잠금에 참여하지 않는 외부 프로세스가
+   stdout 쓰기 직전에 캐시를 바꾸면 이미 전송된 바이트를 회수할 수 없으므로, post-write
+   검증은 명령을 nonzero로 종료시켜 호출자가 해당 출력을 폐기하도록 한다.
 3. GitHub의 열린 이슈와 그래프 상태를 함께 읽어 ready → in-progress → blocked 순, P0~P3·번호 순으로 정렬한다.
 4. 최대 6개를 먼저 보여 준다. 더 있으면 `--all` 요청으로 같은 형식의 전체 목록을 이어서 낸다.
 5. 최우선 이슈 착수, 열린 PR 병합, 새 이슈 등록 중 하나를 선택받는다.

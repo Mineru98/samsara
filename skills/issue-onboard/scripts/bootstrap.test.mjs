@@ -663,7 +663,7 @@ test('the onboarding CLI fails closed when the graph cache changes after the fin
   }
 });
 
-test('the onboarding CLI fails closed when the graph cache changes during recommendation output', () => {
+test('the onboarding CLI fails closed when the graph cache changes before recommendation output', () => {
   const issue = { number: 1, title: 'Issue 1', labels: [], url: 'https://github.com/o/r/issues/1', state: 'OPEN', updatedAt: 'r' };
   const graph = completeGraph();
   graph.snapshot.digest = issueSnapshotDigest([issue]);
@@ -679,7 +679,7 @@ test('the onboarding CLI fails closed when the graph cache changes during recomm
     assert.match(output, /추천 직전 그래프 캐시가 변경되어 추천하지 않는다/);
     assert.doesNotMatch(output, /ONBOARD_COUNT=/);
     assert.doesNotMatch(output, /PRIORITY=/);
-    console.log(`OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=${result.status} RECOMMENDATION=none`);
+    console.log(`OUTPUT_CACHE_VALIDATION=changed-before-emission EXIT=${result.status} RECOMMENDATION=none`);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

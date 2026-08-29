@@ -697,6 +697,11 @@ function assertGraphCacheStable(root, expected) {
 }
 
 function emitStableOutput(root, expected, output) {
+  // The pre-write check is the recommendation decision point. All supported graph
+  // writers use the same lock, so a supported replacement cannot enter here. A
+  // non-cooperating process can still mutate the cache after that check and after
+  // stdout has started; the post-write check makes that command fail nonzero, and
+  // callers must only consume recommendation markers from a successful command.
   if (graphCacheFingerprint(root) !== expected) {
     throw new Error('추천 직전 그래프 캐시가 변경되어 추천하지 않는다.');
   }

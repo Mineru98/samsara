@@ -18,7 +18,7 @@ Worktree note: `git status --short --untracked-files=no` is empty. The user-requ
 | Stale cache after successful sync | Node CLI subprocess fixture | Cache mismatch is rejected before recommendation | PASS |
 | Cache change during live issue reads | Node CLI subprocess fixture | Nonzero exit and no `ONBOARD_COUNT`/`PRIORITY` | PASS |
 | Cache change after final graph load | Node CLI subprocess fixture | `FINAL_CACHE_VALIDATION` exits 1 with no recommendation | PASS |
-| Raw cache change during final guard | Node CLI subprocess fixture | `OUTPUT_CACHE_VALIDATION` exits 1 with no recommendation | PASS |
+| Raw cache change before recommendation output | Node CLI subprocess fixture | `OUTPUT_CACHE_VALIDATION` exits 1 with no recommendation | PASS |
 | Official writer at output boundary | Parent CLI plus child `saveGraph` | Writer exits 1 on lock; output is stable and cache is unchanged | PASS |
 | Direct graph writer lock handling | Node unit test | `saveGraph` throws and `patchGraphNode` returns false while lock exists | PASS |
 | Stale graph lock recovery | Node unit test | A valid lock owned by a dead PID is reclaimed; malformed or live-owner locks remain blocking | PASS |

@@ -4,7 +4,7 @@ issue #19의 `issue-onboard`가 live issue 목록을 읽거나 최종 추천을 
 
 최종 검증 기준 implementation commit: `8900cb9ce0681a67dc49642a6db52871a3ffa00e` (`fix(issue-19): preserve lock handoff during cleanup`)
 
-최종 graph reload·온톨로지/관계 검증·분류·추천 출력을 `.issue/graph.json.lock` 아래에서 수행하고, `saveGraph`와 issue-create/start/end/merge/onboard/sync의 `patchGraphNode`가 같은 exclusive sidecar lock을 사용합니다. 공식 writer가 잠금을 얻지 못하면 갱신하지 않으므로 지원되는 캐시 교체는 검증과 출력 사이에 끼어들 수 없습니다. 출력은 동기식 stdout 쓰기로 완료한 뒤 잠금을 해제합니다.
+최종 graph reload·온톨로지/관계 검증·분류·추천 출력을 `.issue/graph.json.lock` 아래에서 수행하고, `saveGraph`와 issue-create/start/end/merge/onboard/sync의 `patchGraphNode`가 같은 exclusive sidecar lock을 사용합니다. 공식 writer가 잠금을 얻지 못하면 갱신하지 않으므로 지원되는 캐시 교체는 검증과 출력 사이에 끼어들 수 없습니다. 출력은 동기식 stdout 쓰기로 완료한 뒤 잠금을 해제하며, 호출자는 exit 0인 실행의 추천 marker만 소비합니다.
 
 모든 공식 graph writer는 `.issue` 디렉터리와 `graph.json` 심볼릭 링크·하드링크를 거부하고, 최종 파일 읽기에도 `O_NOFOLLOW` descriptor를 사용합니다. `.issue` 부모 디렉터리와 그래프 inode를 검증하며, writer는 임시 파일을 검증된 부모 안에서 만든 뒤 대상 inode와 부모가 유지될 때만 원자 교체합니다. 검증 사이에 부모·대상·임시 파일이 바뀌면 fail-closed 하고 안전한 부모 기준으로 정리합니다.
 
@@ -14,7 +14,7 @@ issue #19의 `issue-onboard`가 live issue 목록을 읽거나 최종 추천을 
 | --- | --- |
 | live issue 목록 읽는 동안 malformed cache 변경 | `SYNC_FAILED=1`, 비정상 종료, 추천 출력 없음 |
 | 최종 graph load 뒤 cache 변경 | `FINAL_CACHE_VALIDATION=changed-after-load EXIT=1`, 추천 출력 없음 |
-| 최종 validation/output 구간의 cache 변경 | `OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1`, 추천 출력 없음 |
+| 최종 recommendation output 직전의 cache 변경 | `OUTPUT_CACHE_VALIDATION=changed-before-emission EXIT=1`, 추천 출력 없음 |
 | 최종 output 구간에 공식 `saveGraph` writer 실행 | writer `EXIT=1`, `OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable`, graph.json 불변 |
 | lock 보유 중 `saveGraph`/`patchGraphNode` 호출 | 각각 예외/false로 fail-closed |
 | stale lock 복구 | 유효한 dead-PID lock은 안전하게 회수하고 malformed/live-owner lock은 계속 차단 |

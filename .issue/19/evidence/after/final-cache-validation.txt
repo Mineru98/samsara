@@ -1,12 +1,12 @@
 # issue #19 final recommendation cache validation
 
 SOURCE_COMMIT=8900cb9ce0681a67dc49642a6db52871a3ffa00e
-COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes during recommendation output|holds the cache lock|graph writers fail closed|reclaims a cache lock|restores a live lock replaced before stale-lock cleanup|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
+COMMAND=node --test --test-name-pattern='reports invalid caches and fails when bootstrap fails|onboarding CLI bootstraps a complete sync|graph cache changes after the final graph load|graph cache changes before recommendation output|holds the cache lock|graph writers fail closed|reclaims a cache lock|restores a live lock replaced before stale-lock cleanup|all graph writers reject symlinked cache paths|all graph writers reject hard-linked cache files|all graph writers reject a symlink swap at the final open|all graph writers reject a parent-directory symlink swap at the final open|saveGraph rejects a parent-directory swap at the final rename|all graph writers reject a final-file symlink swap before replacement' skills/issue-onboard/scripts/bootstrap.test.mjs
 COMMAND_EXIT=0
 TESTS=14 PASS=14 FAIL=0
 
 FINAL_CACHE_VALIDATION=changed-after-load EXIT=1 RECOMMENDATION=none
-OUTPUT_CACHE_VALIDATION=changed-during-emission EXIT=1 RECOMMENDATION=none
+OUTPUT_CACHE_VALIDATION=changed-before-emission EXIT=1 RECOMMENDATION=none
 OUTPUT_CACHE_LOCK=official-writer-blocked EXIT=0 RECOMMENDATION=stable
 SYMLINK_WRITERS=6 HARDLINK_WRITERS=6 DIRECTORY_AND_FILE_LINKS_REJECTED=1 FINAL_OPEN_SYMLINK_SWAP_REJECTED=1 FINAL_REPLACEMENT_SYMLINK_SWAP_REJECTED=1 PARENT_DIRECTORY_SYMLINK_SWAP_REJECTED=1 SAVE_RENAME_PARENT_SWAP_REJECTED=1 PRE_RENAME_LOCK_HANDOFF_WRITERS=6 PRE_RENAME_LOCK_HANDOFF_BLOCKED=6 OUTSIDE_GRAPH_UNCHANGED=1 OUTSIDE_TEMP_UNCHANGED=1
 
