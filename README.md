@@ -340,7 +340,7 @@ commit ref를 source로 넘깁니다. 아래 SHA는 `issue-viz`와 현재 9개 �
 의도적으로 고정하며, 새 버전으로 갱신할 때는 새로 검증한 전체 SHA로 교체합니다.
 
 ```sh
-grok plugin install Mineru98/samsara@825c70c1faa5db06cfd20774966587412322f59f
+grok plugin install Mineru98/samsara@2466260820ba758c9b4c4b88e182e59fcc06cdcb
 ```
 
 `--trust`는 manifest와 구성 요소를 검토한 뒤 비대화식 설치가 필요할 때만 선택적으로 추가하세요.
@@ -367,17 +367,17 @@ Grok Build 플러그인은 저장소 루트의 `.grok-plugin/plugin.json`과 기
 사용하므로 Claude Code/Codex용 플러그인 파일과 함께 설치할 수 있습니다. 공식 marketplace에
 원격 소스로 등록할 때는 해당 저장소의 전체 40자 커밋 SHA를 고정해야 하며, Grok Build는
 설치 시 고정된 커밋을 다시 확인합니다. SHA는 전체 소문자 40자여야 하며, 예시는
-`825c70c1faa5db06cfd20774966587412322f59f`이며 위 직접 설치 명령과 같은 기준 ref입니다.
+`2466260820ba758c9b4c4b88e182e59fcc06cdcb`이며 위 직접 설치 명령과 같은 기준 ref입니다.
 marketplace 등록 절차는 [xAI 공식 plugin marketplace](https://github.com/xai-org/plugin-marketplace)의
 PR 규칙을 따릅니다.
 
-Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.3.0`입니다.
+Claude Code, Codex, Grok Build 플러그인 버전은 모두 `v0.3.1`입니다.
 
 공식 안내: [Grok Build Plugin Marketplace](https://x.ai/news/grok-plugin-marketplace),
 [Skills, Plugins & Marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces),
 [CLI Reference](https://docs.x.ai/build/cli/reference).
 
-`.issue/graph.json`은 GitHub에서 다시 만들 수 있는 캐시입니다. 상태 전환 뒤 수행되는 best-effort 노드 갱신이 V2 필수 문맥을 보존하지 못하면 다음 검증에서 추천을 중단하며, 이 경우 `issue-sync`로 완전 스냅샷을 다시 생성해야 합니다. v0.3.0의 phase capability bundle도 과거 `.claude`·`.codex` mirror 경로를 담고 있으므로, 루트형 플러그인 설치의 파일 목록 정본으로 사용하지 않습니다.
+`.issue/graph.json`은 GitHub에서 다시 만들 수 있는 캐시입니다. 상태 전환 뒤 수행되는 best-effort 노드 갱신이 V2 필수 문맥을 보존하지 못하면 다음 검증에서 추천을 중단하며, 이 경우 `issue-sync`로 완전 스냅샷을 다시 생성해야 합니다. v0.3.1의 phase capability bundle도 과거 `.claude`·`.codex` mirror 경로를 담고 있으므로, 루트형 플러그인 설치의 파일 목록 정본으로 사용하지 않습니다.
 
 증거 게시 과정에서 `issue-end mirror --push`는 임시 워크트리의 증거 커밋을 `origin/<base>`에 직접 push합니다. 기본 브랜치 보호로 거부되면 `evidence/issue-<번호>` 브랜치에 `--force-with-lease`로 게시하고 그 사실을 보고합니다. Confluence가 설정된 환경에서는 같은 리포트를 외부 문서에도 게시할 수 있습니다.
 
