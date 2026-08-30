@@ -317,7 +317,7 @@ codex plugin add samsara@samsara
 ### ZCode
 
 SAMSARA는 ZCode가 우선 탐색하는 `.zcode-plugin/plugin.json`을 제공합니다. ZCode는
-저장소 루트의 `skills/`와 `agents/`를 읽어 현재 SAMSARA의 9개 스킬과 4개 에이전트를
+저장소 루트의 `skills/`와 `agents/`를 읽어 현재 SAMSARA의 10개 스킬과 5개 에이전트를
 플러그인 컴포넌트로 노출합니다. 현재 저장소에는 ZCode용 commands, hooks, MCP servers가
 없으므로 이 세 가지는 선언하지 않습니다.
 
@@ -333,14 +333,44 @@ skills와 agents를 확인할 수 있습니다. 이 저장소 루트의 `marketp
 검토하고 신뢰할 수 있을 때만 Enable을 선택하세요. 필요하면 플러그인 상세 화면 또는
 Manage installed에서 Disable하거나 Uninstall할 수 있습니다.
 
+### GLM ACP Agent
+
+SAMSARA can also be used from [`glm-acp-agent`](https://github.com/stefandevo/glm-acp-agent).
+This is an ACP project-context integration: when a new ACP session starts in
+this repository, the agent reads the root `AGENTS.md`, which links SAMSARA's
+commands, skills, and agent playbooks.
+
+Install and configure `glm-acp-agent` according to its own documentation, then
+open this repository as the ACP session working directory. Start a new session
+after updating `AGENTS.md` because the agent loads project context only at
+session creation.
+
+```text
+samsara onboard
+samsara create issue: document the API error contract
+samsara start #30
+```
+
+These are prompt triggers, not auto-registered slash commands: ACP does not
+define a plugin command registry or a subagent-spawn interface. The mapping is
+documented in `commands/glm-acp.md`, the integration contract is in
+`skills/glm-acp/SKILL.md`, and `agents/glm-acp-samsara.md` is a current-session
+workflow role. Existing SAMSARA skills and agent playbooks remain the source of
+truth.
+
+To run the local no-credential smoke check, use `node tools/glm-acp/verify-context.mjs`.
+It checks the installed CLI's `--help` output and a real ACP `initialize` /
+`session/new` handshake, then uses the official ACP SDK with a stub model to
+observe that the new session loaded this repository's `AGENTS.md` context.
+
 ### Grok Build
 
 SAMSARA는 Grok Build 공식 플러그인 형식인 `.grok-plugin/plugin.json`을 제공합니다. Grok은
-플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 9개 스킬과 4개 에이전트를
+플러그인의 기본 `skills/`와 `agents/` 경로에서 현재 SAMSARA의 10개 스킬과 5개 에이전트를
 읽습니다. 이 저장소에는 현재 Grok 전용 commands, hooks, MCP servers, LSP servers는 없습니다.
 
 현재 포함된 스킬은 `gh-setup`, `github-issue-pr-convention`, `issue-create`, `issue-start`,
-`issue-end`, `issue-merge`, `issue-onboard`, `issue-sync`, `issue-viz`입니다.
+`issue-end`, `issue-merge`, `issue-onboard`, `issue-sync`, `issue-viz`, `glm-acp`입니다.
 
 SAMSARA의 플러그인 원본 저장소와 xAI 공식 marketplace 카탈로그 등록은 별개입니다. 이 이슈
 범위에서는 `xai-org/plugin-marketplace`에 등록하는 외부 PR을 제출하지 않으므로, 카탈로그에
