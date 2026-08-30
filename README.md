@@ -317,7 +317,7 @@ codex plugin add samsara@samsara
 ### ZCode
 
 SAMSARA는 ZCode가 우선 탐색하는 `.zcode-plugin/plugin.json`을 제공합니다. ZCode는
-저장소 루트의 `skills/`와 `agents/`를 읽어 현재 SAMSARA의 9개 스킬과 4개 에이전트를
+저장소 루트의 `skills/`와 `agents/`를 읽어 현재 SAMSARA의 10개 스킬과 5개 에이전트를
 플러그인 컴포넌트로 노출합니다. 현재 저장소에는 ZCode용 commands, hooks, MCP servers가
 없으므로 이 세 가지는 선언하지 않습니다.
 
