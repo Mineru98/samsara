@@ -11,7 +11,7 @@
         "ref": "main"
       },
       "description": "Issue ontology harness for disciplined, evidence-backed software changes.",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "category": "Developer Tools",
       "tags": [
         "issues",
