@@ -107,9 +107,9 @@ sh <migrate-skill-agent>/scripts/migrate-skill-agent.sh \
 
 마무리 보고를 출력하고 끝낸다. 워크트리는 지우지 않는다.
 
-```text
-남은 일   PR 이 아직 없습니다 — 마무리하려면 $issue-end
-```
+| 항목 | 내용 |
+| --- | --- |
+| **남은 일** | PR 이 아직 없습니다 — 마무리하려면 `$issue-end` |
 
 ## 하지 않는 것
 
