@@ -1,0 +1,12 @@
+240-안내가 아니라 **결과**를 적는다. 무엇을 했는지 사용자가 알아야 한다.
+241-
+242-```text
+243:동기화    기본 브랜치 최신화 완료 (3 커밋 받음)
+244:동기화    이미 최신이었습니다
+245:동기화    건너뜀 — 메인 폴더에 저장 안 된 변경이 있습니다. 나중에 `git pull --rebase origin main`
+246-```
+247-
+248-## URL 생성
+249-
+250-```bash
+251-node <skill>/scripts/issue-end.mjs urls --issue 59 --mirrorRef <mirror 출력의 mirrorRef>
