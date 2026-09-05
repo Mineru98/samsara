@@ -385,6 +385,8 @@ function usage() {
 
   current                          현재 버전 상태를 진단한다 (태그 · 8개 파일)
   plan <major|minor|patch>         다음 버전을 계산만 한다 (파일을 건드리지 않는다)
+  set <X.Y.Z> [--dry-run]          8개 파일을 지정한 버전으로 맞춘다 (올리지 않는다)
+                                   파일끼리 값이 어긋났을 때 통일하는 용도
   bump <major|minor|patch> [opts]  버전 소스 파일을 새 버전으로 갱신한다
       --dry-run                    갱신 없이 대상과 전후 값만 출력
       --branch                     release/vX.Y.Z 브랜치를 만들고 그 위에서 갱신
@@ -473,7 +475,9 @@ function computeNext(context, level) {
       next: inconsistent ? null : parseSemver(FIRST_VERSION),
     };
   }
-  return { first: false, inconsistent: false, current: baseVersion, next: bumpVersion(baseVersion, level) };
+  // 태그가 있으면 base 는 정해지지만, 파일끼리 다르다는 사실이 사라지지는 않는다.
+  // 여기서 false 로 덮으면 태그 있는 저장소에서 게이트가 발화하지 않는다.
+  return { first: false, inconsistent, current: baseVersion, next: bumpVersion(baseVersion, level) };
 }
 
 function cmdPlan(root, level) {
@@ -483,7 +487,9 @@ function cmdPlan(root, level) {
   if (inconsistent) {
     // 조회 명령이지만 틀린 답을 주는 것보다 멈추는 편이 낫다.
     printCurrent(context);
-    fail(`버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). 어느 값으로 통일할지 먼저 정한다.`, 3);
+    console.error(`✗ 버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). 어느 값으로 통일할지 먼저 정한다.`);
+    console.error(`  통일한 뒤 다시 부른다. 예: node ${path.basename(process.argv[1] ?? 'issue-version.mjs')} set <통일할 버전>`);
+    process.exit(3);
   }
   const nextVersion = formatVersion(next);
   if (first) {
@@ -522,7 +528,9 @@ function cmdBump(root, level, options) {
   }
   const { first, inconsistent, current, next } = computeNext(context, level);
   if (inconsistent) {
-    fail(`버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). --force 로도 이 상태에서는 올리지 않는다.`, 3);
+    console.error(`✗ 버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). --force 로도 이 상태에서는 올리지 않는다.`);
+    console.error(`  먼저 하나로 맞춘 뒤 올린다: set <통일할 버전>`);
+    process.exit(3);
   }
   const nextVersion = formatVersion(next);
 
@@ -614,6 +622,62 @@ function buildNotes(root, options) {
     commits,
     body: renderNotes({ version, previousTag: from, commits, slug: remoteSlug(root) }),
   };
+}
+
+// files-inconsistent 상태의 유일한 출구. bump 는 "올리는" 일이라 어느 값이 맞는지
+// 모르면 할 수 없지만, "맞추는" 일은 사용자가 값을 지정하면 할 수 있다.
+function cmdSet(root, versionArg, options) {
+  const version = parseSemver(versionArg);
+  if (!version) fail('버전은 X.Y.Z 또는 vX.Y.Z 형식이어야 한다.');
+  const versionText = formatVersion(version);
+  const state = collectVersionState(root);
+  if (state.problems.length) {
+    for (const problem of state.problems) console.error(`✗ ${problem}`);
+    fail('버전 소스 파일이 온전하지 않다. 먼저 고쳐야 한다.', 3);
+  }
+
+  const planned = [];
+  for (const source of VERSION_SOURCES) {
+    const before = readSourceVersion(root, source).versions.join(', ') || '(없음)';
+    if (options.dryRun) {
+      console.log(`  ${source.file.padEnd(36)} ${before} -> ${versionText}`);
+      continue;
+    }
+    const absolute = path.join(root, source.file);
+    const raw = readFileSync(absolute, 'utf8');
+    try {
+      planned.push({ file: source.file, absolute, raw, rendered: renderSourceVersion(source, raw, versionText) });
+    } catch (error) {
+      fail(`${source.file}: ${error.message}\n  어떤 파일도 바꾸지 않았다.`, 3);
+    }
+  }
+
+  const changed = [];
+  const written = [];
+  try {
+    for (const entry of planned) {
+      if (entry.rendered === entry.raw) continue;
+      writeFileSync(entry.absolute, entry.rendered);
+      written.push(entry);
+      changed.push(entry.file);
+    }
+  } catch (error) {
+    for (const entry of written) {
+      try { writeFileSync(entry.absolute, entry.raw); } catch { /* 아래에서 알린다 */ }
+    }
+    fail(`${error.message}\n  이미 쓴 파일을 되돌렸다.`, 3);
+  }
+
+  if (options.dryRun) {
+    console.log('');
+    console.log('(--dry-run — 파일을 건드리지 않았다)');
+  } else {
+    for (const file of changed) console.log(`  맞춤 ${file}`);
+  }
+  console.log('');
+  console.log(`SET_VERSION=${versionText}`);
+  console.log(`CHANGED_FILES=${options.dryRun ? '' : changed.join(',')}`);
+  console.log(`DRY_RUN=${options.dryRun ? 1 : 0}`);
 }
 
 function cmdNotes(root, options) {
@@ -839,6 +903,7 @@ function main(argv) {
   if (command === 'current') return cmdCurrent(root);
   if (command === 'plan') return cmdPlan(root, rest[0]);
   if (command === 'bump') return cmdBump(root, rest[0], options);
+  if (command === 'set') return cmdSet(root, rest[0], options);
   if (command === 'notes') return cmdNotes(root, options);
   if (command === 'pr') return cmdPr(root, rest[0], options);
   if (command === 'release') return cmdRelease(root, rest[0], options);

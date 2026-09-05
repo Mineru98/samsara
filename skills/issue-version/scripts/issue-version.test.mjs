@@ -581,6 +581,66 @@ test('태그가 파일보다 앞서면 bump 를 막고 --force 로만 통과시�
   assert.equal(field(forced.stdout, 'NEXT_VERSION'), '0.3.3');
 });
 
+
+test('태그가 있어도 파일끼리 버전이 다르면 bump 를 막는다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  // 원래 이 시나리오를 덮던 테스트가 tag-ahead 로 옮겨가면서 커버리지가 비었다.
+  // hard-rule 이 "태그 유무와 무관하게 막는다" 고 약속하므로 태그 있는 쪽도 확인한다.
+  writeSourceVersion(root, VERSION_SOURCES[VERSION_SOURCES.length - 1], '9.9.9');
+  const before = VERSION_SOURCES.map((source) => readFileSync(path.join(root, source.file), 'utf8'));
+
+  assert.equal(field(run(root, ['current']).stdout, 'DRIFT_DIRECTION'), 'files-inconsistent');
+
+  const blocked = run(root, ['bump', 'patch']);
+  assert.equal(blocked.status, 3, `stderr: ${blocked.stderr}`);
+  const forced = run(root, ['bump', 'patch', '--force']);
+  assert.equal(forced.status, 3, `--force 로도 막아야 한다. stderr: ${forced.stderr}`);
+  assert.match(forced.stderr, /값이 다르다/);
+  assert.match(forced.stderr, /set <통일할 버전>/, '출구를 안내해야 한다');
+
+  const planned = run(root, ['plan', 'patch']);
+  assert.equal(planned.status, 3, `stdout: ${planned.stdout}`);
+
+  const dry = run(root, ['bump', 'patch', '--dry-run']);
+  assert.equal(dry.status, 3, '--dry-run 도 막는다 — 보여줄 값을 정할 수 없다');
+
+  VERSION_SOURCES.forEach((source, index) => {
+    assert.equal(readFileSync(path.join(root, source.file), 'utf8'), before[index], `${source.file} 가 바뀌었다`);
+  });
+});
+
+test('set 은 8개 파일을 지정한 값으로 맞춰 불일치에서 빠져나오게 한다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeSourceVersion(root, VERSION_SOURCES[VERSION_SOURCES.length - 1], '9.9.9');
+  assert.equal(field(run(root, ['current']).stdout, 'DRIFT_DIRECTION'), 'files-inconsistent');
+
+  const dry = run(root, ['set', '0.3.2', '--dry-run']);
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.equal(field(dry.stdout, 'CHANGED_FILES'), '');
+  assert.deepEqual(collectVersionState(root).values.sort(), ['0.3.2', '9.9.9']);
+
+  const applied = run(root, ['set', '0.3.2']);
+  assert.equal(applied.status, 0, applied.stderr);
+  assert.equal(field(applied.stdout, 'SET_VERSION'), '0.3.2');
+  assert.deepEqual(collectVersionState(root).values, ['0.3.2']);
+
+  // 통일한 뒤에는 다시 올릴 수 있다 — 막다른 길이 아니다
+  const bumped = run(root, ['bump', 'patch']);
+  assert.equal(bumped.status, 0, bumped.stderr);
+  assert.equal(field(bumped.stdout, 'NEXT_VERSION'), '0.3.3');
+});
+
+test('set 은 올리지 않는다 — 지정한 값을 그대로 쓴다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const result = run(root, ['set', 'v1.2.3']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(collectVersionState(root).values, ['1.2.3']);
+  assert.equal(run(root, ['set', 'nonsense']).status, 2);
+});
+
 test('파일끼리 버전이 다르면 태그가 없어도 bump 를 막는다', (t) => {
   const root = seedRepo({ withTags: false });
   t.after(() => rmSync(root, { recursive: true, force: true }));

@@ -30,7 +30,8 @@ description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 �
   <hard-rules>
     <rule>버전 소스 파일은 전부 함께 올린다. 하나만 올리고 끝내지 않는다.</rule>
     <rule>태그도 파일에 적힌 버전도 없을 때만 인자와 무관하게 `v0.1.0` 에서 시작한다. `v0.0.1` 이나 `v1.0.0` 으로 시작하지 않는다. 태그가 없어도 파일 버전이 하나면 그 값에서 올린다.</rule>
-    <rule>버전 소스 파일끼리 값이 다르면 태그 유무와 무관하게 올리지 않는다. `--force` 로도 통과시키지 않는다 — 어느 값이 맞는지 모르는 채로 올리면 첫 릴리즈로 오인해 `v0.1.0` 으로 되돌아간다.</rule>
+    <rule>버전 소스 파일끼리 값이 다르면 태그 유무와 무관하게 올리지 않는다. `--force` 로도 `--dry-run` 으로도 통과시키지 않는다 — 어느 값이 맞는지 모르면 올릴 값도 미리 보여 줄 값도 정할 수 없다.</rule>
+    <rule>막을 때는 나가는 문을 함께 알린다. 파일끼리 어긋났으면 `set <버전>` 으로 하나에 맞춘 뒤 올린다. 8개 파일을 손으로 고치게 두지 않는다 — 그것이 이 스킬이 막으려는 사고와 같은 종류다.</rule>
     <rule>태그와 파일 버전이 어긋났을 때는 `DRIFT_DIRECTION` 으로 갈린다. `tag-ahead` 와 `files-inconsistent` 는 사고이므로 사용자에게 알리고 판단을 받는다. `files-ahead` 는 bump PR 이 merge 된 정상 상태이므로 묻지 않고 2단계로 간다.</rule>
     <rule>1단계는 PR 생성에서 멈춘다. PR 을 스스로 merge 하거나 그대로 태그로 넘어가지 않는다.</rule>
     <rule>기본 브랜치에 직접 커밋하지 않는다. bump 는 항상 `release/vX.Y.Z` 브랜치에서 한다.</rule>
@@ -149,11 +150,22 @@ RELEASE_READY=0           1 이면 2단계(태그·릴리즈)로 바로 갈 상�
 | `no-tag` | 태그는 없고 파일 버전은 하나다 | 1단계로 간다. 파일 버전에서 올린다 |
 | `files-ahead` | 파일이 태그보다 앞선다 = **bump PR 이 merge 됐다** | **정상이다. 묻지 말고 2단계(태그·릴리즈)로 간다** |
 | `tag-ahead` | 태그만 달리고 파일이 안 고쳐졌다 | 사고다. 아래 질문을 한다 |
-| `files-inconsistent` | 파일끼리 값이 다르다 | 사고다. 어느 값으로 통일할지 묻는다. `bump` 도 `plan` 도 exit 3 |
+| `files-inconsistent` | 파일끼리 값이 다르다 | 사고다. 어느 값으로 통일할지 묻고 `set` 으로 맞춘다. `plan` · `bump` 는 `--force`·`--dry-run` 포함 전부 exit 3 |
 
 `files-ahead` 를 질문으로 막지 않는다. 그것이 이 스킬의 정상적인 2단계 진입 상태다.
 
 `tag-ahead` 또는 `files-inconsistent` 일 때만 **멈추고** AskUserQuestion 으로 묻는다.
+
+`files-inconsistent` 는 어느 값이 맞는지 정한 뒤 `set` 으로 8개를 맞추고 다시 시작한다.
+이 상태에서는 `plan` · `bump` 가 `--force` 와 `--dry-run` 을 포함해 전부 exit 3 이다 —
+올릴 값도, 미리 보여 줄 값도 정할 수 없기 때문이다.
+
+```bash
+node <skill>/scripts/issue-version.mjs set 0.3.2 --dry-run   # 무엇이 바뀌는지 먼저 본다
+node <skill>/scripts/issue-version.mjs set 0.3.2             # 8개를 하나로 맞춘다
+```
+
+`set` 은 **올리지 않는다.** 지정한 값을 그대로 쓴다. 올리는 것은 그다음 `bump` 의 몫이다.
 
 ```text
 질문   태그(v0.3.2)가 파일 버전(0.3.1)보다 앞서 있습니다. 어느 쪽을 현재 버전으로 볼까요?
@@ -303,6 +315,7 @@ gh api -X DELETE /repos/<owner>/<repo>/git/refs/tags/<tag>
 ```text
 current                        태그·8개 파일 버전 진단
 plan <level>                   다음 버전 계산 (부수효과 없음)
+set <X.Y.Z>                    8개 파일을 지정한 값으로 맞춘다 (올리지 않는다 · --dry-run)
 bump <level> [--branch]        버전 소스 파일 갱신 (--dry-run · --force)
 notes [--from --to --version]  릴리즈 노트 생성 (--out 으로 저장)
 pr <vX.Y.Z>                    커밋 · push · PR 생성 (--dry-run)
