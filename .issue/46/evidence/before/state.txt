@@ -1,0 +1,30 @@
+=== before: 현재 코드의 동작 ===
+
+--- 사고 경로: 태그 0개 + 파일 버전 불일치(0.3.2 · 0.3.3) ---
+  LATEST_TAG=
+  FILE_VERSIONS=0.3.2,0.3.3
+  SOURCE_PROBLEMS=0
+  VERSION_DRIFT=0
+  DRIFT_DIRECTION=files-inconsistent
+  plan patch  → NEXT_VERSION=0.1.0 FIRST_RELEASE=1 
+  bump patch  → exit=0  ← 막지 못한다
+  bump 후 VERSION = 0.1.0   ← 0.3.2/0.3.3 이 섞인 저장소가 0.1.0 으로 되돌아감
+
+--- 정상 경로 1: 태그 0개 + 파일 버전 하나(0.3.2) ---
+  plan patch  → NEXT_VERSION=0.3.3 FIRST_RELEASE=0 
+
+--- 정상 경로 2: 태그도 파일 버전도 없음 ---
+  plan patch  → NEXT_VERSION=0.1.0 FIRST_RELEASE=1 
+
+=== before: SKILL.md 의 v0.1.0 서술 5곳 ===
+  32:    <rule>태그가 하나도 없으면 인자와 무관하게 `v0.1.0` 에서 시작한다. `v0.0.1` 이나 `v1.0.0` 으로 시작하지 않는다.</rule>
+  70:      F --> F1{태그 0개?}
+  71:      F1 -- 예 --> F2[v0.1.0 으로 고정 · 이유 보고] --> G
+  148:| `no-tag` | 태그가 아직 없다 | 1단계로 간다. 첫 릴리즈면 `v0.1.0` |
+  193:FIRST_RELEASE=0        1 이면 태그가 하나도 없어 v0.1.0 으로 고정된 것이다
+  196:`FIRST_RELEASE=1` 이면 인자를 무시하고 `v0.1.0` 이 나온다. 그 이유를 한 줄로 보고한다.
+
+=== before: 회귀 ===
+  ℹ tests 45
+  ℹ pass 45
+  ℹ fail 0
