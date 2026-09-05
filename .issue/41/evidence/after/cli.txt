@@ -1,0 +1,173 @@
+### 1. current — 태그와 8개 파일 버전 진단
+기본 브랜치 : main
+최신 태그   : v0.3.2
+  VERSION                              0.3.2
+  marketplace.json                     0.3.2
+  .claude-plugin/plugin.json           0.3.2
+  .claude-plugin/marketplace.json      0.3.2
+  .codex-plugin/plugin.json            0.3.2
+  .grok-plugin/plugin.json             0.3.2
+  .zcode-plugin/plugin.json            0.3.2
+  tools/issue-ontology/package.json    0.3.2
+
+BASE_BRANCH=main
+LATEST_TAG=v0.3.2
+TAG_VERSION=0.3.2
+FILE_VERSIONS=0.3.2
+SOURCE_PROBLEMS=0
+VERSION_DRIFT=0
+
+### 2. plan patch / minor / major
+현재 : v0.3.2
+다음 : v0.3.3  (patch)
+NEXT_TAG=v0.3.3
+
+현재 : v0.3.2
+다음 : v0.4.0  (minor)
+NEXT_TAG=v0.4.0
+
+현재 : v0.3.2
+다음 : v1.0.0  (major)
+NEXT_TAG=v1.0.0
+
+### 3. bump patch --dry-run (파일 변경 없음)
+  VERSION                              0.3.2 -> 0.3.3
+  marketplace.json                     0.3.2 -> 0.3.3
+  .claude-plugin/plugin.json           0.3.2 -> 0.3.3
+  .claude-plugin/marketplace.json      0.3.2 -> 0.3.3
+  .codex-plugin/plugin.json            0.3.2 -> 0.3.3
+  .grok-plugin/plugin.json             0.3.2 -> 0.3.3
+  .zcode-plugin/plugin.json            0.3.2 -> 0.3.3
+  tools/issue-ontology/package.json    0.3.2 -> 0.3.3
+
+(--dry-run — 파일을 건드리지 않았다)
+
+LEVEL=patch
+CURRENT_VERSION=0.3.2
+NEXT_VERSION=0.3.3
+NEXT_TAG=v0.3.3
+FIRST_RELEASE=0
+CHANGED_FILES=
+DRY_RUN=1
+
+### 4. notes — 실제 커밋(v0.3.1..v0.3.2)으로 생성
+## v0.3.2
+
+v0.3.1 이후 커밋 26건.
+
+### ✨ 기능
+
+- **acp**: connect GLM workflow context (#33, #30)
+- **marketplace**: add ZCode catalog (#32, #29)
+- **plugin**: add ZCode compatibility (#31, #28)
+- **issue-24**: issue-merge 마무리·완료 브리핑을 마크다운 표로 고정
+
+### 🐛 버그 수정
+
+- **issue-26**: merge guard가 문서 변경 이슈를 통과하도록 evidenceComplete 완화
+
+### 📝 문서
+
+- **issue-38**: 증거 자료 main 반영
+- **issue-end**: 마무리 보고 출력 형식을 표(table)로 변경 (#37, #34, #36)
+- **issue-36**: 증거 자료 main 반영
+- **issue-start**: 마무리 보고 출력 형식을 표(table)로 변경 (#35, #34)
+- **issue-34**: 증거 자료 main 반영
+- **issue-34**: 증거 자료 main 반영
+- **issue-34**: 증거 자료 main 반영
+- **issue-34**: 증거 자료 main 반영
+- **issue-34**: 증거 자료 main 반영
+- **readme**: remove technical schema/install details from README
+- **issue-30**: 증거 자료 main 반영
+- **issue-29**: 증거 자료 main 반영
+- **issue-28**: 증거 자료 main 반영
+- **issue-26**: 증거 자료 main 반영
+- **issue-26**: 작업 전후 증거 자료 추가
+- **issue-24**: 증거 자료 main 반영
+- **issue-24**: 작업 전후 증거 자료 추가
+
+### 🧹 유지보수
+
+- **release**: bump version to v0.3.2 (#39, #38)
+- **issue**: 이슈 그래프 갱신
+- **issue-15**: 누락된 QA 증거(하네스·qa-lane·review5) 커밋 (#15)
+- **issue-sync**: refresh issue graph cache (#24, #26)
+
+**전체 변경**: https://github.com/Mineru98/samsara/compare/v0.3.1...v0.3.2
+
+NOTES_FROM=v0.3.1
+NOTES_TO=v0.3.2
+NOTES_COMMITS=26
+NOTES_FILE=
+
+### 5. 안전장치 — 기본 브랜치가 아닌 곳에서 release 거부
+✗ 태그는 기본 브랜치(main)에서 단다. 현재 브랜치: feat/41-issue-41
+exit=3
+
+### 6. 회귀 테스트
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4201.154584
+
+### 7. 워크트리 파일 변경 없음 확인 (버전 소스 8개)
+  (위에 아무것도 없으면 dry-run 이 파일을 건드리지 않은 것이다)
+### 8. 실제 bump 실행 → 검증 → 되돌리기 (실측)
+  갱신 VERSION
+  갱신 marketplace.json
+  갱신 .claude-plugin/plugin.json
+  갱신 .claude-plugin/marketplace.json
+  갱신 .codex-plugin/plugin.json
+  갱신 .grok-plugin/plugin.json
+  갱신 .zcode-plugin/plugin.json
+  갱신 tools/issue-ontology/package.json
+
+LEVEL=patch
+CURRENT_VERSION=0.3.2
+NEXT_VERSION=0.3.3
+NEXT_TAG=v0.3.3
+FIRST_RELEASE=0
+CHANGED_FILES=VERSION,marketplace.json,.claude-plugin/plugin.json,.claude-plugin/marketplace.json,.codex-plugin/plugin.json,.grok-plugin/plugin.json,.zcode-plugin/plugin.json,tools/issue-ontology/package.json
+DRY_RUN=0
+
+-- 갱신 후 8개 파일 값 --
+  VERSION                              0.3.3
+  marketplace.json                     0.3.3
+  .claude-plugin/plugin.json           0.3.3
+  .claude-plugin/marketplace.json      0.3.3
+  .codex-plugin/plugin.json            0.3.3
+  .grok-plugin/plugin.json             0.3.3
+  .zcode-plugin/plugin.json            0.3.3
+  tools/issue-ontology/package.json    0.3.3
+
+-- JSON 파싱 검증 (7개 매니페스트) --
+  파싱 OK  marketplace.json
+  파싱 OK  .claude-plugin/plugin.json
+  파싱 OK  .claude-plugin/marketplace.json
+  파싱 OK  .codex-plugin/plugin.json
+  파싱 OK  .grok-plugin/plugin.json
+  파싱 OK  .zcode-plugin/plugin.json
+  파싱 OK  tools/issue-ontology/package.json
+
+-- 이전 버전 문자열 잔존 검사 (버전 필드에 0.3.2 가 남아 있는가) --
+  version 필드 잔존 건수 = 0
+
+-- diff 요약 --
+ .claude-plugin/marketplace.json   | 2 +-
+ .claude-plugin/plugin.json        | 2 +-
+ .codex-plugin/plugin.json         | 2 +-
+ .grok-plugin/plugin.json          | 2 +-
+ .zcode-plugin/plugin.json         | 2 +-
+ VERSION                           | 2 +-
+ marketplace.json                  | 2 +-
+ tools/issue-ontology/package.json | 2 +-
+ 8 files changed, 8 insertions(+), 8 deletions(-)
+
+-- 되돌리기 --
+LATEST_TAG=v0.3.2
+FILE_VERSIONS=0.3.2
+VERSION_DRIFT=0
