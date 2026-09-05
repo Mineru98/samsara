@@ -1,0 +1,24 @@
+$ node --test skills/issue-onboard/scripts/*.test.mjs
+
+ℹ tests 84
+ℹ suites 0
+ℹ pass 84
+ℹ fail 0
+
+$ node --test skills/issue-onboard/scripts/trusted-executable.test.mjs   (신규)
+ℹ tests 22
+ℹ pass 22
+ℹ fail 0
+
+$ node --test tools/issue-ontology/ontology.test.mjs
+ℹ tests 13
+ℹ pass 13
+ℹ fail 0
+
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+
+$ for f in skills/*/scripts/*.mjs; do node --check "$f"; done
+구문 실패: 0 건
+
+전: 62 통과 / 후: 84 통과 (신규 22건 추가, 기존 62건 그대로)

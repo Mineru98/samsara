@@ -1,0 +1,27 @@
+$ (수정 후) 플랫폼별 정책 테이블
+
+[win32] git 후보
+    C:\Program Files\Git\cmd\git.exe
+    C:\Program Files\Git\bin\git.exe
+    C:\Program Files (x86)\Git\cmd\git.exe
+    C:\Program Files (x86)\Git\bin\git.exe
+    C:\Users\dev\AppData\Local\Programs\Git\cmd\git.exe
+    C:\Users\dev\AppData\Local\Programs\Git\bin\git.exe
+[win32] 신뢰 루트
+    C:\Program Files\Git
+    C:\Program Files (x86)\Git
+    C:\Users\dev\AppData\Local\Programs\Git
+    C:\Program Files\GitHub CLI
+    C:\Program Files (x86)\GitHub CLI
+    C:\Users\dev\AppData\Local\Programs\GitHub CLI
+    C:\Windows\System32
+[win32] checkMode : false  (POSIX 모드 비트 검사 끔)
+[win32] PATH      : C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem
+
+[darwin] git 후보 : ["/usr/bin/git","/bin/git","/opt/homebrew/bin/git","/usr/local/bin/git"]
+[darwin] checkMode: true  (모드 비트 검사 유지)
+[darwin] PATH     : /usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin
+
+--- 판정 ---
+Windows 후보 수: 6
+→ before 는 0 이었다.

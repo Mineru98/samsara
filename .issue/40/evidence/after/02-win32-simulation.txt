@@ -1,0 +1,15 @@
+$ (수정 후) 같은 Windows 흉내 입력을 실제 함수에 넣는다
+
+before 와 달리 이제 함수를 직접 부를 수 있다 — platform·env·fs 를 주입한다.
+
+stat 전제 : mode=0o100666  실행비트=false  쓰기비트열림=true
+
+표준 설치 C:\Program Files\Git\cmd                 → C:\Program Files\Git\cmd\git.exe
+C:\Program Files\Git\bin                       → C:\Program Files\Git\bin\git.exe
+32비트 설치                                        → C:\Program Files (x86)\Git\cmd\git.exe
+사용자 단위 설치 (%LOCALAPPDATA%)                     → C:\Users\dev\AppData\Local\Programs\Git\cmd\git.exe
+
+--- 신뢰할 수 없는 것은 계속 거부한다 ---
+Downloads 에 심어 둔 git.exe                       → null (거부)
+임시 폴더의 git.exe                                 → null (거부)
+후보 자체가 없음                                      → null (거부)

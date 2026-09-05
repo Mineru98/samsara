@@ -1,0 +1,18 @@
+$ node --input-type=module (Windows 흉내 입력으로 현재 trustedExecutable 재현)
+
+수정 전 코드에는 플랫폼 주입 지점이 없어 함수를 직접 부를 수 없다.
+그래서 현재 로직을 그대로 옮겨 놓고 Windows 후보/실측 stat 을 먹여 본다.
+
+가정: Windows 에 Git for Windows 가 설치돼 있다
+  실제 git 위치 : C:\Program Files\Git\cmd\git.exe
+  후보 목록     : ["/usr/bin/git","/bin/git","/opt/homebrew/bin/git","/usr/local/bin/git"]
+  신뢰 루트     : ["/usr/bin","/usr/sbin","/bin","/sbin"] ...
+
+1) 후보 목록에 그 경로가 있는가 : false
+2) 신뢰 루트 안에 있는가       : false
+3) 실행 비트 검사 통과하는가   : false  (mode=0o100666)
+4) 쓰기 비트 검사 통과하는가   : false
+
+→ trustedExecutable("git") 반환값 : null
+→ run() 이 { code: 1, err: "trusted executable not found: git" } 를 돌려주고,
+  repoRoot() 가 종료 코드만 보고 "git 저장소가 아닙니다" 로 실패한다.

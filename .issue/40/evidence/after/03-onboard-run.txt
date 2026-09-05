@@ -1,0 +1,24 @@
+$ node skills/issue-onboard/scripts/issue-onboard.mjs plan   (macOS 동작 불변 확인)
+
+# 이슈 DAG todo
+
+## ▶ 착수 가능 (ready) — 0개
+  (없음)
+
+## ⏳ 진행 중 (in-progress) — 1개
+  - #40 Windows에서 issue-onboard의 Git 실행 파일 탐지 지원 (in-process)
+
+## ⛔ 막힘 (blocked) — 0개
+  (없음)
+
+## ✔ 완료 (done) — 22개
+  #1, #3, #4, #6, #11, #13, #15, #16, #19, #22, #24, #26, #28, #29, #30, #34, #36, #38, #41, #44, #46, #47
+
+READY_NUMBERS=
+BLOCKED_NUMBERS=
+IN_PROGRESS_NUMBERS=40
+DONE_NUMBERS=1 3 4 6 11 13 15 16 19 22 24 26 28 29 30 34 36 38 41 44 46 47
+
+$ (macOS 실제 탐색 결과)
+git : /usr/bin/git
+PATH: /usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin
