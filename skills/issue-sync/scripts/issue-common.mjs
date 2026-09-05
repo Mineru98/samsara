@@ -112,25 +112,91 @@ export const PROJECT_SETTINGS_REL = `${WORKSPACE_DIR}/${PROJECT_SETTINGS_FILE}`;
 
 /* ------------------------------------------------------------- 프로세스 */
 
-const TRUSTED_COMMAND_PATH = [
+const UNIX_TRUSTED_COMMAND_DIRS = [
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
-].join(path.delimiter);
-const TRUSTED_EXECUTABLE_CANDIDATES = {
+];
+const UNIX_TRUSTED_EXECUTABLE_CANDIDATES = {
   git: ['/usr/bin/git', '/bin/git', '/opt/homebrew/bin/git', '/usr/local/bin/git'],
   gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', '/usr/bin/gh', '/bin/gh'],
   curl: ['/usr/bin/curl', '/bin/curl', '/opt/homebrew/bin/curl', '/usr/local/bin/curl'],
 };
-const TRUSTED_EXECUTABLE_ROOTS = [
+const UNIX_TRUSTED_EXECUTABLE_ROOTS = [
   '/usr/bin', '/usr/sbin', '/bin', '/sbin',
   '/System/Cryptexes/App/usr/bin',
   '/opt/homebrew/Cellar', '/opt/homebrew/opt',
   '/usr/local/Cellar', '/usr/local/opt',
 ];
 
-function isPathWithin(parent, target) {
-  const relative = path.relative(parent, target);
-  return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+/**
+ * Windows 정책은 드라이브 문자를 하드코딩하지 않는다. Git for Windows 는
+ * %ProgramFiles% 아래가 표준이지만 사용자 단위 설치(%LOCALAPPDATA%)도 흔하고,
+ * 시스템 드라이브가 C: 가 아닌 환경도 있다. 그래서 환경변수에서 조립한다.
+ */
+function windowsExecutablePolicy(env) {
+  const win = path.win32;
+  const systemRoot = env.SystemRoot || env.windir || 'C:\Windows';
+  const system32 = win.join(systemRoot, 'System32');
+
+  const installBases = [];
+  for (const base of [env.ProgramFiles, env['ProgramFiles(x86)'], env.ProgramW6432]) {
+    if (base) installBases.push(base);
+  }
+  if (env.LOCALAPPDATA) installBases.push(win.join(env.LOCALAPPDATA, 'Programs'));
+
+  const gitRoots = installBases.map((base) => win.join(base, 'Git'));
+  const ghRoots = installBases.map((base) => win.join(base, 'GitHub CLI'));
+
+  const candidates = { git: [], gh: [], curl: [win.join(system32, 'curl.exe')] };
+  for (const root of gitRoots) {
+    candidates.git.push(win.join(root, 'cmd', 'git.exe'));
+    candidates.git.push(win.join(root, 'bin', 'git.exe'));
+  }
+  for (const root of ghRoots) {
+    candidates.gh.push(win.join(root, 'bin', 'gh.exe'));
+  }
+
+  return {
+    pathApi: win,
+    caseInsensitive: true,
+    // Windows 파일 권한은 ACL 이라 POSIX 모드 비트로 표현되지 않는다.
+    // Node 는 실행 파일에도 0o100666 을 돌려주므로 실행 비트·쓰기 비트 검사가
+    // 항상 거짓이 되어 모든 후보를 탈락시킨다. 그래서 모드 검사를 끄고,
+    // 대신 심볼릭 링크 해소·정규 파일 여부·신뢰 루트 포함을 그대로 요구한다.
+    checkMode: false,
+    candidates,
+    roots: [...gitRoots, ...ghRoots, system32],
+    commandDirs: [system32, systemRoot, win.join(system32, 'Wbem')],
+  };
+}
+
+function unixExecutablePolicy() {
+  return {
+    pathApi: path.posix,
+    caseInsensitive: false,
+    checkMode: true,
+    candidates: UNIX_TRUSTED_EXECUTABLE_CANDIDATES,
+    roots: UNIX_TRUSTED_EXECUTABLE_ROOTS,
+    commandDirs: UNIX_TRUSTED_COMMAND_DIRS,
+  };
+}
+
+/** 플랫폼별 신뢰 실행 파일 정책. 테스트가 platform·env 를 주입할 수 있다. */
+export function executablePolicy(platform = process.platform, env = process.env) {
+  return platform === 'win32' ? windowsExecutablePolicy(env) : unixExecutablePolicy();
+}
+
+/** 자식 프로세스에 넘길 PATH. 플랫폼에 실재하는 디렉터리로만 구성한다. */
+export function trustedCommandPath(platform = process.platform, env = process.env) {
+  const policy = executablePolicy(platform, env);
+  return policy.commandDirs.join(policy.pathApi.delimiter);
+}
+
+function isPathWithin(parent, target, options = {}) {
+  const pathApi = options.pathApi ?? path;
+  const fold = options.caseInsensitive ? (value) => value.toLowerCase() : (value) => value;
+  const relative = pathApi.relative(fold(parent), fold(target));
+  return relative === '' || (relative !== '..' && !relative.startsWith(`..${pathApi.sep}`) && !pathApi.isAbsolute(relative));
 }
 
 export function trustedRegularFile(file, root) {
@@ -145,22 +211,44 @@ export function trustedRegularFile(file, root) {
   }
 }
 
-/** PATH 검색을 피하고 허용된 설치 경로의 안전한 정규 파일만 반환한다. */
-export function trustedExecutable(command) {
-  for (const candidate of TRUSTED_EXECUTABLE_CANDIDATES[command] ?? []) {
+/**
+ * PATH 검색을 피하고 허용된 설치 경로의 안전한 정규 파일만 반환한다.
+ * options 로 platform·env·파일시스템 접근자를 주입하면 다른 플랫폼의 정책을
+ * 현재 플랫폼에서 검증할 수 있다. 아무것도 넘기지 않으면 실제 값으로 떨어진다.
+ */
+export function resolveTrustedExecutable(command, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const env = options.env ?? process.env;
+  const realpath = options.realpathSync ?? realpathSync;
+  const stat = options.statSync ?? statSync;
+  const getuid = options.getuid ?? (() => process.getuid?.());
+  const policy = executablePolicy(platform, env);
+
+  for (const candidate of policy.candidates[command] ?? []) {
     try {
-      const resolved = realpathSync(candidate);
-      const stat = statSync(resolved);
-      const uid = process.getuid?.();
-      if (!stat.isFile() || (stat.mode & 0o111) === 0 || (stat.mode & 0o022) !== 0) continue;
-      if (typeof stat.uid === 'number' && typeof uid === 'number' && stat.uid !== 0 && stat.uid !== uid) continue;
-      if (!TRUSTED_EXECUTABLE_ROOTS.some((root) => isPathWithin(root, resolved))) continue;
+      const resolved = realpath(candidate);
+      const info = stat(resolved);
+      if (!info.isFile()) continue;
+      if (policy.checkMode) {
+        const uid = getuid();
+        if ((info.mode & 0o111) === 0 || (info.mode & 0o022) !== 0) continue;
+        if (typeof info.uid === 'number' && typeof uid === 'number' && info.uid !== 0 && info.uid !== uid) continue;
+      }
+      const within = policy.roots.some((root) => isPathWithin(root, resolved, {
+        pathApi: policy.pathApi,
+        caseInsensitive: policy.caseInsensitive,
+      }));
+      if (!within) continue;
       return resolved;
     } catch {
       // 다음 허용 경로를 확인한다.
     }
   }
   return null;
+}
+
+export function trustedExecutable(command) {
+  return resolveTrustedExecutable(command);
 }
 
 export function run(cmd, args, opts = {}) {
@@ -170,7 +258,7 @@ export function run(cmd, args, opts = {}) {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
     ...opts,
-    env: opts.env ?? { ...process.env, PATH: TRUSTED_COMMAND_PATH },
+    env: opts.env ?? { ...process.env, PATH: trustedCommandPath() },
   });
   return { code: r.status ?? 1, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
@@ -309,9 +397,24 @@ export function parseArgs(argv, flags = ['push', 'json', 'dry-run', 'force']) {
 
 /* ------------------------------------------------------------------- git */
 
+/**
+ * 실행 파일을 못 찾은 것과 저장소가 아닌 것은 원인도 해결책도 다르다.
+ * 구분하지 않으면 Git 미탐지가 "저장소가 아니다" 로 잘못 보고된다(이슈 #40).
+ */
+export function executableMissing(err) {
+  return /trusted executable not found/.test(err ?? '');
+}
+
+/** 실패 사유에 맞는 사용자 메시지. */
+export function gitFailureMessage(err, platform = process.platform) {
+  return executableMissing(err)
+    ? `git 실행 파일을 찾지 못했습니다 (platform: ${platform}). Git 이 설치돼 있는지, 표준 설치 경로에 있는지 확인하세요.`
+    : 'git 저장소가 아닙니다. 저장소 안에서 실행하세요.';
+}
+
 export function repoRoot(cwd) {
   const r = git(['rev-parse', '--show-toplevel'], cwd ? { cwd } : {});
-  if (r.code !== 0) fail('git 저장소가 아닙니다. 저장소 안에서 실행하세요.');
+  if (r.code !== 0) fail(gitFailureMessage(r.err));
   return r.out;
 }
 
