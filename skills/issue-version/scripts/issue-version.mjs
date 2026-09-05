@@ -631,9 +631,16 @@ function cmdSet(root, versionArg, options) {
   if (!version) fail('버전은 X.Y.Z 또는 vX.Y.Z 형식이어야 한다.');
   const versionText = formatVersion(version);
   const state = collectVersionState(root);
-  if (state.problems.length) {
-    for (const problem of state.problems) console.error(`✗ ${problem}`);
-    fail('버전 소스 파일이 온전하지 않다. 먼저 고쳐야 한다.', 3);
+  // set 이 고칠 수 없는 것만 막는다. 파일이 아예 없거나 JSON 이 깨졌으면 값을 써 넣을 자리가
+  // 없다. 반면 "값이 비었다" 는 set 이 정확히 채울 수 있는 상태다 — 그것까지 거부하면
+  // 손편집만 남고, 그건 이 스킬이 막으려는 사고와 같은 종류가 된다.
+  const blockers = state.sources.filter((entry) => entry.missing || entry.parseError);
+  if (blockers.length) {
+    for (const entry of blockers) {
+      console.error(`✗ ${entry.file}: ${entry.missing ? '파일이 없다' : `JSON 파싱 실패 — ${entry.parseError}`}`);
+    }
+    console.error('  set 으로는 고칠 수 없다. 파일을 되살리거나 JSON 을 고친 뒤 다시 부른다.');
+    process.exit(3);
   }
 
   const planned = [];
@@ -648,7 +655,9 @@ function cmdSet(root, versionArg, options) {
     try {
       planned.push({ file: source.file, absolute, raw, rendered: renderSourceVersion(source, raw, versionText) });
     } catch (error) {
-      fail(`${source.file}: ${error.message}\n  어떤 파일도 바꾸지 않았다.`, 3);
+      console.error(`✗ ${source.file}: ${error.message}`);
+      console.error(`  어떤 파일도 바꾸지 않았다. 이 파일에 version 필드를 만들어 준 뒤 다시 부른다.`);
+      process.exit(3);
     }
   }
 

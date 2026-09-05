@@ -632,6 +632,32 @@ test('set 은 8개 파일을 지정한 값으로 맞춰 불일치에서 빠져�
   assert.equal(field(bumped.stdout, 'NEXT_VERSION'), '0.3.3');
 });
 
+
+test('set 은 값이 빈 파일도 채운다 — 고칠 수 있는 상태를 거부하지 않는다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, 'VERSION'), '\n');
+  // problems 에 "version 값을 찾지 못했다" 가 뜨지만 renderSourceVersion 은 처리할 수 있다.
+  // 이걸 거부하면 사용자에게 8개 파일 손편집만 남는다.
+  assert.ok(collectVersionState(root).problems.length > 0);
+
+  const result = run(root, ['set', '0.3.2']);
+  assert.equal(result.status, 0, `stderr: ${result.stderr}`);
+  assert.deepEqual(collectVersionState(root).values, ['0.3.2']);
+  assert.equal(collectVersionState(root).problems.length, 0);
+});
+
+test('set 이 고칠 수 없는 것은 이유를 대고 막는다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, '.grok-plugin', 'plugin.json'), '{ broken');
+  const blocked = run(root, ['set', '0.3.2']);
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /JSON 파싱 실패/);
+  assert.match(blocked.stderr, /set 으로는 고칠 수 없다/);
+  assert.match(blocked.stderr, /\.grok-plugin\/plugin\.json/, '어느 파일인지 알려야 한다');
+});
+
 test('set 은 올리지 않는다 — 지정한 값을 그대로 쓴다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
