@@ -116,6 +116,28 @@ export function latestTag(root, base) {
   return pickLatestTag(all);
 }
 
+// remote-tracking ref 는 refspec 이 없는 클론에서 만들어지지 않는다.
+// 그 경우 빈 값을 "일치" 로 오해하면 대조가 통째로 무력화되므로 ls-remote 로 직접 묻는다.
+export function remoteState(root, base, tag) {
+  const tracking = gitOut(['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${base}`], root);
+  const listed = spawnSync('git', ['ls-remote', 'origin', `refs/heads/${base}`, `refs/tags/${tag}`], {
+    cwd: root, encoding: 'utf8',
+  });
+  const rows = listed.status === 0
+    ? listed.stdout.split('\n').map((line) => line.trim().split(/\s+/)).filter((cols) => cols.length === 2)
+    : [];
+  const remoteBranch = rows.find((cols) => cols[1] === `refs/heads/${base}`)?.[0] ?? null;
+  const tagExists = rows.some((cols) => cols[1] === `refs/tags/${tag}` || cols[1] === `refs/tags/${tag}^{}`);
+  if (remoteBranch) return { head: remoteBranch, source: 'ls-remote', tagExists, reason: null };
+  if (tracking) return { head: tracking, source: 'remote-tracking', tagExists, reason: null };
+  return {
+    head: null,
+    source: null,
+    tagExists,
+    reason: listed.status === 0 ? `origin 에 ${base} 브랜치가 없다` : `ls-remote 실패: ${listed.stderr.trim()}`,
+  };
+}
+
 export function remoteSlug(root) {
   const url = gitOut(['remote', 'get-url', 'origin'], root);
   const match = /github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/.exec(url);
@@ -479,14 +501,29 @@ function cmdBump(root, level, options) {
     console.log(`브랜치 생성 : ${branch}`);
   }
 
-  const changed = [];
+  // 파일을 하나씩 쓰다가 중간에서 실패하면 "8개 중 5개만 올라간" 트리가 남는다.
+  // 그건 이 스킬이 막으려는 사고 그 자체다. 전부 렌더해 본 뒤에 한꺼번에 쓴다.
+  const planned = [];
   for (const source of VERSION_SOURCES) {
     const before = readSourceVersion(root, source).versions.join(', ');
     if (options.dryRun) {
       console.log(`  ${source.file.padEnd(36)} ${before} -> ${nextVersion}`);
       continue;
     }
-    if (writeSourceVersion(root, source, nextVersion)) changed.push(source.file);
+    const absolute = path.join(root, source.file);
+    const raw = readFileSync(absolute, 'utf8');
+    try {
+      planned.push({ file: source.file, absolute, raw, rendered: renderSourceVersion(source, raw, nextVersion) });
+    } catch (error) {
+      fail(`${source.file}: ${error.message}\n  어떤 파일도 바꾸지 않았다.`, 3);
+    }
+  }
+
+  const changed = [];
+  for (const entry of planned) {
+    if (entry.rendered === entry.raw) continue;
+    writeFileSync(entry.absolute, entry.rendered);
+    changed.push(entry.file);
   }
 
   if (options.dryRun) {
@@ -557,6 +594,12 @@ function cmdPr(root, versionArg, options) {
   if (branch === base) fail(`기본 브랜치(${base})에서 직접 커밋하지 않는다. release/v${versionText} 브랜치를 쓴다.`, 3);
 
   const state = collectVersionState(root);
+  // 깨진 매니페스트를 담은 bump PR 을 만들면 main 에 올라간 뒤에야 release 게이트가 잡는다.
+  // 여기서 먼저 막는다.
+  if (state.problems.length) {
+    for (const problem of state.problems) console.error(`✗ ${problem}`);
+    fail('버전 소스 파일이 온전하지 않다. PR 을 만들지 않는다.', 3);
+  }
   if (state.values.length !== 1 || state.values[0] !== versionText) {
     fail(`버전 소스 파일이 ${versionText} 로 맞춰져 있지 않다 (현재: ${state.values.join(', ') || '없음'}). bump 를 먼저 돌린다.`, 3);
   }
@@ -599,25 +642,13 @@ function cmdRelease(root, versionArg, options) {
   const tag = `v${versionText}`;
   const base = baseBranch(root);
 
-  if (git(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], root).status === 0) {
-    fail(`태그 ${tag} 가 이미 있다.`, 3);
-  }
+  // 게이트는 로컬만으로 확정되는 것부터 본다. 원격을 물어보기 전에 걸릴 것을
+  // 먼저 걸러야 진단이 정확하고, 네트워크 없이도 대부분의 실수를 잡는다.
   const branch = gitOut(['branch', '--show-current'], root);
   if (branch !== base) fail(`태그는 기본 브랜치(${base})에서 단다. 현재 브랜치: ${branch || '(없음)'}`, 3);
   requireClean(root);
-
-  // 태그는 원격에 실제로 올라간 커밋에만 단다. 로컬이 앞서 있으면 origin 에서
-  // 도달할 수 없는 커밋을 태그가 가리키게 되고, 릴리즈 페이지가 빈 채로 남는다.
-  if (!options.dryRun) {
-    const fetched = git(['fetch', 'origin', base, '--tags'], root);
-    if (fetched.status !== 0) fail(`origin 을 받아오지 못했다: ${fetched.stderr.trim()}`, 3);
-  }
-  const localHead = gitOut(['rev-parse', 'HEAD'], root);
-  const remoteHead = gitOut(['rev-parse', `refs/remotes/origin/${base}`], root);
-  if (remoteHead && localHead !== remoteHead) {
-    const ahead = gitOut(['rev-list', '--count', `refs/remotes/origin/${base}..HEAD`], root);
-    const behind = gitOut(['rev-list', '--count', `HEAD..refs/remotes/origin/${base}`], root);
-    fail(`로컬 ${base} 가 origin/${base} 와 다르다 (앞선 커밋 ${ahead || '?'}개 · 뒤처진 커밋 ${behind || '?'}개). 먼저 맞춘 뒤 릴리즈한다.`, 3);
+  if (git(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], root).status === 0) {
+    fail(`태그 ${tag} 가 이미 있다.`, 3);
   }
 
   // bump PR 이 merge 됐는지는 파일 버전으로 확인한다. 안 맞으면 아직 merge 전이다.
@@ -630,6 +661,30 @@ function cmdRelease(root, versionArg, options) {
   }
   if (state.values.length !== 1 || state.values[0] !== versionText) {
     fail(`${base} 의 버전 소스가 ${versionText} 가 아니다 (현재: ${state.values.join(', ') || '없음'}). bump PR 이 merge 됐는지 확인한다.`, 3);
+  }
+
+  // 여기부터는 원격을 봐야 한다. 태그는 원격에 실제로 올라간 커밋에만 단다 —
+  // 로컬이 앞서 있으면 origin 에서 도달할 수 없는 커밋을 가리켜 릴리즈가 비어 보인다.
+  if (!options.dryRun) {
+    const fetched = git(['fetch', 'origin', base, '--tags'], root);
+    if (fetched.status !== 0) fail(`origin 을 받아오지 못했다: ${fetched.stderr.trim()}`, 3);
+
+    const remote = remoteState(root, base, tag);
+    // 원격에만 있는 태그도 잡는다. 이걸 놓치면 push 단계에서 날 git 오류로 걸린다.
+    if (remote.tagExists) {
+      fail(`태그 ${tag} 가 origin 에 이미 있다. 로컬에는 없으니 먼저 받아온다: git fetch origin --tags`, 3);
+    }
+    if (!remote.head) {
+      // remote-tracking ref 도 ls-remote 도 실패했다. 확인할 방법이 없으므로 막는다.
+      // 확인 불가를 통과로 취급하면 hard-rule 이 조용히 무효화된다.
+      fail(`origin/${base} 의 위치를 확인하지 못했다 (${remote.reason}). 확인 없이 태그를 달지 않는다.`, 3);
+    }
+    const localHead = gitOut(['rev-parse', 'HEAD'], root);
+    if (localHead !== remote.head) {
+      const ahead = gitOut(['rev-list', '--count', `${remote.head}..HEAD`], root);
+      const behind = gitOut(['rev-list', '--count', `HEAD..${remote.head}`], root);
+      fail(`로컬 ${base} 가 origin/${base} 와 다르다 (앞선 커밋 ${ahead || '?'}개 · 뒤처진 커밋 ${behind || '?'}개, 출처 ${remote.source}). 먼저 맞춘 뒤 릴리즈한다.`, 3);
+    }
   }
 
   const previous = latestTag(root, base);
@@ -647,7 +702,9 @@ function cmdRelease(root, versionArg, options) {
     console.log(body);
     console.log('');
     console.log(`(--dry-run) 태그 ${tag} 와 릴리즈를 만들지 않았다.`);
+    console.log('  원격 대조(origin 과의 일치·원격 태그 존재)는 건너뛰었다. 실제 실행에서 확인한다.');
     console.log(`RELEASE_DRY_RUN=1`);
+    console.log(`REMOTE_CHECKED=0`);
     console.log(`RELEASE_TAG=${tag}`);
     return;
   }
@@ -670,14 +727,19 @@ function cmdRelease(root, versionArg, options) {
     // 태그는 이미 원격에 올라갔다. 그대로 두면 다음 호출이 "태그가 이미 있다" 에
     // 영구히 막히고, 그 버전 번호는 아무도 쓸 수 없게 된다. 되돌린다.
     const removedRemote = git(['push', 'origin', `:refs/tags/${tag}`], root);
-    git(['tag', '-d', tag], root);
     console.error(`✗ 릴리즈를 만들지 못했다: ${released.stderr.trim()}`);
     if (removedRemote.status === 0) {
+      git(['tag', '-d', tag], root);
       console.error(`  태그 ${tag} 를 원격·로컬에서 되돌렸다. 원인을 고친 뒤 다시 부르면 된다.`);
       console.log(`RELEASE_ROLLED_BACK=1`);
     } else {
+      // 원격을 못 지웠으면 로컬 태그를 남긴다. 어느 커밋에 달렸는지가 유일한 단서다.
+      const slug = remoteSlug(root);
       console.error(`  ! 원격 태그 ${tag} 를 지우지 못했다: ${removedRemote.stderr.trim()}`);
-      console.error(`    손으로 지운다: git push origin :refs/tags/${tag}`);
+      console.error(`    로컬 태그는 남겨 두었다 (${gitOut(['rev-parse', tag], root).slice(0, 7)} 를 가리킨다).`);
+      console.error(`    태그 보호 규칙이 걸린 경우 push 로는 지울 수 없다. 아래를 쓴다:`);
+      console.error(`      gh api -X DELETE /repos/${slug ?? '<owner>/<repo>'}/git/refs/tags/${tag}`);
+      console.error(`    또는 저장소 설정에서 태그 보호를 푼 뒤 git push origin :refs/tags/${tag}`);
       console.log(`RELEASE_ROLLED_BACK=0`);
     }
     console.log(`RELEASE_TAG=${tag}`);

@@ -30,13 +30,15 @@ description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 �
   <hard-rules>
     <rule>버전 소스 파일은 전부 함께 올린다. 하나만 올리고 끝내지 않는다.</rule>
     <rule>태그가 하나도 없으면 인자와 무관하게 `v0.1.0` 에서 시작한다. `v0.0.1` 이나 `v1.0.0` 으로 시작하지 않는다.</rule>
-    <rule>태그 버전과 파일 버전이 어긋나면 bump 하지 않는다. 사용자에게 알리고 판단을 받는다.</rule>
+    <rule>태그와 파일 버전이 어긋났을 때는 `DRIFT_DIRECTION` 으로 갈린다. `tag-ahead` 와 `files-inconsistent` 는 사고이므로 사용자에게 알리고 판단을 받는다. `files-ahead` 는 bump PR 이 merge 된 정상 상태이므로 묻지 않고 2단계로 간다.</rule>
     <rule>1단계는 PR 생성에서 멈춘다. PR 을 스스로 merge 하거나 그대로 태그로 넘어가지 않는다.</rule>
     <rule>기본 브랜치에 직접 커밋하지 않는다. bump 는 항상 `release/vX.Y.Z` 브랜치에서 한다.</rule>
-    <rule>2단계는 기본 브랜치의 버전 소스가 목표 버전과 일치할 때만 진행한다. 그것이 PR merge 여부를 확인하는 유일한 신호다.</rule>
+    <rule>2단계 진입 판정은 `current` 의 `DRIFT_DIRECTION=files-ahead` 하나로 한다. 2단계에서 발행할 버전은 `FILE_VERSIONS` 에 이미 들어 있는 값이며, 호출 인자로 다시 계산하지 않는다.</rule>
     <rule>이미 있는 태그를 덮어쓰지 않는다. 방금 자신이 만든 태그를 실패 복구로 되돌리는 것은 예외다.</rule>
     <rule>로컬 기본 브랜치가 `origin` 과 한 커밋이라도 다르면 태그를 달지 않는다. 앞서 있어도 마찬가지다.</rule>
-    <rule>버전 소스 파일이 사라졌거나 JSON 이 깨졌으면(`SOURCE_PROBLEMS`) bump 도 릴리즈도 하지 않는다.</rule>
+    <rule>버전 소스 파일이 사라졌거나 JSON 이 깨졌으면(`SOURCE_PROBLEMS`) bump 도 PR 도 릴리즈도 하지 않는다.</rule>
+    <rule>bump 는 전부 바꾸거나 하나도 바꾸지 않는다. 한 파일이라도 렌더에 실패하면 아무것도 쓰지 않고 멈춘다.</rule>
+    <rule>원격과 같은지 확인하지 못하면 태그를 달지 않는다. 확인 불가를 통과로 취급하지 않는다.</rule>
     <rule>릴리즈 노트는 직전 태그 이후의 실제 커밋에서만 만든다. 없는 변경을 지어내지 않는다.</rule>
     <rule>사용자가 정해야 할 것은 AskUserQuestion 으로 묻는다.</rule>
   </hard-rules>
@@ -232,13 +234,19 @@ node <skill>/scripts/issue-version.mjs release v<VERSION>
 스크립트가 순서대로 확인한다. 하나라도 어긋나면 exit 3 으로 멈추고 아무것도 만들지 않는다.
 
 ```text
-태그가 이미 있는가              있으면 중단
 현재 브랜치가 기본 브랜치인가      아니면 중단
 커밋되지 않은 변경이 있는가       있으면 중단
+태그가 로컬에 이미 있는가         있으면 중단
+태그가 원격에 이미 있는가         있으면 중단 (fetch 후 ls-remote 로 직접 확인한다)
+origin/base 위치를 확인했는가     확인 못 했으면 중단 (확인 불가는 통과가 아니다)
 로컬 base == origin/base 인가    아니면 중단 (앞서 있어도 중단한다)
 버전 소스 파일이 온전한가         SOURCE_PROBLEMS 가 있으면 중단
 파일 버전 == 목표 버전인가        아니면 중단 (= bump PR 이 아직 merge 되지 않았다)
 ```
+
+`refs/remotes/origin/<base>` 는 refspec 이 없는 클론에서는 아예 만들어지지 않는다. 그 값이 비었다고
+"같다" 로 넘기면 대조가 통째로 무력화되므로, `git ls-remote origin` 으로 직접 물어보고 그것마저
+실패하면 막는다.
 
 `git pull --ff-only` 는 뒤처진 경우만 맞춘다. **앞선 경우는 못 막는다.** 이 저장소는 릴리즈 직후
 `chore(graph): 캐시 갱신` 같은 로컬 커밋을 만드는 습관이 있어, 그 상태로 태그를 달면 origin 에서
@@ -249,7 +257,14 @@ node <skill>/scripts/issue-version.mjs release v<VERSION>
 ```text
 태그 push 실패        로컬 태그를 지운다
 릴리즈 생성 실패      원격 태그와 로컬 태그를 모두 지운다 (RELEASE_ROLLED_BACK=1)
-원격 태그 삭제 실패    지울 명령을 알려 준다 (RELEASE_ROLLED_BACK=0) — 손으로 지워야 한다
+원격 태그 삭제 실패    로컬 태그를 남긴다 (RELEASE_ROLLED_BACK=0) — 어느 커밋에 달렸는지가 유일한 단서다
+```
+
+원격 태그 삭제가 거부되는 흔한 이유는 저장소의 **태그 보호 규칙**이다. 이때는 `git push origin :refs/tags/<tag>`
+를 다시 시도해도 같은 이유로 거부되므로, 스크립트가 대신 아래를 안내한다.
+
+```bash
+gh api -X DELETE /repos/<owner>/<repo>/git/refs/tags/<tag>
 ```
 
 되돌리지 않으면 그 버전 번호는 `태그가 이미 있다` 가드에 영구히 막혀 아무도 쓸 수 없게 된다.

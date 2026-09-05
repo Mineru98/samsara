@@ -18,6 +18,7 @@ import {
   parseCommitSubject,
   parseSemver,
   pickLatestTag,
+  remoteState,
   renderNotes,
   renderSourceVersion,
   replaceVersionText,
@@ -202,6 +203,142 @@ test('VERSION 텍스트 파일은 개행을 보존한다', () => {
   assert.equal(renderSourceVersion({ file: 'VERSION', kind: 'text' }, '0.3.2', '0.3.3'), '0.3.3');
 });
 
+
+
+test('remote-tracking ref 가 없어도 ls-remote 로 원격과 대조한다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+  // 로컬에만 있는 커밋을 하나 얹고, refspec 과 remote-tracking ref 를 함께 없앤다.
+  // 이러면 rev-parse refs/remotes/origin/main 이 빈 값을 내 대조가 통째로 무력화될 수 있다.
+  writeFileSync(path.join(root, 'local-only.txt'), 'local\n');
+  spawnSync('git', ['add', '-A'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['commit', '-qm', 'chore: local only'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['config', '--unset-all', 'remote.origin.fetch'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['update-ref', '-d', 'refs/remotes/origin/main'], { cwd: root, encoding: 'utf8' });
+  assert.equal(
+    spawnSync('git', ['rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main'], { cwd: root, encoding: 'utf8' }).stdout.trim(),
+    '',
+  );
+
+  const blocked = run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('nothing fails')}:${process.env.PATH}` });
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /origin\/main 와 다르다/);
+  assert.match(blocked.stderr, /ls-remote/);
+  assert.equal(spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim(), '');
+});
+
+test('원격 위치를 확인할 수 없으면 태그를 달지 않는다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+  // origin 의 브랜치를 지워 ls-remote 가 아무것도 못 찾게 만든다
+  spawnSync('git', ['update-ref', '-d', 'refs/remotes/origin/main'], { cwd: root, encoding: 'utf8' });
+  const originPath = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  spawnSync('git', ['--git-dir', originPath, 'update-ref', '-d', 'refs/heads/main'], { encoding: 'utf8' });
+
+  // remoteState 는 원격을 짚지 못했다고 보고해야 한다 (빈 값을 "같다" 로 넘기지 않는다)
+  const probed = remoteState(root, 'main', 'v0.3.3');
+  assert.equal(probed.head, null);
+  assert.ok(probed.reason, '왜 확인하지 못했는지 사유가 있어야 한다');
+
+  // 실제 실행에서는 fetch 가 먼저 걸리든 대조가 걸리든, 태그는 달리지 않아야 한다
+  const blocked = run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('nothing fails')}:${process.env.PATH}` });
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /확인하지 못했다|받아오지 못했다/);
+  assert.equal(spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim(), '');
+});
+
+test('remoteState 는 remote-tracking ref 가 없어도 ls-remote 로 원격 head 를 짚는다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const expected = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  spawnSync('git', ['config', '--unset-all', 'remote.origin.fetch'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['update-ref', '-d', 'refs/remotes/origin/main'], { cwd: root, encoding: 'utf8' });
+
+  const probed = remoteState(root, 'main', 'v9.9.9');
+  assert.equal(probed.head, expected);
+  assert.equal(probed.source, 'ls-remote');
+  assert.equal(probed.tagExists, false);
+  assert.equal(remoteState(root, 'main', 'v0.3.2').tagExists, true);
+});
+
+test('원격에만 태그가 있으면 날 git 오류 대신 이유를 알려 준다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['tag', '-a', 'v0.3.3', '-m', 'v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['tag', '-d', 'v0.3.3'], { cwd: root, encoding: 'utf8' });
+
+  const blocked = run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('nothing fails')}:${process.env.PATH}` });
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /origin 에 이미 있다/);
+});
+
+test('한 파일이라도 렌더에 실패하면 아무 파일도 바꾸지 않는다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  // 목록 6번째 파일만 특수 포맷 + 경로 밖 중첩 "version" 으로 만들어 폴백 개수 대조를 터뜨린다
+  writeFileSync(
+    path.join(root, '.grok-plugin', 'plugin.json'),
+    '{\n\t"version": "0.3.2",\n\t"nested": { "version": "0.3.2" }\n}\n',
+  );
+  const before = VERSION_SOURCES.map((source) => readFileSync(path.join(root, source.file), 'utf8'));
+
+  const failed = run(root, ['bump', 'patch']);
+  assert.equal(failed.status, 3, `stderr: ${failed.stderr}`);
+  assert.match(failed.stderr, /치환 개수가 다르다/);
+  assert.match(failed.stderr, /어떤 파일도 바꾸지 않았다/);
+
+  // 앞선 5개가 이미 바뀐 "반쯤 bump" 상태가 남으면 안 된다
+  VERSION_SOURCES.forEach((source, index) => {
+    assert.equal(readFileSync(path.join(root, source.file), 'utf8'), before[index], `${source.file} 가 바뀌었다`);
+  });
+});
+
+test('pr 도 버전 소스가 온전하지 않으면 거부한다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const bumped = run(root, ['bump', 'patch', '--branch']);
+  assert.equal(bumped.status, 0, bumped.stderr);
+  writeFileSync(path.join(root, '.grok-plugin', 'plugin.json'), '{ broken json');
+
+  const blocked = run(root, ['pr', 'v0.3.3', '--dry-run']);
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /온전하지 않다/);
+});
+
+test('원격 태그를 지우지 못하면 로컬 태그를 남기고 gh api 를 안내한다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+  // origin 을 읽기 전용으로 만들어 태그 삭제 push 를 거부시킨다
+  const originPath = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+
+  const failed = run(root, ['release', 'v0.3.3'], {
+    PATH: `${fakeGh('release create')}:${process.env.PATH}`,
+    GIT_ORIGIN_DENY: originPath,
+  });
+  assert.equal(failed.status, 3);
+  // 정상 롤백 경로가 동작했다면 로컬 태그가 없어야 하고, 실패 경로면 남아야 한다.
+  const rolledBack = field(failed.stdout, 'RELEASE_ROLLED_BACK');
+  const localTag = spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  if (rolledBack === '1') {
+    assert.equal(localTag, '', '롤백 성공이면 로컬 태그도 사라져야 한다');
+  } else {
+    assert.equal(localTag, 'v0.3.3', '원격을 못 지웠으면 로컬 태그를 단서로 남겨야 한다');
+    assert.match(failed.stderr, /gh api -X DELETE/);
+  }
+});
 
 test('drift 는 방향으로 구분한다 — 파일이 앞서면 사고가 아니라 릴리즈할 상태다', () => {
   assert.equal(driftDirection('0.3.2', ['0.3.2']), 'none');
