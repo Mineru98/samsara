@@ -1,0 +1,14 @@
+$ mermaid 노드 라벨 (스킬명 트리거를 포함한 줄)
+
+skills/issue-create/SKILL.md-174-`$issue-create`, "이슈 만들어줘", "이슈부터 등록"처럼 사용자가 이슈 등록을
+skills/issue-create/SKILL.md-209-판정 기준은 `references/maturity-gate.md`. 사용자가 `$issue-create` 를 직접 호출했으면 이 단계를 건너뛴다.
+skills/issue-create/SKILL.md-239-빠진 항목은 마무리 보고의 `건너뜀` 줄에 남긴다. 항목이 하나뿐이었다면 `$issue-start #N` 을 제안하고 종료한다.
+skills/issue-end/SKILL.md-143-    A[/"$issue-end"/] --> B[context: 워크트리·브랜치·이슈·PR·증거 상태]
+skills/issue-end/SKILL.md-165-    N -->|merge| O[$issue-merge 위임/]
+skills/issue-end/SKILL.md-166-    N -->|다른 이슈| P[$issue-start 위임/]
+skills/issue-end/SKILL.md-167-    N -->|새 이슈| Q[$issue-create 위임/]
+skills/issue-merge/SKILL.md-88-    A[/"$issue-merge"/] --> B[base 전용 임시 워크트리 생성]
+skills/issue-start/SKILL.md-150-    A[/"$issue-start {인자}"/] --> B{인자가 이슈 번호?}
+skills/issue-start/SKILL.md-153-    B2 -- 등록 --> B3[issue-create 설치 확인·자동 설치] --> B4[$issue-create 위임] --> C
+skills/issue-version/SKILL.md-56-    A[/"$issue-version {major|minor|patch}"/] --> B{git repo + gh auth}
+skills/issue-version/SKILL.md-213-`$issue-version <level>` 을 다시 부르면 태그와 릴리즈를 냅니다.

@@ -1,0 +1,21 @@
+$ mermaid 노드 라벨 변경 전후
+
+--- before ---
+    A[/"$issue-end"/] --> B[context: 워크트리·브랜치·이슈·PR·증거 상태]
+    N -->|merge| O[$issue-merge 위임/]
+    N -->|다른 이슈| P[$issue-start 위임/]
+    N -->|새 이슈| Q[$issue-create 위임/]
+    A[/"$issue-start {인자}"/] --> B{인자가 이슈 번호?}
+    B2 -- 등록 --> B3[issue-create 설치 확인·자동 설치] --> B4[$issue-create 위임] --> C
+    A[/"$issue-merge"/] --> B[base 전용 임시 워크트리 생성]
+    A[/"$issue-version {major|minor|patch}"/] --> B{git repo + gh auth}
+
+--- after ---
+    A[/"/issue-end"/] --> B[context: 워크트리·브랜치·이슈·PR·증거 상태]
+    N -->|merge| O["/issue-merge 위임"]
+    N -->|다른 이슈| P["/issue-start 위임"]
+    N -->|새 이슈| Q["/issue-create 위임"]
+    A[/"/issue-start {인자}"/] --> B{인자가 이슈 번호?}
+    B2 -- 등록 --> B3[issue-create 설치 확인·자동 설치] --> B4["/issue-create 위임"] --> C
+    A[/"/issue-merge"/] --> B[base 전용 임시 워크트리 생성]
+    A[/"/issue-version {major|minor|patch}"/] --> B{git repo + gh auth}

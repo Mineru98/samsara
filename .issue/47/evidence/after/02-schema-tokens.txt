@@ -1,0 +1,13 @@
+$ grep -rc "\$ref\|\$defs\|\$schema\|\$id" skills/ (0건 제외)
+
+skills/gh-setup/scripts/gh-env.sh:1
+skills/issue-end/schemas/issue-phase/capability-bundle-v1.schema.json:10
+skills/issue-end/schemas/issue-phase/phase-envelope-v1.schema.json:9
+skills/issue-merge/contracts/issue-merge-phase-api-v1.json:2
+skills/issue-merge/schemas/issue-phase/capability-bundle-v1.schema.json:10
+skills/issue-merge/schemas/issue-phase/phase-envelope-v1.schema.json:9
+skills/issue-start/contracts/issue-start-phase-api-v1.json:11
+skills/issue-start/schemas/issue-phase/capability-bundle-v1.schema.json:10
+skills/issue-start/schemas/issue-phase/phase-envelope-v1.schema.json:9
+
+총 스키마 토큰: 117

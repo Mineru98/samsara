@@ -1,0 +1,24 @@
+$ SKILL.md description 트리거 표기
+
+--- skills/gh-setup/SKILL.md
+$gh-setup /gh-setup 
+--- skills/github-issue-pr-convention/SKILL.md
+
+--- skills/glm-acp/SKILL.md
+
+--- skills/issue-create/SKILL.md
+$issue-create /issue-create 
+--- skills/issue-end/SKILL.md
+$issue-end /issue-end 
+--- skills/issue-merge/SKILL.md
+$issue-merge /issue-merge 
+--- skills/issue-onboard/SKILL.md
+$issue-onboard /issue-onboard 
+--- skills/issue-start/SKILL.md
+$issue-start /issue-start 
+--- skills/issue-sync/SKILL.md
+$issue-sync /issue-sync 
+--- skills/issue-version/SKILL.md
+$issue-version /issue-version 
+--- skills/issue-viz/SKILL.md
+$issue-viz /issue-viz 

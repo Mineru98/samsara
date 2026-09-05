@@ -1,0 +1,3 @@
+$ git status --short -- .omo  /  git diff --stat HEAD~1 HEAD -- .issue .omo
+
+(둘 다 출력 없음 = 무변경)
