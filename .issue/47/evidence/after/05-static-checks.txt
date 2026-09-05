@@ -1,0 +1,56 @@
+$ sh scripts/check-shared.sh
+
+shared cache-safety block: 6 copies match
+
+$ for f in skills/*/scripts/*.mjs; do node --check "$f"; done
+
+ok   skills/gh-setup/scripts/gh-env.mjs
+ok   skills/github-issue-pr-convention/scripts/convention.mjs
+ok   skills/issue-create/scripts/issue-common.mjs
+ok   skills/issue-create/scripts/issue-create.mjs
+ok   skills/issue-create/scripts/issue-docs.mjs
+ok   skills/issue-create/scripts/issue-media.mjs
+ok   skills/issue-create/scripts/issue-ontology.mjs
+ok   skills/issue-create/scripts/issue-tracker.mjs
+ok   skills/issue-end/scripts/capture.mjs
+ok   skills/issue-end/scripts/issue-common.mjs
+ok   skills/issue-end/scripts/issue-docs.mjs
+ok   skills/issue-end/scripts/issue-end.mjs
+ok   skills/issue-end/scripts/issue-media.mjs
+ok   skills/issue-end/scripts/issue-ontology.mjs
+ok   skills/issue-end/scripts/issue-phase-contract.mjs
+ok   skills/issue-end/scripts/issue-tracker.mjs
+ok   skills/issue-merge/scripts/issue-common.mjs
+ok   skills/issue-merge/scripts/issue-docs.mjs
+ok   skills/issue-merge/scripts/issue-media.mjs
+ok   skills/issue-merge/scripts/issue-merge-phase.mjs
+ok   skills/issue-merge/scripts/issue-merge.mjs
+ok   skills/issue-merge/scripts/issue-ontology.mjs
+ok   skills/issue-merge/scripts/issue-phase-contract.mjs
+ok   skills/issue-merge/scripts/issue-tracker.mjs
+ok   skills/issue-onboard/scripts/bootstrap.test.mjs
+ok   skills/issue-onboard/scripts/derive-status.test.mjs
+ok   skills/issue-onboard/scripts/issue-common.mjs
+ok   skills/issue-onboard/scripts/issue-docs.mjs
+ok   skills/issue-onboard/scripts/issue-graph-v2.mjs
+ok   skills/issue-onboard/scripts/issue-llm.mjs
+ok   skills/issue-onboard/scripts/issue-media.mjs
+ok   skills/issue-onboard/scripts/issue-native-deps.mjs
+ok   skills/issue-onboard/scripts/issue-onboard.mjs
+ok   skills/issue-onboard/scripts/issue-tracker.mjs
+ok   skills/issue-onboard/scripts/link-roundtrip.test.mjs
+ok   skills/issue-onboard/scripts/native-deps.test.mjs
+ok   skills/issue-start/scripts/capture.mjs
+ok   skills/issue-start/scripts/issue-common.mjs
+ok   skills/issue-start/scripts/issue-docs.mjs
+ok   skills/issue-start/scripts/issue-media.mjs
+ok   skills/issue-start/scripts/issue-ontology.mjs
+ok   skills/issue-start/scripts/issue-phase-contract.mjs
+ok   skills/issue-start/scripts/issue-start-phase.mjs
+ok   skills/issue-start/scripts/issue-start.mjs
+ok   skills/issue-start/scripts/issue-tracker.mjs
+ok   skills/issue-sync/scripts/issue-common.mjs
+ok   skills/issue-sync/scripts/issue-sync.mjs
+ok   skills/issue-version/scripts/issue-version.mjs
+ok   skills/issue-version/scripts/issue-version.test.mjs
+ok   skills/issue-viz/scripts/issue-viz.mjs

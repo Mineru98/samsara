@@ -1,0 +1,3 @@
+$ grep -n "NEXT=" skills/issue-create/scripts/issue-create.mjs
+
+455:  console.log(`NEXT=/issue-start #${number}`);

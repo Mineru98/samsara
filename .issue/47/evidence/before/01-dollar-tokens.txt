@@ -1,0 +1,89 @@
+$ grep -rn "\$issue-\|\$gh-setup\|\$convention" skills/
+
+skills/issue-sync/SKILL.md:3:description: GitHub 이슈 완전 스냅샷으로 .issue/graph.json 캐시를 생성·갱신합니다. "$issue-sync", "이슈 그래프 갱신", "그래프 만들기" 요청과 issue-onboard의 자동 부트스트랩에 …
+skills/issue-version/SKILL.md:3:description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 릴리즈까지 발행합니다. `/issue-version major|minor|patch`, "$issue-version", "버전 올려줘", "패치 버전 …
+skills/issue-version/SKILL.md:56:    A[/"$issue-version {major|minor|patch}"/] --> B{git repo + gh auth}
+skills/issue-version/SKILL.md:213:`$issue-version <level>` 을 다시 부르면 태그와 릴리즈를 냅니다.
+skills/issue-version/SKILL.md:283:| **다음** | PR merge 후 `$issue-version patch` 재실행 |
+skills/issue-end/references/next-actions.md:40:1. 다른 이슈 착수 (권장)   등록된 열린 이슈 중 하나를 골라 $issue-start
+skills/issue-end/references/next-actions.md:41:2. 워크트리 전부 merge     지금까지 쌓인 워크트리를 모아 $issue-merge
+skills/issue-end/references/next-actions.md:42:3. 새 이슈 등록            $issue-create   ← 후속 이슈 후보가 있을 때만 넣는다
+skills/issue-end/references/next-actions.md:82:        { "label": "다른 이슈 착수 (권장)", "description": "등록된 열린 이슈 중 하나를 골라 $issue-start" },
+skills/issue-end/references/next-actions.md:83:        { "label": "워크트리 전부 merge", "description": "지금까지 쌓인 워크트리를 모아 $issue-merge" },
+skills/issue-end/references/next-actions.md:84:        { "label": "새 이슈 등록", "description": "$issue-create — 후속 이슈 후보가 있을 때만 넣는다" },
+skills/issue-end/references/next-actions.md:109:이슈 목록을 번호·제목·라벨로 보여주고 고르게 한 뒤 `$issue-start <번호>` 로 넘긴다.
+skills/issue-end/references/next-actions.md:118:$issue-merge
+skills/issue-end/references/next-actions.md:138:`$issue-create` 로 넘긴다. 없으면 `issue-start` 의 `references/intake.md` 에 있는 설치 폴백 체인을 그대로 쓴다.
+skills/issue-end/references/next-actions.md:145:남은 워크트리   <n>개 — 통합하려면 $issue-merge
+skills/issue-end/agents/openai.yaml:4:  default_prompt: "Use $issue-end to wrap up: re-check the before/after evidence and recapture what is missing, commit the…
+skills/issue-end/SKILL.md:3:description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 만듭니다. merge 는 issue-merge 로 넘깁니다. `$issue-end`, "이슈 마무리", "작업 종료", "승인한 작업 PR" 요청에 사…
+skills/issue-end/SKILL.md:143:    A[/"$issue-end"/] --> B[context: 워크트리·브랜치·이슈·PR·증거 상태]
+skills/issue-end/SKILL.md:165:    N -->|merge| O[$issue-merge 위임/]
+skills/issue-end/SKILL.md:166:    N -->|다른 이슈| P[$issue-start 위임/]
+skills/issue-end/SKILL.md:167:    N -->|새 이슈| Q[$issue-create 위임/]
+skills/issue-viz/SKILL.md:3:description: .issue/graph.json 을 칸반 HTML(graph.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 …
+skills/issue-viz/SKILL.md:16:$issue-viz [--sync] [--no-open]
+skills/github-issue-pr-convention/agents/openai.yaml:4:  default_prompt: "Use $convention to scan this GitHub repository's contribution conventions and update A…
+skills/issue-start/references/intake.md:3:`$issue-start` 에 이슈 번호 대신 작업 설명이 들어오는 경우를 다룬다.
+skills/issue-start/references/next-actions.md:13:1. 검토 승인하고 PR 만들기 (권장) $issue-end — 게시된 증거를 확인하고 PR 까지 만듭니다
+skills/issue-start/references/next-actions.md:15:3. 다른 이슈 착수                $issue-start <번호>
+skills/issue-start/references/next-actions.md:41:        { "label": "검토 승인하고 PR 만들기 (권장)", "description": "$issue-end — 게시된 증거를 확인하고 PR 까지 만듭니다" },
+skills/issue-start/references/next-actions.md:43:        { "label": "다른 이슈 착수", "description": "$issue-start <번호> — 남은 열린 이슈가 있을 때만 넣는다" },
+skills/issue-start/references/next-actions.md:75:$issue-end
+skills/issue-start/references/next-actions.md:102:이슈 목록을 번호·제목·라벨로 보여주고 고르게 한 뒤 `$issue-start <번호>` 로 넘긴다.
+skills/issue-start/references/next-actions.md:112:| **남은 일** | PR 이 아직 없습니다 — 마무리하려면 `$issue-end` |
+skills/issue-start/agents/openai.yaml:4:  default_prompt: "Use $issue-start on GitHub issue #<number>: read the issue and its screenshots, plan against the code…
+skills/issue-start/SKILL.md:3:description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋하고 증거 리포트를 이슈에 남깁니다. 번호 대신 작업 설명이면 issue-create 로 넘깁니다. `$issue-start`, "이슈 착수", "이슈 분석…
+skills/issue-start/SKILL.md:150:    A[/"$issue-start {인자}"/] --> B{인자가 이슈 번호?}
+skills/issue-start/SKILL.md:153:    B2 -- 등록 --> B3[issue-create 설치 확인·자동 설치] --> B4[$issue-create 위임] --> C
+skills/issue-onboard/references/dag-ops.md:76:ready-frontier 의 첫 이슈(우선순위·번호 순)를 골라 `NEXT=$issue-start #N` 을 제안한다.
+skills/issue-onboard/references/dag-ops.md:98:next                      # 다음 착수 1건 → $issue-start #N
+skills/issue-onboard/references/next-actions.md:7:1. 다음 착수 (권장)   ready-frontier 첫 이슈로 $issue-start #N 을 잇는다.
+skills/issue-onboard/references/next-actions.md:8:2. 명부 동기화        $issue-sync 로 graph.json 을 다시 맞춘다.
+skills/issue-onboard/references/next-actions.md:35:        { "label": "다음 착수 (권장)", "description": "ready-frontier 첫 이슈로 $issue-start #N 을 잇는다" },
+skills/issue-onboard/references/next-actions.md:36:        { "label": "명부 동기화", "description": "$issue-sync 로 graph.json 을 다시 맞춘다" },
+skills/issue-onboard/SKILL.md:3:description: 이슈 그래프로 현재 작업 맥락·우선순위·다음 행동을 안내하고, 캐시가 없거나 오래되면 issue-sync로 자동 갱신합니다. "무엇부터 할까", "이슈 온보딩", "이슈 현황", "다음 작업 추천", "그래…
+skills/issue-onboard/SKILL.md:14:$issue-onboard [--all]
+skills/issue-onboard/SKILL.md:24:1. GitHub의 전체 이슈 snapshot과 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 현재 이슈의 내용·상태·라벨·revision과 맞지 않거나, GitHub에서 닫힌 비종료 노드…
+skills/issue-onboard/SKILL.md:63:더 보기      $issue-onboard --all
+skills/issue-onboard/SKILL.md:64:다음 행동    $issue-start #N | $issue-merge | $issue-create
+skills/gh-setup/agents/openai.yaml:4:  default_prompt: "Use $gh-setup to detect this platform, install the GitHub CLI if it is missing, and walk me through gh a…
+skills/issue-merge/references/next-actions.md:21:1. 다른 이슈 착수 (권장)   남은 열린 이슈 중 하나를 골라 $issue-start 로 넘어갑니다
+skills/issue-merge/references/next-actions.md:22:2. 보류분 마무리           이번에 빠진 워크트리를 $issue-end 로 정리합니다
+skills/issue-merge/references/next-actions.md:23:3. 새 이슈 등록            $issue-create 로 넘어갑니다   ← 후속 이슈 후보가 있을 때만 넣는다
+skills/issue-merge/references/next-actions.md:70:이슈 목록을 번호·제목·라벨로 보여주고 고르게 한 뒤 `$issue-start <번호>` 로 넘긴다.
+skills/issue-merge/references/next-actions.md:79:#64  before 증거 없음    → 해당 워크트리에서 $issue-end (pure-tree 로 before 재캡처)
+skills/issue-merge/references/next-actions.md:80:#71  PR 없음             → 해당 워크트리에서 $issue-end (PR 생성)
+skills/issue-merge/references/next-actions.md:81:#83  CI 실패             → 원인을 고친 뒤 다시 $issue-end
+skills/issue-merge/references/next-actions.md:84:정리가 끝나면 다시 `$issue-merge` 로 돌아와 다음 회차를 돈다.
+skills/issue-merge/references/next-actions.md:88:`$issue-create` 로 넘긴다.
+skills/issue-merge/references/next-actions.md:97:남은 워크트리   <n>개 — 통합하려면 $issue-merge
+skills/issue-merge/references/verify-and-close.md:144:1. revert 하고 다시 작업 (권장)   merge 커밋을 되돌리고 $issue-start 로 재착수합니다
+skills/issue-merge/references/verify-and-close.md:145:2. 이대로 두고 후속 이슈 등록      $issue-create 로 회귀 이슈를 만듭니다
+skills/issue-merge/references/verify-and-close.md:241:#64  before 증거 없음 → 해당 워크트리에서 $issue-end 실행해 pure-tree 로 before 캡처
+skills/issue-merge/agents/openai.yaml:4:  default_prompt: "Use $issue-merge to review every open worktree, confirm each linked issue is actually resolved by its…
+skills/issue-merge/SKILL.md:3:description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누적 검증으로 한 번에 통합하고 이슈를 닫습니다. `$issue-merge`, "워크트리 전부 merge", "이슈들 통합", "PR 충돌 해결하고 합쳐줘" 요청과 …
+skills/issue-merge/SKILL.md:88:    A[/"$issue-merge"/] --> B[base 전용 임시 워크트리 생성]
+skills/issue-create/references/maturity-gate.md:36:- 사용자가 `$issue-create` 를 직접 호출했다.
+skills/issue-create/references/provider-settings.md:44:`direct` 여도 `$issue-create`, "이슈 만들어줘", "이슈부터 등록"처럼 사용자가
+skills/issue-create/references/create-and-handoff.md:101:나중에        번호와 `$issue-start #<번호>` 만 안내하고 종료
+skills/issue-create/references/next-actions.md:12:1. 바로 착수 (권장)   $issue-start #<번호> — 분석하고 워크트리까지 만듭니다
+skills/issue-create/references/next-actions.md:13:2. 이슈 더 등록       $issue-create — 지금 떠오른 다른 건도 남겨 둡니다   ← 더 등록할 후보가 있을 때만 넣는다
+skills/issue-create/references/next-actions.md:53:        { "label": "바로 착수 (권장)", "description": "$issue-start #<번호> — 분석하고 워크트리까지 만듭니다" },
+skills/issue-create/references/next-actions.md:54:        { "label": "이슈 더 등록", "description": "$issue-create — 더 등록할 후보가 있을 때만 넣는다" },
+skills/issue-create/references/next-actions.md:84:$issue-start #<번호>
+skills/issue-create/references/next-actions.md:111:다음      $issue-start #<번호> 로 언제든 시작하실 수 있습니다
+skills/issue-create/agents/openai.yaml:4:  default_prompt: "Use $issue-create to turn this change request into a GitHub issue: check repo maturity, search for d…
+skills/issue-create/scripts/issue-create.mjs:455:  console.log(`NEXT=$issue-start #${number}`);
+skills/issue-create/SKILL.md:3:description: 이미 굴러가는 저장소에서 코드를 바꾸는 요청이면 크기와 무관하게, 파일을 건드리기 전에 이 스킬로 GitHub 이슈부터 등록합니다. 반대로 빈 폴더나 방금 git init 한 프로젝트에 package.json…
+skills/issue-create/SKILL.md:49:    <rule>명시적인 `$issue-create`, 이슈 등록 요청은 `direct` 여도 기존 흐름을 실행한다.</rule>
+skills/issue-create/SKILL.md:51:    <rule>사용자가 `$issue-create` 를 직접 호출하면 게이트를 건너뛴다.</rule>
+skills/issue-create/SKILL.md:174:`$issue-create`, "이슈 만들어줘", "이슈부터 등록"처럼 사용자가 이슈 등록을
+skills/issue-create/SKILL.md:209:판정 기준은 `references/maturity-gate.md`. 사용자가 `$issue-create` 를 직접 호출했으면 이 단계를 건너뛴다.
+skills/issue-create/SKILL.md:239:빠진 항목은 마무리 보고의 `건너뜀` 줄에 남긴다. 항목이 하나뿐이었다면 `$issue-start #N` 을 제안하고 종료한다.
+skills/issue-create/SKILL.md:306:다음      <사용자가 고른 행동> — $issue-start #61 (이후 #62, #63)
+
+--- 합계 ---
+파일: 26
+줄:   82
+토큰: 84
