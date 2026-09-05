@@ -95,10 +95,11 @@ cp /tmp/issue-draft.md .issue/<번호>/request.md
 ## 인계
 
 등록 직후 AskUserQuestion 으로 묻는다.
+호출 표기는 `/` 가 정본이다. Codex 계열에서는 `$` 접두도 같은 스킬을 가리키므로, 사용자가 쓰는 접두를 그대로 따라 적는다.
 
 ```text
 바로 착수     issue-start 를 #<번호> 로 이어서 실행 (워크트리까지 생성)
-나중에        번호와 `$issue-start #<번호>` 만 안내하고 종료
+나중에        번호와 `/issue-start #<번호>` 만 안내하고 종료
 ```
 
 "바로 착수" 를 고르면 `issue-start` 는 방금 만든 이슈를 `gh` 로 다시 받아온다.

@@ -1,6 +1,6 @@
 ---
 name: issue-sync
-description: GitHub 이슈 완전 스냅샷으로 .issue/graph.json 캐시를 생성·갱신합니다. "$issue-sync", "이슈 그래프 갱신", "그래프 만들기" 요청과 issue-onboard의 자동 부트스트랩에 사용.
+description: GitHub 이슈 완전 스냅샷으로 .issue/graph.json 캐시를 생성·갱신합니다. "/issue-sync", "$issue-sync", "이슈 그래프 갱신", "그래프 만들기" 요청과 issue-onboard의 자동 부트스트랩에 사용.
 ---
 
 # Issue Sync

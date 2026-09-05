@@ -1,6 +1,6 @@
 ---
 name: issue-viz
-description: .issue/graph.json 을 칸반 HTML(graph.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 보드", "그래프 보여줘", "$issue-viz" 요청에 사용.
+description: .issue/graph.json 을 칸반 HTML(graph.html)로 바로 렌더링해 브라우저로 엽니다. 그래프를 fetch(sync)한 뒤 status↔classify·관계 연결선·상세 패널로 봅니다. "이슈 보드", "그래프 보여줘", "/issue-viz", "$issue-viz" 요청에 사용.
 ---
 
 # Issue Viz
@@ -13,7 +13,7 @@ self-contained HTML 이라 `file://` 더블클릭으로도 동작한다.
 ## 입력
 
 ```text
-$issue-viz [--sync] [--no-open]
+/issue-viz [--sync] [--no-open]
 ```
 
 - `--sync`: graph.json 이 있어도 GitHub 에서 새로 fetch(재생성)한다. (없으면 어차피 자동 sync)

@@ -1,6 +1,6 @@
 ---
 name: issue-start
-description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋하고 증거 리포트를 이슈에 남깁니다. 번호 대신 작업 설명이면 issue-create 로 넘깁니다. `$issue-start`, "이슈 착수", "이슈 분석하고 작업해줘" 요청에 사용.
+description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋하고 증거 리포트를 이슈에 남깁니다. 번호 대신 작업 설명이면 issue-create 로 넘깁니다. `/issue-start`, `$issue-start`, "이슈 착수", "이슈 분석하고 작업해줘" 요청에 사용.
 ---
 
 <skill>
@@ -147,10 +147,10 @@ issue-start 5단계(워크트리 생성)입니다. 워크트리를 어디에 만
 
 ```mermaid
 flowchart TD
-    A[/"$issue-start {인자}"/] --> B{인자가 이슈 번호?}
+    A[/"/issue-start {인자}"/] --> B{인자가 이슈 번호?}
     B -- 아니오 --> B1[plan 모드 전환]
     B1 --> B2[AskUserQuestion: 이슈로 등록할까요?]
-    B2 -- 등록 --> B3[issue-create 설치 확인·자동 설치] --> B4[$issue-create 위임] --> C
+    B2 -- 등록 --> B3[issue-create 설치 확인·자동 설치] --> B4["/issue-create 위임"] --> C
     B2 -- 취소 --> Z0[중단]
     B -- 예 --> C{git repo + gh auth}
     C -- 실패 --> Z0

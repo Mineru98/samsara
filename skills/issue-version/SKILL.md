@@ -1,6 +1,6 @@
 ---
 name: issue-version
-description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 릴리즈까지 발행합니다. `/issue-version major|minor|patch`, "$issue-version", "버전 올려줘", "패치 버전 올리고 릴리즈", "마이너 릴리즈 내줘", "태그 달고 릴리즈 발행" 요청에 사용. 1단계는 버전 소스 파일을 갱신한 bump PR 까지만 만들고 멈추며, 그 PR 이 merge 된 뒤 다시 호출하면 2단계로 태그와 릴리즈를 냅니다. 코드 변경 자체는 issue-create → issue-start → issue-end → issue-merge 의 몫이라 여기서 다루지 않습니다.
+description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 릴리즈까지 발행합니다. `/issue-version major|minor|patch`, "/issue-version", "$issue-version", "버전 올려줘", "패치 버전 올리고 릴리즈", "마이너 릴리즈 내줘", "태그 달고 릴리즈 발행" 요청에 사용. 1단계는 버전 소스 파일을 갱신한 bump PR 까지만 만들고 멈추며, 그 PR 이 merge 된 뒤 다시 호출하면 2단계로 태그와 릴리즈를 냅니다. 코드 변경 자체는 issue-create → issue-start → issue-end → issue-merge 의 몫이라 여기서 다루지 않습니다.
 ---
 
 <skill>
@@ -53,7 +53,7 @@ description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 �
 
 ```mermaid
 flowchart TD
-    A[/"$issue-version {major|minor|patch}"/] --> B{git repo + gh auth}
+    A[/"/issue-version {major|minor|patch}"/] --> B{git repo + gh auth}
     B -- 실패 --> B1[gh-setup 안내 후 중단] --> Z[종료]
     B -- 통과 --> C[current: 태그와 8개 파일 버전 수집]
 
@@ -210,7 +210,7 @@ node <skill>/scripts/issue-version.mjs pr v<NEXT_VERSION>
 
 ```text
 [#42 chore(release): bump version to v0.3.3](<PR URL>) 을 merge 한 뒤
-`$issue-version <level>` 을 다시 부르면 태그와 릴리즈를 냅니다.
+`/issue-version <level>` 을 다시 부르면 태그와 릴리즈를 냅니다.
 ```
 
 확인만 하고 싶으면 `--dry-run` 을 붙여 `bump` 까지만 돌린다. 파일도 브랜치도 만들지 않는다.
@@ -280,7 +280,7 @@ gh api -X DELETE /repos/<owner>/<repo>/git/refs/tags/<tag>
 | **갱신 파일** | 8개 |
 | **브랜치** | `release/v0.3.3` |
 | **PR** | [#42 chore(release): bump version to v0.3.3](\<PR URL\>) |
-| **다음** | PR merge 후 `$issue-version patch` 재실행 |
+| **다음** | PR merge 후 `/issue-version patch` 재실행 |
 
 2단계를 끝냈을 때.
 

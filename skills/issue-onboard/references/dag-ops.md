@@ -73,8 +73,9 @@ ready        선행이 전부 close 이고 status == open
 node <skill>/scripts/issue-onboard.mjs next
 ```
 
-ready-frontier 의 첫 이슈(우선순위·번호 순)를 골라 `NEXT=$issue-start #N` 을 제안한다.
+ready-frontier 의 첫 이슈(우선순위·번호 순)를 골라 `NEXT=/issue-start #N` 을 제안한다.
 ready 가 비면 진행 중 목록을 안내한다.
+호출 표기는 `/` 가 정본이다. Codex 계열에서는 `$` 접두도 같은 스킬을 가리키므로, 사용자가 쓰는 접두를 그대로 따라 적는다.
 
 ## validate — 점검
 
@@ -95,5 +96,5 @@ sync                      # 그래프를 최신으로
 plan                      # 지금 뭐부터 할 수 있나
 link 70 60 --why "..."    # 자동 감지 못한 의존 보강
 validate                  # 순환·불일치 없나
-next                      # 다음 착수 1건 → $issue-start #N
+next                      # 다음 착수 1건 → /issue-start #N
 ```

@@ -6,13 +6,14 @@
 ## 선택지 (순서 고정)
 
 AskUserQuestion 으로 제시한다. 마무리로 넘어가는 쪽이 기본값이다.
+호출 표기는 `/` 가 정본이다. Codex 계열에서는 `$` 접두도 같은 스킬을 가리키므로, 사용자가 쓰는 접두를 그대로 따라 적는다.
 
 ```text
 질문   issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
 
-1. 검토 승인하고 PR 만들기 (권장) $issue-end — 게시된 증거를 확인하고 PR 까지 만듭니다
+1. 검토 승인하고 PR 만들기 (권장) /issue-end — 게시된 증거를 확인하고 PR 까지 만듭니다
 2. 이 이슈 더 손보기             계획에 남은 항목을 이어서 작업합니다
-3. 다른 이슈 착수                $issue-start <번호>
+3. 다른 이슈 착수                /issue-start <번호>
 4. 여기서 종료                   PR 은 나중에 만듭니다
 ```
 
@@ -38,9 +39,9 @@ AskUserQuestion 으로 제시한다. 마무리로 넘어가는 쪽이 기본값�
       "header": "다음 행동",
       "multiSelect": false,
       "options": [
-        { "label": "검토 승인하고 PR 만들기 (권장)", "description": "$issue-end — 게시된 증거를 확인하고 PR 까지 만듭니다" },
+        { "label": "검토 승인하고 PR 만들기 (권장)", "description": "/issue-end — 게시된 증거를 확인하고 PR 까지 만듭니다" },
         { "label": "이 이슈 더 손보기", "description": "계획에 남은 항목을 이어서 작업합니다" },
-        { "label": "다른 이슈 착수", "description": "$issue-start <번호> — 남은 열린 이슈가 있을 때만 넣는다" },
+        { "label": "다른 이슈 착수", "description": "/issue-start <번호> — 남은 열린 이슈가 있을 때만 넣는다" },
         { "label": "여기서 종료", "description": "PR 은 나중에 만듭니다" }
       ]
     }
@@ -72,7 +73,7 @@ git worktree list
 워크트리를 옮기지 않는다.
 
 ```text
-$issue-end
+/issue-end
 ```
 
 넘길 때 아래를 함께 전달한다.
@@ -99,7 +100,7 @@ sh <migrate-skill-agent>/scripts/migrate-skill-agent.sh \
 
 ## 3번 — 다른 이슈 착수
 
-이슈 목록을 번호·제목·라벨로 보여주고 고르게 한 뒤 `$issue-start <번호>` 로 넘긴다.
+이슈 목록을 번호·제목·라벨로 보여주고 고르게 한 뒤 `/issue-start <번호>` 로 넘긴다.
 
 현재 워크트리에서 그대로 시작하지 않는다. `issue-start` 가 새 워크트리를 만든다.
 
@@ -109,7 +110,7 @@ sh <migrate-skill-agent>/scripts/migrate-skill-agent.sh \
 
 | 항목 | 내용 |
 | --- | --- |
-| **남은 일** | PR 이 아직 없습니다 — 마무리하려면 `$issue-end` |
+| **남은 일** | PR 이 아직 없습니다 — 마무리하려면 `/issue-end` |
 
 ## 하지 않는 것
 
