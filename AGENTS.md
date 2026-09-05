@@ -41,6 +41,11 @@ skill and its referenced files before running its scripts. The core order is:
 Use `issue-onboard`, `issue-sync`, and `issue-viz` to inspect or refresh the
 issue graph; use `gh-setup` when GitHub CLI authentication is unavailable.
 
+`issue-version` is separate from that order. It takes `major`, `minor`, or
+`patch`, bumps every file that carries the version, opens a bump PR, and stops
+there. Call it again after that PR merges to create the tag and the GitHub
+release. Do not merge the bump PR yourself.
+
 ## Agents
 
 [`agents/glm-acp-samsara.md`](agents/glm-acp-samsara.md) is the ACP-compatible
