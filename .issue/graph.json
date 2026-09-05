@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": "Mineru98/samsara",
-  "updatedAt": "2026-08-31T05:29:50.349Z",
+  "updatedAt": "2026-09-05T07:41:27.153Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-31T05:01:20.510Z",
@@ -1532,6 +1532,15 @@
         "chore"
       ],
       "url": "https://github.com/Mineru98/samsara/issues/38"
+    },
+    "41": {
+      "number": 41,
+      "title": "issue-version 스킬 추가 — semver 판정·태그·릴리즈 자동화",
+      "status": "in-process",
+      "labels": [
+        "enhancement"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/41"
     }
   },
   "edges": [],
