@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,6 +11,7 @@ import {
   stripTrailingReference,
   bumpVersion,
   collectVersionState,
+  driftDirection,
   extractReferences,
   formatVersion,
   groupCommits,
@@ -25,8 +26,12 @@ import {
 
 const SCRIPT = fileURLToPath(new URL('./issue-version.mjs', import.meta.url));
 
-function run(cwd, args) {
-  return spawnSync(process.execPath, [SCRIPT, ...args], { cwd, encoding: 'utf8' });
+function run(cwd, args, env) {
+  return spawnSync(process.execPath, [SCRIPT, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: env ? { ...process.env, ...env } : process.env,
+  });
 }
 
 function field(stdout, key) {
@@ -34,7 +39,22 @@ function field(stdout, key) {
   return match ? match[1] : null;
 }
 
-function seedRepo({ withTags }) {
+// gh 를 흉내 내는 임시 실행 파일. auth 는 통과하고 지정한 하위 명령만 실패시킨다.
+function fakeGh(failCommand) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'fake-gh-'));
+  writeFileSync(path.join(dir, 'gh'), [
+    '#!/bin/sh',
+    `if [ "$1" = "${failCommand.split(' ')[0]}" ] && [ "$2" = "${failCommand.split(' ')[1]}" ]; then`,
+    '  echo "gh: forced failure" >&2',
+    '  exit 1',
+    'fi',
+    'exit 0',
+  ].join('\n'));
+  chmodSync(path.join(dir, 'gh'), 0o755);
+  return dir;
+}
+
+function seedRepo({ withTags, withOrigin }) {
   const root = mkdtempSync(path.join(tmpdir(), 'issue-version-'));
   const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   git('init', '-q', '-b', 'main');
@@ -67,6 +87,15 @@ function seedRepo({ withTags }) {
     writeFileSync(path.join(root, 'note2.txt'), 'more\n');
     git('add', '-A');
     git('commit', '-q', '-m', 'fix(graph): 캐시 갱신 실패 수정');
+  }
+  if (withOrigin) {
+    const origin = mkdtempSync(path.join(tmpdir(), 'issue-version-origin-'));
+    spawnSync('git', ['init', '-q', '--bare', '-b', 'main', origin], { encoding: 'utf8' });
+    git('remote', 'add', 'origin', origin);
+    git('push', '-q', 'origin', 'main');
+    if (withTags) git('push', '-q', 'origin', '--tags');
+    git('fetch', '-q', 'origin');
+    git('branch', '--set-upstream-to=origin/main', 'main');
   }
   return root;
 }
@@ -171,6 +200,107 @@ test('포맷이 특이한 JSON 은 텍스트 폴백으로 version 만 바꾼다'
 test('VERSION 텍스트 파일은 개행을 보존한다', () => {
   assert.equal(renderSourceVersion({ file: 'VERSION', kind: 'text' }, '0.3.2\n', '0.3.3'), '0.3.3\n');
   assert.equal(renderSourceVersion({ file: 'VERSION', kind: 'text' }, '0.3.2', '0.3.3'), '0.3.3');
+});
+
+
+test('drift 는 방향으로 구분한다 — 파일이 앞서면 사고가 아니라 릴리즈할 상태다', () => {
+  assert.equal(driftDirection('0.3.2', ['0.3.2']), 'none');
+  assert.equal(driftDirection('0.3.2', ['0.3.3']), 'files-ahead');
+  assert.equal(driftDirection('0.3.3', ['0.3.2']), 'tag-ahead');
+  assert.equal(driftDirection('0.3.2', ['0.3.2', '0.3.3']), 'files-inconsistent');
+  assert.equal(driftDirection(null, ['0.3.2']), 'no-tag');
+  assert.equal(driftDirection('0.3.2', []), 'files-missing');
+});
+
+test('파일이 태그보다 앞서면 RELEASE_READY=1 이 나온다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  assert.equal(field(run(root, ['current']).stdout, 'RELEASE_READY'), '0');
+  run(root, ['bump', 'patch']);
+  const after = run(root, ['current']);
+  assert.equal(field(after.stdout, 'DRIFT_DIRECTION'), 'files-ahead');
+  assert.equal(field(after.stdout, 'RELEASE_READY'), '1');
+});
+
+test('파일이 앞선 상태의 bump 는 release 로 가라고 알려 준다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  const blocked = run(root, ['bump', 'patch']);
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /release 로 이어갈 상태/);
+});
+
+test('버전 소스 파일이 사라지면 drift 가 0 이어도 release 를 막는다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump'], { cwd: root, encoding: 'utf8' });
+  unlinkSync(path.join(root, '.grok-plugin', 'plugin.json'));
+  spawnSync('git', ['commit', '-qam', 'chore: drop manifest'], { cwd: root, encoding: 'utf8' });
+
+  const current = run(root, ['current']);
+  assert.equal(field(current.stdout, 'VERSION_DRIFT'), '1');
+  assert.notEqual(field(current.stdout, 'SOURCE_PROBLEMS'), '0');
+  assert.equal(field(current.stdout, 'RELEASE_READY'), '0');
+
+  const blocked = run(root, ['release', 'v0.3.3', '--dry-run']);
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /온전하지 않다/);
+});
+
+test('로컬 기본 브랜치가 origin 보다 앞서 있으면 태그를 달지 않는다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  // 커밋만 하고 push 하지 않은 상태 = origin 에 없는 커밋에 태그가 달릴 뻔한 상황
+  const blocked = run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('release create')}:${process.env.PATH}` });
+  assert.equal(blocked.status, 3);
+  assert.match(blocked.stderr, /origin\/main 와 다르다/);
+  assert.equal(spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim(), '');
+});
+
+test('릴리즈 생성이 실패하면 원격·로컬 태그를 되돌린다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+
+  const failed = run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('release create')}:${process.env.PATH}` });
+  assert.equal(failed.status, 3);
+  assert.equal(field(failed.stdout, 'RELEASE_ROLLED_BACK'), '1');
+  // 로컬에도 원격에도 태그가 남지 않아야 다시 시도할 수 있다
+  assert.equal(spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim(), '');
+  const remoteTags = spawnSync('git', ['ls-remote', '--tags', 'origin', 'v0.3.3'], { cwd: root, encoding: 'utf8' });
+  assert.equal(remoteTags.stdout.trim(), '');
+});
+
+test('되돌린 뒤 같은 버전으로 다시 릴리즈할 수 있다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+  run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('release create')}:${process.env.PATH}` });
+
+  const retried = run(root, ['release', 'v0.3.3'], { PATH: `${fakeGh('nothing fails')}:${process.env.PATH}` });
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.equal(field(retried.stdout, 'RELEASE_TAG'), 'v0.3.3');
+  assert.equal(
+    spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim(),
+    'v0.3.3',
+  );
+});
+
+test('폴백 치환 개수가 기대와 다르면 파일을 쓰지 않고 던진다', () => {
+  // 경로 밖에 같은 값의 "version" 이 하나 더 있는 특수 포맷 파일
+  const raw = '{\n\t"version": "0.3.2",\n\t"nested": { "version": "0.3.2" }\n}\n';
+  assert.throws(
+    () => renderSourceVersion({ file: 'odd.json', kind: 'json', path: ['version'] }, raw, '0.4.0'),
+    /치환 개수가 다르다: 기대 1건, 실제 2건/,
+  );
 });
 
 test('current 는 태그와 8개 파일 버전을 함께 보고한다', (t) => {

@@ -173,7 +173,7 @@ function escapeRegExp(value) {
 
 // JSON 재직렬화가 원본 포맷을 보존하지 못할 때만 쓰는 폴백.
 // "version" 필드의 값만 바꾸므로 본문의 다른 곳에 같은 숫자가 있어도 오염되지 않는다.
-export function replaceVersionText(raw, previousValues, next) {
+export function replaceVersionText(raw, previousValues, next, expected = null) {
   let output = raw;
   let replaced = 0;
   for (const previous of new Set(previousValues)) {
@@ -184,6 +184,11 @@ export function replaceVersionText(raw, previousValues, next) {
     });
   }
   if (!replaced) throw new Error('version 문자열을 찾지 못했다.');
+  // 경로 기반으로 센 개수와 다르면 경로 밖의 "version" 까지 건드렸거나 일부만 바꾼 것이다.
+  // 어느 쪽이든 조용히 넘기면 version-sources.md 가 금지한 오염이 된다.
+  if (expected != null && replaced !== expected) {
+    throw new Error(`version 치환 개수가 다르다: 기대 ${expected}건, 실제 ${replaced}건`);
+  }
   return output;
 }
 
@@ -198,7 +203,7 @@ export function renderSourceVersion(source, raw, next) {
   const trailing = raw.endsWith('\n') ? '\n' : '';
   // 원본을 그대로 다시 찍었을 때 바이트가 같아야 이 파일이 2-space 정규 포맷이라고 볼 수 있다.
   const control = JSON.stringify(JSON.parse(raw), null, 2) + trailing;
-  if (control !== raw) return replaceVersionText(raw, previousValues, next);
+  if (control !== raw) return replaceVersionText(raw, previousValues, next, changed);
   return JSON.stringify(data, null, 2) + trailing;
 }
 
@@ -209,6 +214,19 @@ export function writeSourceVersion(root, source, next) {
   if (rendered === raw) return false;
   writeFileSync(absolute, rendered);
   return true;
+}
+
+// drift 는 방향에 따라 뜻이 정반대다. 방향 없이 "어긋났다" 만 알면
+// 정상적인 2단계 진입(bump PR merge 완료)까지 사고로 오인하게 된다.
+export function driftDirection(tagVersion, fileVersions) {
+  if (fileVersions.length > 1) return 'files-inconsistent';
+  if (!tagVersion) return fileVersions.length ? 'no-tag' : 'none';
+  if (!fileVersions.length) return 'files-missing';
+  if (fileVersions[0] === tagVersion) return 'none';
+  const tag = parseSemver(tagVersion);
+  const file = parseSemver(fileVersions[0]);
+  if (!tag || !file) return 'unparseable';
+  return compareSemver(file, tag) > 0 ? 'files-ahead' : 'tag-ahead';
 }
 
 export function collectVersionState(root) {
@@ -354,11 +372,20 @@ function resolveCurrent(root) {
   const tagVersion = tag ? formatVersion(tag.version) : null;
   const fileVersions = state.values;
   const drift = Boolean(tagVersion) && (fileVersions.length !== 1 || fileVersions[0] !== tagVersion);
-  return { base, tag, tagVersion, state, fileVersions, drift };
+  const direction = driftDirection(tagVersion, fileVersions);
+  return { base, tag, tagVersion, state, fileVersions, drift, direction };
 }
 
+const DRIFT_MEANING = {
+  'files-ahead': 'bump PR 이 merge 됐고 태그가 아직 없다 — 릴리즈(2단계)로 이어갈 상태다',
+  'tag-ahead': '태그만 달리고 파일이 갱신되지 않았다 — 손으로 맞춰야 한다',
+  'files-inconsistent': '버전 소스 파일끼리 값이 다르다 — 어느 값으로 통일할지 정해야 한다',
+  'files-missing': '버전 소스 파일에서 값을 읽지 못했다',
+  unparseable: '버전 문자열이 semver 가 아니다',
+};
+
 function printCurrent(context) {
-  const { base, tag, tagVersion, state, fileVersions, drift } = context;
+  const { base, tag, tagVersion, state, fileVersions, drift, direction } = context;
   console.log(`기본 브랜치 : ${base}`);
   console.log(`최신 태그   : ${tag ? tag.tag : '(없음)'}`);
   for (const entry of state.sources) {
@@ -373,6 +400,7 @@ function printCurrent(context) {
   if (drift) {
     console.log('');
     console.log(`! 태그(${tagVersion})와 파일 버전(${fileVersions.join(', ') || '없음'})이 어긋난다.`);
+    if (DRIFT_MEANING[direction]) console.log(`  ${DRIFT_MEANING[direction]}`);
   }
   console.log('');
   console.log(`BASE_BRANCH=${base}`);
@@ -381,6 +409,8 @@ function printCurrent(context) {
   console.log(`FILE_VERSIONS=${fileVersions.join(',')}`);
   console.log(`SOURCE_PROBLEMS=${state.problems.length}`);
   console.log(`VERSION_DRIFT=${drift ? 1 : 0}`);
+  console.log(`DRIFT_DIRECTION=${direction}`);
+  console.log(`RELEASE_READY=${direction === 'files-ahead' && !state.problems.length ? 1 : 0}`);
 }
 
 function cmdCurrent(root) {
@@ -418,6 +448,7 @@ function cmdPlan(root, level) {
   console.log(`NEXT_TAG=v${nextVersion}`);
   console.log(`FIRST_RELEASE=${first ? 1 : 0}`);
   console.log(`VERSION_DRIFT=${context.drift ? 1 : 0}`);
+  console.log(`DRIFT_DIRECTION=${context.direction}`);
   return { context, next: nextVersion, first };
 }
 
@@ -430,6 +461,9 @@ function cmdBump(root, level, options) {
   }
   if (context.drift && !options.force && !options.dryRun) {
     printCurrent(context);
+    if (context.direction === 'files-ahead') {
+      fail(`파일 버전(${context.fileVersions[0]})이 태그(${context.tagVersion})보다 앞선다. bump 가 아니라 release 로 이어갈 상태다.`, 3);
+    }
     fail('태그와 파일 버전이 어긋난다. 확인 후 --force 로 진행한다.', 3);
   }
   const { first, current, next } = computeNext(context, level);
@@ -572,8 +606,28 @@ function cmdRelease(root, versionArg, options) {
   if (branch !== base) fail(`태그는 기본 브랜치(${base})에서 단다. 현재 브랜치: ${branch || '(없음)'}`, 3);
   requireClean(root);
 
+  // 태그는 원격에 실제로 올라간 커밋에만 단다. 로컬이 앞서 있으면 origin 에서
+  // 도달할 수 없는 커밋을 태그가 가리키게 되고, 릴리즈 페이지가 빈 채로 남는다.
+  if (!options.dryRun) {
+    const fetched = git(['fetch', 'origin', base, '--tags'], root);
+    if (fetched.status !== 0) fail(`origin 을 받아오지 못했다: ${fetched.stderr.trim()}`, 3);
+  }
+  const localHead = gitOut(['rev-parse', 'HEAD'], root);
+  const remoteHead = gitOut(['rev-parse', `refs/remotes/origin/${base}`], root);
+  if (remoteHead && localHead !== remoteHead) {
+    const ahead = gitOut(['rev-list', '--count', `refs/remotes/origin/${base}..HEAD`], root);
+    const behind = gitOut(['rev-list', '--count', `HEAD..refs/remotes/origin/${base}`], root);
+    fail(`로컬 ${base} 가 origin/${base} 와 다르다 (앞선 커밋 ${ahead || '?'}개 · 뒤처진 커밋 ${behind || '?'}개). 먼저 맞춘 뒤 릴리즈한다.`, 3);
+  }
+
   // bump PR 이 merge 됐는지는 파일 버전으로 확인한다. 안 맞으면 아직 merge 전이다.
   const state = collectVersionState(root);
+  // 파일이 사라졌거나 JSON 이 깨졌으면 값이 하나로 보여도 릴리즈하면 안 된다.
+  // 이 스킬이 막으려는 사고가 정확히 "파일 하나를 빠뜨린 릴리즈" 이기 때문이다.
+  if (state.problems.length) {
+    for (const problem of state.problems) console.error(`✗ ${problem}`);
+    fail('버전 소스 파일이 온전하지 않다. 릴리즈하지 않는다.', 3);
+  }
   if (state.values.length !== 1 || state.values[0] !== versionText) {
     fail(`${base} 의 버전 소스가 ${versionText} 가 아니다 (현재: ${state.values.join(', ') || '없음'}). bump PR 이 merge 됐는지 확인한다.`, 3);
   }
@@ -612,7 +666,23 @@ function cmdRelease(root, versionArg, options) {
   const released = spawnSync('gh', ['release', 'create', tag, '--title', tag, '--notes-file', notesFile], {
     cwd: root, encoding: 'utf8',
   });
-  if (released.status !== 0) fail(`릴리즈를 만들지 못했다: ${released.stderr.trim()}`, 3);
+  if (released.status !== 0) {
+    // 태그는 이미 원격에 올라갔다. 그대로 두면 다음 호출이 "태그가 이미 있다" 에
+    // 영구히 막히고, 그 버전 번호는 아무도 쓸 수 없게 된다. 되돌린다.
+    const removedRemote = git(['push', 'origin', `:refs/tags/${tag}`], root);
+    git(['tag', '-d', tag], root);
+    console.error(`✗ 릴리즈를 만들지 못했다: ${released.stderr.trim()}`);
+    if (removedRemote.status === 0) {
+      console.error(`  태그 ${tag} 를 원격·로컬에서 되돌렸다. 원인을 고친 뒤 다시 부르면 된다.`);
+      console.log(`RELEASE_ROLLED_BACK=1`);
+    } else {
+      console.error(`  ! 원격 태그 ${tag} 를 지우지 못했다: ${removedRemote.stderr.trim()}`);
+      console.error(`    손으로 지운다: git push origin :refs/tags/${tag}`);
+      console.log(`RELEASE_ROLLED_BACK=0`);
+    }
+    console.log(`RELEASE_TAG=${tag}`);
+    process.exit(3);
+  }
   const url = released.stdout.trim().split('\n').filter(Boolean).pop() ?? '';
   console.log(`✓ 릴리즈 발행 — ${tag}`);
   console.log(`RELEASE_TAG=${tag}`);
