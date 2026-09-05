@@ -5,12 +5,13 @@
 ## 선택지 (순서 고정)
 
 AskUserQuestion 으로 제시한다. 바로 착수하는 쪽이 기본값이다.
+호출 표기는 `/` 가 정본이다. Codex 계열에서는 `$` 접두도 같은 스킬을 가리키므로, 사용자가 쓰는 접두를 그대로 따라 적는다.
 
 ```text
 질문   다음으로 무엇을 할까요?
 
-1. 바로 착수 (권장)   $issue-start #<번호> — 분석하고 워크트리까지 만듭니다
-2. 이슈 더 등록       $issue-create — 지금 떠오른 다른 건도 남겨 둡니다   ← 더 등록할 후보가 있을 때만 넣는다
+1. 바로 착수 (권장)   /issue-start #<번호> — 분석하고 워크트리까지 만듭니다
+2. 이슈 더 등록       /issue-create — 지금 떠오른 다른 건도 남겨 둡니다   ← 더 등록할 후보가 있을 때만 넣는다
 3. 라벨 정리          라벨이 없는 기존 이슈에 라벨을 붙입니다
 4. 여기서 종료        번호만 기억해 두고 나중에 시작합니다
 ```
@@ -50,8 +51,8 @@ AskUserQuestion 으로 제시한다. 바로 착수하는 쪽이 기본값이다.
       "header": "다음 행동",
       "multiSelect": false,
       "options": [
-        { "label": "바로 착수 (권장)", "description": "$issue-start #<번호> — 분석하고 워크트리까지 만듭니다" },
-        { "label": "이슈 더 등록", "description": "$issue-create — 더 등록할 후보가 있을 때만 넣는다" },
+        { "label": "바로 착수 (권장)", "description": "/issue-start #<번호> — 분석하고 워크트리까지 만듭니다" },
+        { "label": "이슈 더 등록", "description": "/issue-create — 더 등록할 후보가 있을 때만 넣는다" },
         { "label": "라벨 정리", "description": "라벨이 없는 기존 이슈에 라벨을 붙입니다" },
         { "label": "여기서 종료", "description": "번호만 기억해 두고 나중에 시작합니다" }
       ]
@@ -81,7 +82,7 @@ gh issue list --state open --limit 10 --json number,title,url,labels
 같은 번호로 `issue-start` 를 이어서 실행한다.
 
 ```text
-$issue-start #<번호>
+/issue-start #<번호>
 ```
 
 **초안 내용을 대화 컨텍스트에서 재사용하지 않는다.** `issue-start` 가 `gh` 로 실제 등록된 본문을 다시 받아와 그것을 기준으로 분석한다. 등록 과정에서 사용자가 웹에서 손봤을 수 있다.
@@ -108,7 +109,7 @@ sh <migrate-skill-agent>/scripts/migrate-skill-agent.sh \
 마무리 보고를 출력하고 끝낸다.
 
 ```text
-다음      $issue-start #<번호> 로 언제든 시작하실 수 있습니다
+다음      /issue-start #<번호> 로 언제든 시작하실 수 있습니다
 ```
 
 ## 하지 않는 것

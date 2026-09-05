@@ -1,6 +1,6 @@
 ---
 name: issue-merge
-description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누적 검증으로 한 번에 통합하고 이슈를 닫습니다. `$issue-merge`, "워크트리 전부 merge", "이슈들 통합", "PR 충돌 해결하고 합쳐줘" 요청과 issue-end 에서 merge 선택 시 사용.
+description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누적 검증으로 한 번에 통합하고 이슈를 닫습니다. `/issue-merge`, `$issue-merge`, "워크트리 전부 merge", "이슈들 통합", "PR 충돌 해결하고 합쳐줘" 요청과 issue-end 에서 merge 선택 시 사용.
 ---
 
 <skill>
@@ -85,7 +85,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
 
 ```mermaid
 flowchart TD
-    A[/"$issue-merge"/] --> B[base 전용 임시 워크트리 생성]
+    A[/"/issue-merge"/] --> B[base 전용 임시 워크트리 생성]
     B --> C[inventory: 워크트리·이슈·PR·증거]
     C --> C0{후보 0개?}
     C0 -- 예 --> C1[제외 사유 보고 후 종료] --> Z

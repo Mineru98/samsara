@@ -1,6 +1,6 @@
 ---
 name: gh-setup
-description: gh 설치·로그인과 증거 업로드용 gh-attach 확장 설치를 OS별로 안내합니다. `/gh-setup`, "gh 설치", "gh 로그인", "GitHub CLI 설정", "gh attach 없다" 요청과 다른 스킬의 gh/gh-attach 전제 확인 실패 시 사용.
+description: gh 설치·로그인과 증거 업로드용 gh-attach 확장 설치를 OS별로 안내합니다. `/gh-setup`, `$gh-setup`, "gh 설치", "gh 로그인", "GitHub CLI 설정", "gh attach 없다" 요청과 다른 스킬의 gh/gh-attach 전제 확인 실패 시 사용.
 ---
 
 <skill>

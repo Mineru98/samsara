@@ -2,10 +2,11 @@
 
 issue-onboard 를 끝낼 때 AskUserQuestion 으로 아래를 제시한다. ready-frontier 가 비어 있지 않으면
 "다음 착수" 를 첫 번째(권장)에 둔다.
+호출 표기는 `/` 가 정본이다. Codex 계열에서는 `$` 접두도 같은 스킬을 가리키므로, 사용자가 쓰는 접두를 그대로 따라 적는다.
 
 ```text
-1. 다음 착수 (권장)   ready-frontier 첫 이슈로 $issue-start #N 을 잇는다.
-2. 명부 동기화        $issue-sync 로 graph.json 을 다시 맞춘다.
+1. 다음 착수 (권장)   ready-frontier 첫 이슈로 /issue-start #N 을 잇는다.
+2. 명부 동기화        /issue-sync 로 graph.json 을 다시 맞춘다.
 3. 의존 보강           빠진 의존을 link 로 걸고 다시 plan 을 낸다.
 4. 종료               graph.json 만 갱신하고 마친다.
 ```
@@ -32,8 +33,8 @@ issue-onboard 를 끝낼 때 AskUserQuestion 으로 아래를 제시한다. read
       "header": "다음 행동",
       "multiSelect": false,
       "options": [
-        { "label": "다음 착수 (권장)", "description": "ready-frontier 첫 이슈로 $issue-start #N 을 잇는다" },
-        { "label": "명부 동기화", "description": "$issue-sync 로 graph.json 을 다시 맞춘다" },
+        { "label": "다음 착수 (권장)", "description": "ready-frontier 첫 이슈로 /issue-start #N 을 잇는다" },
+        { "label": "명부 동기화", "description": "/issue-sync 로 graph.json 을 다시 맞춘다" },
         { "label": "의존 보강", "description": "빠진 의존을 link 로 걸고 다시 plan 을 낸다" },
         { "label": "종료", "description": "graph.json 만 갱신하고 마친다" }
       ]

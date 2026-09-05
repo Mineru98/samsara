@@ -1,6 +1,6 @@
 ---
 name: issue-onboard
-description: 이슈 그래프로 현재 작업 맥락·우선순위·다음 행동을 안내하고, 캐시가 없거나 오래되면 issue-sync로 자동 갱신합니다. "무엇부터 할까", "이슈 온보딩", "이슈 현황", "다음 작업 추천", "그래프 보고 시작", "$issue-onboard" 요청에 사용.
+description: 이슈 그래프로 현재 작업 맥락·우선순위·다음 행동을 안내하고, 캐시가 없거나 오래되면 issue-sync로 자동 갱신합니다. "무엇부터 할까", "이슈 온보딩", "이슈 현황", "다음 작업 추천", "그래프 보고 시작", "/issue-onboard", "$issue-onboard" 요청에 사용.
 ---
 
 # Issue Onboard
@@ -11,7 +11,7 @@ GitHub 이슈가 정본이고 `.issue/graph.json`은 재생성 캐시다. `issue
 ## 입력
 
 ```text
-$issue-onboard [--all]
+/issue-onboard [--all]
 ```
 
 - 기본: 최대 6개 우선순위와 다음 행동을 낸다.
@@ -21,7 +21,7 @@ $issue-onboard [--all]
 
 ## 절차
 
-1. GitHub의 전체 이슈 snapshot과 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 현재 이슈의 내용·상태·라벨·revision과 맞지 않거나, GitHub에서 닫힌 비종료 노드가 남아 있으면 `$issue-sync`를 자동 실행해 전체 snapshot을 만든다. 기본 목록 한도가 찼으면 다음 페이지를 더 조회하고, 전체 조회를 증명하지 못하면 캐시를 사용하지 않는다.
+1. GitHub의 전체 이슈 snapshot과 `.issue/graph.json`을 확인한다. 캐시가 없거나 불완전·유효하지 않거나 현재 이슈의 내용·상태·라벨·revision과 맞지 않거나, GitHub에서 닫힌 비종료 노드가 남아 있으면 `/issue-sync`를 자동 실행해 전체 snapshot을 만든다. 기본 목록 한도가 찼으면 다음 페이지를 더 조회하고, 전체 조회를 증명하지 못하면 캐시를 사용하지 않는다.
 2. 자동 동기화가 성공한 뒤 완전 snapshot과 일치·검증된 캐시만 읽는다. `plan`과 `next`도 이
    동일한 라이브 조회·bootstrap·온톨로지·관계 출처 검증을 거친다. 최종 graph reload부터 추천
    출력까지 `.issue/graph.json.lock`을 유지하며, 같은 잠금 프로토콜을 따르는 graph writer와
@@ -60,6 +60,6 @@ node <skill>/scripts/issue-onboard.mjs sync --state all
 
 ```text
 우선순위     #<번호> <제목> (최대 6개)
-더 보기      $issue-onboard --all
-다음 행동    $issue-start #N | $issue-merge | $issue-create
+더 보기      /issue-onboard --all
+다음 행동    /issue-start #N | /issue-merge | /issue-create
 ```
