@@ -181,7 +181,10 @@ export function readSourceVersion(root, source) {
   if (!existsSync(absolute)) return { file: source.file, missing: true, versions: [] };
   const raw = readFileSync(absolute, 'utf8');
   if (source.kind === 'text') {
-    return { file: source.file, missing: false, versions: [raw.trim()], raw };
+    // 빈 파일은 "버전이 없는" 것이지 "빈 문자열이라는 버전" 이 아니다.
+    // 세어 버리면 값이 하나 더 있는 것으로 보여 files-inconsistent 로 오판한다.
+    const text = raw.trim();
+    return { file: source.file, missing: false, versions: text ? [text] : [], raw };
   }
   let data;
   try {
@@ -192,7 +195,7 @@ export function readSourceVersion(root, source) {
   return {
     file: source.file,
     missing: false,
-    versions: walk(data, source.path).filter((value) => typeof value === 'string'),
+    versions: walk(data, source.path).filter((value) => typeof value === 'string' && value.trim()),
     raw,
   };
 }
@@ -245,6 +248,9 @@ export function writeSourceVersion(root, source, next) {
   writeFileSync(absolute, rendered);
   return true;
 }
+
+// 이 둘만 정상이다. 나머지 방향은 태그가 있든 없든 손대기 전에 사람이 봐야 한다.
+const DRIFT_OK = new Set(['none', 'no-tag']);
 
 // drift 는 방향에 따라 뜻이 정반대다. 방향 없이 "어긋났다" 만 알면
 // 정상적인 2단계 진입(bump PR merge 완료)까지 사고로 오인하게 된다.
@@ -401,8 +407,10 @@ function resolveCurrent(root) {
   const state = collectVersionState(root);
   const tagVersion = tag ? formatVersion(tag.version) : null;
   const fileVersions = state.values;
-  const drift = Boolean(tagVersion) && (fileVersions.length !== 1 || fileVersions[0] !== tagVersion);
   const direction = driftDirection(tagVersion, fileVersions);
+  // drift 를 `태그가 있고 그 값과 다른가` 로 계산하면, 태그가 없는 저장소에서
+  // 단축 평가로 항상 false 가 되어 게이트가 통째로 무력해진다. 방향으로 판정한다.
+  const drift = !DRIFT_OK.has(direction);
   return { base, tag, tagVersion, state, fileVersions, drift, direction };
 }
 
@@ -450,20 +458,33 @@ function cmdCurrent(root) {
 }
 
 function computeNext(context, level) {
+  // 파일 버전이 둘 이상이면 "버전이 없는" 것이 아니라 "어느 것이 맞는지 모르는" 상태다.
+  // 이걸 첫 릴리즈로 해석하면 0.3.2/0.3.3 이 섞인 저장소가 v0.1.0 으로 되돌아간다.
+  const inconsistent = context.fileVersions.length > 1;
   // 태그도 파일 버전도 없으면 첫 릴리즈다. 이때는 단계와 무관하게 v0.1.0 에서 시작한다.
   const baseVersion = context.tag
     ? context.tag.version
-    : parseSemver(context.fileVersions.length === 1 ? context.fileVersions[0] : '');
+    : (inconsistent ? null : parseSemver(context.fileVersions[0] ?? ''));
   if (!baseVersion) {
-    return { first: true, current: null, next: parseSemver(FIRST_VERSION) };
+    return {
+      first: !inconsistent,
+      inconsistent,
+      current: null,
+      next: inconsistent ? null : parseSemver(FIRST_VERSION),
+    };
   }
-  return { first: false, current: baseVersion, next: bumpVersion(baseVersion, level) };
+  return { first: false, inconsistent: false, current: baseVersion, next: bumpVersion(baseVersion, level) };
 }
 
 function cmdPlan(root, level) {
   if (!LEVELS.includes(level)) fail(`단계는 ${LEVELS.join(' | ')} 중 하나여야 한다.`);
   const context = resolveCurrent(root);
-  const { first, current, next } = computeNext(context, level);
+  const { first, inconsistent, current, next } = computeNext(context, level);
+  if (inconsistent) {
+    // 조회 명령이지만 틀린 답을 주는 것보다 멈추는 편이 낫다.
+    printCurrent(context);
+    fail(`버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). 어느 값으로 통일할지 먼저 정한다.`, 3);
+  }
   const nextVersion = formatVersion(next);
   if (first) {
     console.log('태그도 파일 버전도 없다. 첫 릴리즈이므로 단계와 무관하게 v0.1.0 에서 시작한다.');
@@ -494,9 +515,15 @@ function cmdBump(root, level, options) {
     if (context.direction === 'files-ahead') {
       fail(`파일 버전(${context.fileVersions[0]})이 태그(${context.tagVersion})보다 앞선다. bump 가 아니라 release 로 이어갈 상태다.`, 3);
     }
+    if (context.direction === 'files-inconsistent') {
+      fail(`버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). 어느 값으로 통일할지 먼저 정한다. 그대로 진행하면 첫 릴리즈로 오인해 v${FIRST_VERSION} 으로 되돌아간다.`, 3);
+    }
     fail('태그와 파일 버전이 어긋난다. 확인 후 --force 로 진행한다.', 3);
   }
-  const { first, current, next } = computeNext(context, level);
+  const { first, inconsistent, current, next } = computeNext(context, level);
+  if (inconsistent) {
+    fail(`버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). --force 로도 이 상태에서는 올리지 않는다.`, 3);
+  }
   const nextVersion = formatVersion(next);
 
   if (options.branch && !options.dryRun) {
