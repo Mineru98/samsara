@@ -128,14 +128,22 @@ export function remoteState(root, base, tag) {
     : [];
   const remoteBranch = rows.find((cols) => cols[1] === `refs/heads/${base}`)?.[0] ?? null;
   const tagExists = rows.some((cols) => cols[1] === `refs/tags/${tag}` || cols[1] === `refs/tags/${tag}^{}`);
-  if (remoteBranch) return { head: remoteBranch, source: 'ls-remote', tagExists, reason: null };
-  if (tracking) return { head: tracking, source: 'remote-tracking', tagExists, reason: null };
-  return {
-    head: null,
-    source: null,
-    tagExists,
-    reason: listed.status === 0 ? `origin 에 ${base} 브랜치가 없다` : `ls-remote 실패: ${listed.stderr.trim()}`,
-  };
+  if (remoteBranch) return { head: remoteBranch, source: 'ls-remote', tagExists, tagChecked: true, reason: null };
+  // 조회 자체가 실패했으면 stale 한 remote-tracking ref 로 대신하지 않는다.
+  // 그 값은 원격의 지금 상태가 아니고, tagExists: false 도 한 번도 확인한 적 없는 단언이 된다.
+  if (listed.status !== 0) {
+    return {
+      head: null,
+      source: null,
+      tagExists: false,
+      tagChecked: false,
+      reason: `ls-remote 실패: ${listed.stderr.trim() || '사유 미상'}`,
+    };
+  }
+  if (tracking) {
+    return { head: tracking, source: 'remote-tracking', tagExists, tagChecked: true, reason: null };
+  }
+  return { head: null, source: null, tagExists, tagChecked: true, reason: `origin 에 ${base} 브랜치가 없다` };
 }
 
 export function remoteSlug(root) {
@@ -519,11 +527,34 @@ function cmdBump(root, level, options) {
     }
   }
 
+  // 렌더는 전부 성공했다. 쓰기 도중 실패(권한·디스크)해도 반쯤 bump 된 트리를
+  // 남기지 않도록, 이미 쓴 파일을 원본 내용으로 되돌린다.
   const changed = [];
-  for (const entry of planned) {
-    if (entry.rendered === entry.raw) continue;
-    writeFileSync(entry.absolute, entry.rendered);
-    changed.push(entry.file);
+  const written = [];
+  try {
+    for (const entry of planned) {
+      if (entry.rendered === entry.raw) continue;
+      writeFileSync(entry.absolute, entry.rendered);
+      written.push(entry);
+      changed.push(entry.file);
+    }
+  } catch (error) {
+    const restoreFailures = [];
+    for (const entry of written) {
+      try {
+        writeFileSync(entry.absolute, entry.raw);
+      } catch (restoreError) {
+        restoreFailures.push(`${entry.file} (${restoreError.message})`);
+      }
+    }
+    console.error(`✗ ${error.message}`);
+    if (restoreFailures.length) {
+      console.error(`  ! 되돌리지 못한 파일: ${restoreFailures.join(', ')}`);
+      console.error(`    git checkout -- ${restoreFailures.map((line) => line.split(' ')[0]).join(' ')}`);
+    } else {
+      console.error(`  이미 쓴 ${written.length}개 파일을 원래대로 되돌렸다.`);
+    }
+    process.exit(3);
   }
 
   if (options.dryRun) {
@@ -672,7 +703,9 @@ function cmdRelease(root, versionArg, options) {
     const remote = remoteState(root, base, tag);
     // 원격에만 있는 태그도 잡는다. 이걸 놓치면 push 단계에서 날 git 오류로 걸린다.
     if (remote.tagExists) {
-      fail(`태그 ${tag} 가 origin 에 이미 있다. 로컬에는 없으니 먼저 받아온다: git fetch origin --tags`, 3);
+      // 방금 fetch --tags 를 돌렸는데도 로컬에 없다는 건, 이 버전이 이미 발행됐고
+      // 로컬 태그만 지워진 상태라는 뜻이다. 받아오라고 안내해도 상황이 달라지지 않는다.
+      fail(`태그 ${tag} 가 origin 에 이미 있다. 그 버전은 이미 발행됐다 — 다음 버전으로 가거나, 잘못 올라간 태그라면 먼저 지운다: git push origin :refs/tags/${tag}`, 3);
     }
     if (!remote.head) {
       // remote-tracking ref 도 ls-remote 도 실패했다. 확인할 방법이 없으므로 막는다.

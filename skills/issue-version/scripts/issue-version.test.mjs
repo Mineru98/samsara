@@ -205,6 +205,42 @@ test('VERSION 텍스트 파일은 개행을 보존한다', () => {
 
 
 
+
+test('쓰기 도중 실패해도 반쯤 bump 된 트리를 남기지 않는다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => {
+    chmodSync(path.join(root, '.codex-plugin', 'plugin.json'), 0o644);
+    rmSync(root, { recursive: true, force: true });
+  });
+  // 목록 5번째 파일을 읽기 전용으로 만들어 쓰기 루프 중간에서 EACCES 를 일으킨다.
+  // 렌더는 전부 성공하므로 렌더 단계 가드로는 잡히지 않는 경로다.
+  chmodSync(path.join(root, '.codex-plugin', 'plugin.json'), 0o444);
+  const before = VERSION_SOURCES.map((source) => readFileSync(path.join(root, source.file), 'utf8'));
+
+  const failed = run(root, ['bump', 'patch']);
+  assert.equal(failed.status, 3, `stderr: ${failed.stderr}`);
+  assert.match(failed.stderr, /되돌렸다|되돌리지 못한/);
+
+  VERSION_SOURCES.forEach((source, index) => {
+    assert.equal(readFileSync(path.join(root, source.file), 'utf8'), before[index], `${source.file} 가 바뀐 채 남았다`);
+  });
+});
+
+test('원격 조회가 실패하면 stale tracking ref 로 대신하지 않는다', (t) => {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const stale = spawnSync('git', ['rev-parse', 'refs/remotes/origin/main'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  assert.ok(stale, 'remote-tracking ref 가 있어야 이 상황이 성립한다');
+  // origin 을 없는 경로로 바꿔 ls-remote 를 실패시킨다. tracking ref 는 남겨 둔다.
+  spawnSync('git', ['remote', 'set-url', 'origin', path.join(root, 'does-not-exist.git')], { cwd: root, encoding: 'utf8' });
+
+  const probed = remoteState(root, 'main', 'v0.3.2');
+  assert.equal(probed.head, null, '실패를 성공으로 둔갑시키면 안 된다');
+  assert.equal(probed.tagChecked, false, '확인하지 못한 것을 확인했다고 보고하면 안 된다');
+  assert.equal(probed.tagExists, false);
+  assert.match(probed.reason, /ls-remote 실패/);
+});
+
 test('remote-tracking ref 가 없어도 ls-remote 로 원격과 대조한다', (t) => {
   const root = seedRepo({ withTags: true, withOrigin: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
