@@ -181,7 +181,10 @@ export function readSourceVersion(root, source) {
   if (!existsSync(absolute)) return { file: source.file, missing: true, versions: [] };
   const raw = readFileSync(absolute, 'utf8');
   if (source.kind === 'text') {
-    return { file: source.file, missing: false, versions: [raw.trim()], raw };
+    // 빈 파일은 "버전이 없는" 것이지 "빈 문자열이라는 버전" 이 아니다.
+    // 세어 버리면 값이 하나 더 있는 것으로 보여 files-inconsistent 로 오판한다.
+    const text = raw.trim();
+    return { file: source.file, missing: false, versions: text ? [text] : [], raw };
   }
   let data;
   try {
@@ -192,7 +195,7 @@ export function readSourceVersion(root, source) {
   return {
     file: source.file,
     missing: false,
-    versions: walk(data, source.path).filter((value) => typeof value === 'string'),
+    versions: walk(data, source.path).filter((value) => typeof value === 'string' && value.trim()),
     raw,
   };
 }
@@ -245,6 +248,9 @@ export function writeSourceVersion(root, source, next) {
   writeFileSync(absolute, rendered);
   return true;
 }
+
+// 이 둘만 정상이다. 나머지 방향은 태그가 있든 없든 손대기 전에 사람이 봐야 한다.
+const DRIFT_OK = new Set(['none', 'no-tag']);
 
 // drift 는 방향에 따라 뜻이 정반대다. 방향 없이 "어긋났다" 만 알면
 // 정상적인 2단계 진입(bump PR merge 완료)까지 사고로 오인하게 된다.
@@ -379,6 +385,8 @@ function usage() {
 
   current                          현재 버전 상태를 진단한다 (태그 · 8개 파일)
   plan <major|minor|patch>         다음 버전을 계산만 한다 (파일을 건드리지 않는다)
+  set <X.Y.Z> [--dry-run]          8개 파일을 지정한 버전으로 맞춘다 (올리지 않는다)
+                                   파일끼리 값이 어긋났을 때 통일하는 용도
   bump <major|minor|patch> [opts]  버전 소스 파일을 새 버전으로 갱신한다
       --dry-run                    갱신 없이 대상과 전후 값만 출력
       --branch                     release/vX.Y.Z 브랜치를 만들고 그 위에서 갱신
@@ -401,8 +409,10 @@ function resolveCurrent(root) {
   const state = collectVersionState(root);
   const tagVersion = tag ? formatVersion(tag.version) : null;
   const fileVersions = state.values;
-  const drift = Boolean(tagVersion) && (fileVersions.length !== 1 || fileVersions[0] !== tagVersion);
   const direction = driftDirection(tagVersion, fileVersions);
+  // drift 를 `태그가 있고 그 값과 다른가` 로 계산하면, 태그가 없는 저장소에서
+  // 단축 평가로 항상 false 가 되어 게이트가 통째로 무력해진다. 방향으로 판정한다.
+  const drift = !DRIFT_OK.has(direction);
   return { base, tag, tagVersion, state, fileVersions, drift, direction };
 }
 
@@ -450,20 +460,37 @@ function cmdCurrent(root) {
 }
 
 function computeNext(context, level) {
+  // 파일 버전이 둘 이상이면 "버전이 없는" 것이 아니라 "어느 것이 맞는지 모르는" 상태다.
+  // 이걸 첫 릴리즈로 해석하면 0.3.2/0.3.3 이 섞인 저장소가 v0.1.0 으로 되돌아간다.
+  const inconsistent = context.fileVersions.length > 1;
   // 태그도 파일 버전도 없으면 첫 릴리즈다. 이때는 단계와 무관하게 v0.1.0 에서 시작한다.
   const baseVersion = context.tag
     ? context.tag.version
-    : parseSemver(context.fileVersions.length === 1 ? context.fileVersions[0] : '');
+    : (inconsistent ? null : parseSemver(context.fileVersions[0] ?? ''));
   if (!baseVersion) {
-    return { first: true, current: null, next: parseSemver(FIRST_VERSION) };
+    return {
+      first: !inconsistent,
+      inconsistent,
+      current: null,
+      next: inconsistent ? null : parseSemver(FIRST_VERSION),
+    };
   }
-  return { first: false, current: baseVersion, next: bumpVersion(baseVersion, level) };
+  // 태그가 있으면 base 는 정해지지만, 파일끼리 다르다는 사실이 사라지지는 않는다.
+  // 여기서 false 로 덮으면 태그 있는 저장소에서 게이트가 발화하지 않는다.
+  return { first: false, inconsistent, current: baseVersion, next: bumpVersion(baseVersion, level) };
 }
 
 function cmdPlan(root, level) {
   if (!LEVELS.includes(level)) fail(`단계는 ${LEVELS.join(' | ')} 중 하나여야 한다.`);
   const context = resolveCurrent(root);
-  const { first, current, next } = computeNext(context, level);
+  const { first, inconsistent, current, next } = computeNext(context, level);
+  if (inconsistent) {
+    // 조회 명령이지만 틀린 답을 주는 것보다 멈추는 편이 낫다.
+    printCurrent(context);
+    console.error(`✗ 버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). 어느 값으로 통일할지 먼저 정한다.`);
+    console.error(`  통일한 뒤 다시 부른다. 예: node ${path.basename(process.argv[1] ?? 'issue-version.mjs')} set <통일할 버전>`);
+    process.exit(3);
+  }
   const nextVersion = formatVersion(next);
   if (first) {
     console.log('태그도 파일 버전도 없다. 첫 릴리즈이므로 단계와 무관하게 v0.1.0 에서 시작한다.');
@@ -494,9 +521,17 @@ function cmdBump(root, level, options) {
     if (context.direction === 'files-ahead') {
       fail(`파일 버전(${context.fileVersions[0]})이 태그(${context.tagVersion})보다 앞선다. bump 가 아니라 release 로 이어갈 상태다.`, 3);
     }
+    if (context.direction === 'files-inconsistent') {
+      fail(`버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). 어느 값으로 통일할지 먼저 정한다. 그대로 진행하면 첫 릴리즈로 오인해 v${FIRST_VERSION} 으로 되돌아간다.`, 3);
+    }
     fail('태그와 파일 버전이 어긋난다. 확인 후 --force 로 진행한다.', 3);
   }
-  const { first, current, next } = computeNext(context, level);
+  const { first, inconsistent, current, next } = computeNext(context, level);
+  if (inconsistent) {
+    console.error(`✗ 버전 소스 파일끼리 값이 다르다 (${context.fileVersions.join(', ')}). --force 로도 이 상태에서는 올리지 않는다.`);
+    console.error(`  먼저 하나로 맞춘 뒤 올린다: set <통일할 버전>`);
+    process.exit(3);
+  }
   const nextVersion = formatVersion(next);
 
   if (options.branch && !options.dryRun) {
@@ -587,6 +622,71 @@ function buildNotes(root, options) {
     commits,
     body: renderNotes({ version, previousTag: from, commits, slug: remoteSlug(root) }),
   };
+}
+
+// files-inconsistent 상태의 유일한 출구. bump 는 "올리는" 일이라 어느 값이 맞는지
+// 모르면 할 수 없지만, "맞추는" 일은 사용자가 값을 지정하면 할 수 있다.
+function cmdSet(root, versionArg, options) {
+  const version = parseSemver(versionArg);
+  if (!version) fail('버전은 X.Y.Z 또는 vX.Y.Z 형식이어야 한다.');
+  const versionText = formatVersion(version);
+  const state = collectVersionState(root);
+  // set 이 고칠 수 없는 것만 막는다. 파일이 아예 없거나 JSON 이 깨졌으면 값을 써 넣을 자리가
+  // 없다. 반면 "값이 비었다" 는 set 이 정확히 채울 수 있는 상태다 — 그것까지 거부하면
+  // 손편집만 남고, 그건 이 스킬이 막으려는 사고와 같은 종류가 된다.
+  const blockers = state.sources.filter((entry) => entry.missing || entry.parseError);
+  if (blockers.length) {
+    for (const entry of blockers) {
+      console.error(`✗ ${entry.file}: ${entry.missing ? '파일이 없다' : `JSON 파싱 실패 — ${entry.parseError}`}`);
+    }
+    console.error('  set 으로는 고칠 수 없다. 파일을 되살리거나 JSON 을 고친 뒤 다시 부른다.');
+    process.exit(3);
+  }
+
+  const planned = [];
+  for (const source of VERSION_SOURCES) {
+    const before = readSourceVersion(root, source).versions.join(', ') || '(없음)';
+    if (options.dryRun) {
+      console.log(`  ${source.file.padEnd(36)} ${before} -> ${versionText}`);
+      continue;
+    }
+    const absolute = path.join(root, source.file);
+    const raw = readFileSync(absolute, 'utf8');
+    try {
+      planned.push({ file: source.file, absolute, raw, rendered: renderSourceVersion(source, raw, versionText) });
+    } catch (error) {
+      console.error(`✗ ${source.file}: ${error.message}`);
+      console.error(`  어떤 파일도 바꾸지 않았다. 이 파일에 version 필드를 만들어 준 뒤 다시 부른다.`);
+      process.exit(3);
+    }
+  }
+
+  const changed = [];
+  const written = [];
+  try {
+    for (const entry of planned) {
+      if (entry.rendered === entry.raw) continue;
+      writeFileSync(entry.absolute, entry.rendered);
+      written.push(entry);
+      changed.push(entry.file);
+    }
+  } catch (error) {
+    for (const entry of written) {
+      try { writeFileSync(entry.absolute, entry.raw); } catch { /* 아래에서 알린다 */ }
+    }
+    fail(`${error.message}\n  이미 쓴 파일을 되돌렸다.`, 3);
+  }
+
+  if (options.dryRun) {
+    console.log('');
+    console.log('(--dry-run — 파일을 건드리지 않았다)');
+  } else {
+    for (const file of changed) console.log(`  맞춤 ${file}`);
+  }
+  console.log('');
+  console.log(`SET_VERSION=${versionText}`);
+  console.log(`CHANGED_FILES=${options.dryRun ? '' : changed.join(',')}`);
+  console.log(`DRY_RUN=${options.dryRun ? 1 : 0}`);
 }
 
 function cmdNotes(root, options) {
@@ -812,6 +912,7 @@ function main(argv) {
   if (command === 'current') return cmdCurrent(root);
   if (command === 'plan') return cmdPlan(root, rest[0]);
   if (command === 'bump') return cmdBump(root, rest[0], options);
+  if (command === 'set') return cmdSet(root, rest[0], options);
   if (command === 'notes') return cmdNotes(root, options);
   if (command === 'pr') return cmdPr(root, rest[0], options);
   if (command === 'release') return cmdRelease(root, rest[0], options);
