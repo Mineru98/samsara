@@ -72,6 +72,22 @@ check "set: 8개가 같아진다"               "$(node "$V" current 2>/dev/null
 node "$V" bump patch >/dev/null 2>&1; t_after=$?
 check "set 뒤: bump 가 다시 된다"         "$t_after" "0"
 
+# 1d. hard-rule "값이 비었으면 set 이 채운다" 를 코드로 확인한다.
+#     문서에 규칙을 쓰고 확인하지 않아 두 회차 연속 거짓 규칙이 들어갔다.
+seed emptyval 0.3.2 0.3.2
+printf '\n' > VERSION
+node "$V" set 0.3.2 >/dev/null 2>&1; e_set=$?
+check "빈 값: set 이 채운다"              "$e_set" "0"
+check "빈 값: 채운 뒤 값이 하나다"         "$(node "$V" current 2>/dev/null | sed -n 's/^FILE_VERSIONS=//p')" "0.3.2"
+
+# 1e. set 이 고칠 수 없는 것은 이유를 대고 막는다
+seed brokenjson 0.3.2 0.3.2
+printf '{ broken' > .grok-plugin/plugin.json
+node "$V" set 0.3.2 >/dev/null 2>&1; e_broken=$?
+msg="$(node "$V" set 0.3.2 2>&1 | grep -c 'set 으로는 고칠 수 없다')"
+check "깨진 JSON: set 이 막힌다"           "$e_broken" "3"
+check "깨진 JSON: 이유를 알린다"           "$msg" "1"
+
 # 2. 태그 0개 + 파일 버전 하나 → 그 값에서 올린다
 seed one 0.3.2 0.3.2
 out="$(node "$V" plan patch 2>/dev/null)"
