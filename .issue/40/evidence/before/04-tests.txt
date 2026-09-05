@@ -1,0 +1,17 @@
+$ node --test skills/issue-onboard/scripts/*.test.mjs
+
+ℹ tests 62
+ℹ suites 0
+ℹ pass 62
+ℹ fail 0
+
+$ node --test tools/issue-ontology/ontology.test.mjs
+ℹ tests 13
+ℹ pass 13
+ℹ fail 0
+
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+
+주: tools/issue-ontology 의 ajv 미설치 상태에서는 23건이 실패한다.
+   이는 이 이슈와 무관한 환경 문제이므로 npm install 로 해소한 뒤 기준선을 잡았다.

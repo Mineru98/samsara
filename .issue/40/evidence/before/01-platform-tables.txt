@@ -1,0 +1,23 @@
+$ sed -n "115,131p" skills/issue-onboard/scripts/issue-common.mjs
+
+const TRUSTED_COMMAND_PATH = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+].join(path.delimiter);
+
+const TRUSTED_EXECUTABLE_CANDIDATES = {
+  git: ['/usr/bin/git', '/bin/git', '/opt/homebrew/bin/git', '/usr/local/bin/git'],
+  gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', '/usr/bin/gh', '/bin/gh'],
+  curl: ['/usr/bin/curl', '/bin/curl', '/opt/homebrew/bin/curl', '/usr/local/bin/curl'],
+};
+const TRUSTED_EXECUTABLE_ROOTS = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+  '/opt/homebrew/Cellar', '/opt/homebrew/opt',
+  '/usr/local/Cellar', '/usr/local/opt',
+];
+
+
+--- 판정 ---
+Windows 경로(.exe / ProgramFiles / 드라이브 문자)를 담은 후보: 0
+→ 0 이면 Windows 후보가 전무하다는 뜻이다.
