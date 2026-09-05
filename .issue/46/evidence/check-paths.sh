@@ -42,7 +42,35 @@ check "불일치: bump 가 막힌다"          "$bump_exit"  "3"
 check "불일치: --force 로도 막힌다"      "$force_exit" "3"
 check "불일치: plan 이 막힌다"           "$plan_exit"  "3"
 check "불일치: VERSION_DRIFT=1"          "$drift"      "1"
-check "불일치: 파일이 그대로다"           "$(cat VERSION)" "0.3.2"
+# 8개 전부를 확인한다. VERSION 하나만 보면 나머지 7개가 바뀌어도 통과한다.
+untouched=$(node -e "
+const fs=require('fs');
+const f=['marketplace.json','.claude-plugin/plugin.json','.claude-plugin/marketplace.json','.codex-plugin/plugin.json','.grok-plugin/plugin.json','.zcode-plugin/plugin.json','tools/issue-ontology/package.json'];
+let ok = fs.readFileSync('VERSION','utf8').trim() === '0.3.2';
+for (const x of f) { const d = JSON.parse(fs.readFileSync(x,'utf8')); const v = d.version ?? d.plugins[0].version; if (v !== '0.3.2' && v !== '0.3.3') ok = false; }
+console.log(ok ? 'yes' : 'no');
+")
+check "불일치: 8개 파일이 그대로다"       "$untouched" "yes"
+
+# 1b. 태그 있음 + 파일 버전 불일치 — hard-rule 이 "태그 유무와 무관" 이라 약속한 경로
+seed tagged 0.3.2 9.9.9
+git tag -a v0.3.2 -m v0.3.2
+node "$V" bump patch >/dev/null 2>&1; t_bump=$?
+node "$V" bump patch --force >/dev/null 2>&1; t_force=$?
+node "$V" bump patch --dry-run >/dev/null 2>&1; t_dry=$?
+node "$V" plan patch >/dev/null 2>&1; t_plan=$?
+check "태그있음+불일치: bump 가 막힌다"   "$t_bump"  "3"
+check "태그있음+불일치: --force 도 막힌다" "$t_force" "3"
+check "태그있음+불일치: --dry-run 도 막힌다" "$t_dry" "3"
+check "태그있음+불일치: plan 이 막힌다"   "$t_plan"  "3"
+check "태그있음+불일치: 값이 그대로다"     "$(node -e "console.log(require('./tools/issue-ontology/package.json').version)")" "9.9.9"
+
+# 1c. set 이 출구를 제공한다
+node "$V" set 0.3.2 >/dev/null 2>&1; t_set=$?
+check "set: 통일에 성공한다"              "$t_set" "0"
+check "set: 8개가 같아진다"               "$(node "$V" current 2>/dev/null | sed -n 's/^FILE_VERSIONS=//p')" "0.3.2"
+node "$V" bump patch >/dev/null 2>&1; t_after=$?
+check "set 뒤: bump 가 다시 된다"         "$t_after" "0"
 
 # 2. 태그 0개 + 파일 버전 하나 → 그 값에서 올린다
 seed one 0.3.2 0.3.2
