@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": "Mineru98/samsara",
-  "updatedAt": "2026-09-05T09:25:58.478Z",
+  "updatedAt": "2026-09-05T09:35:30.619Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-31T05:01:20.510Z",
@@ -1553,12 +1553,21 @@
     },
     "46": {
       "number": 46,
-      "title": "issue-version SKILL.md 의 v0.1.0 hard-rule 이 코드와 불일치",
-      "status": "open",
+      "title": "issue-version: v0.1.0 판정이 문서·코드 양쪽에서 어긋남",
+      "status": "in-process",
       "labels": [
         "documentation"
       ],
       "url": "https://github.com/Mineru98/samsara/issues/46"
+    },
+    "47": {
+      "number": 47,
+      "title": "스킬 실행 트리거 표기를 / 정본 + $ 병기로 통일",
+      "status": "open",
+      "labels": [
+        "documentation"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/47"
     }
   },
   "edges": [],
