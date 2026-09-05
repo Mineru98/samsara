@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": "Mineru98/samsara",
-  "updatedAt": "2026-09-05T08:38:37.243Z",
+  "updatedAt": "2026-09-05T08:48:34.790Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-31T05:01:20.510Z",
@@ -1541,6 +1541,15 @@
         "enhancement"
       ],
       "url": "https://github.com/Mineru98/samsara/issues/41"
+    },
+    "44": {
+      "number": 44,
+      "title": "README 에 issue-version 사용 예시와 결계 각인 축 반영",
+      "status": "in-process",
+      "labels": [
+        "documentation"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/44"
     }
   },
   "edges": [],
