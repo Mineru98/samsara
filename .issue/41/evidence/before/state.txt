@@ -1,0 +1,27 @@
+=== before: skills/ 목록 (issue-version 부재) ===
+gh-setup
+github-issue-pr-convention
+glm-acp
+issue-create
+issue-end
+issue-merge
+issue-onboard
+issue-start
+issue-sync
+issue-viz
+
+=== before: 8개 버전 소스 파일 현재 값 ===
+VERSION                                  0.3.2
+marketplace.json                         "version":"0.3.2"
+.claude-plugin/plugin.json               "version":"0.3.2"
+.claude-plugin/marketplace.json          "version":"0.3.2"
+.codex-plugin/plugin.json                "version":"0.3.2"
+.grok-plugin/plugin.json                 "version":"0.3.2"
+.zcode-plugin/plugin.json                "version":"0.3.2"
+tools/issue-ontology/package.json        "version":"0.3.2"
+
+=== before: 최신 태그 ===
+v0.3.2
+
+=== before: 릴리즈 자동화 스크립트 탐색 ===
+(없음 — 릴리즈 발행을 담당하는 스크립트가 저장소에 존재하지 않음)
