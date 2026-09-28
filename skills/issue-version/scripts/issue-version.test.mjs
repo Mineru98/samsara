@@ -64,9 +64,7 @@ function seedRepo({ withTags, withOrigin }) {
   git('config', 'commit.gpgsign', 'false');
 
   writeFileSync(path.join(root, 'VERSION'), '0.3.2\n');
-  writeFileSync(path.join(root, 'marketplace.json'),
-    JSON.stringify({ name: 'x', plugins: [{ name: 'x', version: '0.3.2' }] }, null, 2) + '\n');
-  for (const dir of ['.claude-plugin', '.codex-plugin', '.grok-plugin', '.zcode-plugin']) {
+  for (const dir of ['.claude-plugin', '.codex-plugin', '.grok-plugin']) {
     mkdirSync(path.join(root, dir), { recursive: true });
     writeFileSync(path.join(root, dir, 'plugin.json'),
       JSON.stringify({ name: 'x', version: '0.3.2', description: '0.3.2 는 본문에도 나온다' }, null, 2) + '\n');
@@ -130,7 +128,7 @@ test('conventional commit 제목을 type·scope·설명으로 나눈다', () => 
 });
 
 test('제목 끝의 squash PR 번호는 설명에서 떼어내 참조로만 남긴다', () => {
-  assert.equal(stripTrailingReference('ZCode 카탈로그 추가 (#32)'), 'ZCode 카탈로그 추가');
+  assert.equal(stripTrailingReference('카탈로그 추가 (#32)'), '카탈로그 추가');
   assert.equal(stripTrailingReference('이슈 #41 을 다룬다'), '이슈 #41 을 다룬다');
   assert.equal(stripTrailingReference('(#12)'), '(#12)');
   const entry = groupCommits([{ hash: 'a', subject: 'feat(x): 카탈로그 추가 (#32)', body: 'Closes #29' }])[0].entries[0];
@@ -476,7 +474,7 @@ test('폴백 치환 개수가 기대와 다르면 파일을 쓰지 않고 던진
   );
 });
 
-test('current 는 태그와 8개 파일 버전을 함께 보고한다', (t) => {
+test('current 는 태그와 6개 파일 버전을 함께 보고한다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const result = run(root, ['current']);
@@ -503,7 +501,7 @@ test('태그도 파일 버전도 없으면 단계와 무관하게 v0.1.0 에서 
   const root = seedRepo({ withTags: false });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   // VERSION 만 비우면 나머지 7개 매니페스트에 버전이 남아 "버전이 없는" 상태가 아니다.
-  // 8개 전부에서 버전을 없애야 첫 릴리즈다.
+  // 6개 전부에서 버전을 없애야 첫 릴리즈다.
   writeFileSync(path.join(root, 'VERSION'), '\n');
   for (const source of VERSION_SOURCES.filter((entry) => entry.kind === 'json')) {
     const file = path.join(root, source.file);
@@ -551,7 +549,7 @@ test('bump --dry-run 은 아무 파일도 바꾸지 않는다', (t) => {
   assert.deepEqual(state.values, ['0.3.2']);
 });
 
-test('bump 는 8개 파일을 모두 새 버전으로 맞춘다', (t) => {
+test('bump 는 6개 파일을 모두 새 버전으로 맞춘다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const result = run(root, ['bump', 'minor']);
@@ -569,7 +567,7 @@ test('bump 는 8개 파일을 모두 새 버전으로 맞춘다', (t) => {
 test('태그가 파일보다 앞서면 bump 를 막고 --force 로만 통과시킨다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  // 8개 전부를 0.3.1 로 내려 tag-ahead 를 만든다. 한 파일만 바꾸면 files-inconsistent 라
+  // 6개 전부를 0.3.1 로 내려 tag-ahead 를 만든다. 한 파일만 바꾸면 files-inconsistent 라
   // 다른 게이트에 걸린다 — 그 경우는 아래 테스트가 따로 확인한다.
   for (const source of VERSION_SOURCES) writeSourceVersion(root, source, '0.3.1');
   const blocked = run(root, ['bump', 'patch']);
@@ -610,7 +608,7 @@ test('태그가 있어도 파일끼리 버전이 다르면 bump 를 막는다', 
   });
 });
 
-test('set 은 8개 파일을 지정한 값으로 맞춰 불일치에서 빠져나오게 한다', (t) => {
+test('set 은 6개 파일을 지정한 값으로 맞춰 불일치에서 빠져나오게 한다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   writeSourceVersion(root, VERSION_SOURCES[VERSION_SOURCES.length - 1], '9.9.9');
@@ -638,7 +636,7 @@ test('set 은 값이 빈 파일도 채운다 — 고칠 수 있는 상태를 거
   t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, 'VERSION'), '\n');
   // problems 에 "version 값을 찾지 못했다" 가 뜨지만 renderSourceVersion 은 처리할 수 있다.
-  // 이걸 거부하면 사용자에게 8개 파일 손편집만 남는다.
+  // 이걸 거부하면 사용자에게 6개 파일 손편집만 남는다.
   assert.ok(collectVersionState(root).problems.length > 0);
 
   const result = run(root, ['set', '0.3.2']);

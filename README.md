@@ -13,7 +13,7 @@
 
 ## 설치 (Installation)
 
-`samsara`는 하나의 저장소(`Mineru98/samsara`)로 배포되며, Claude Code · Codex · Grok Build · ZCode 네 가지 CLI 모두 같은 방식(마켓플레이스 등록 → 플러그인 설치)으로 설치할 수 있습니다.
+`samsara`는 하나의 저장소(`Mineru98/samsara`)로 배포되며, Claude Code · Codex · Grok Build 세 가지 CLI 모두 같은 방식(마켓플레이스 등록 → 플러그인 설치)으로 설치할 수 있습니다.
 
 ### Claude Code
 
@@ -54,21 +54,6 @@ grok plugin install Mineru98/samsara --trust
 ```
 
 > Grok Build는 플러그인 마켓플레이스 기능이 비교적 최근에 도입되어 CLI 버전에 따라 세부 옵션이 달라질 수 있습니다. 위 명령이 동작하지 않으면 `grok plugin --help`로 최신 문법을 확인해 주세요.
-
-</details>
-
-<details>
-<summary>ZCode(Z.ai · GLM)에서 설치하기</summary>
-
-```bash
-# 1. samsara 저장소를 마켓플레이스로 등록합니다.
-zcode plugins marketplace add Mineru98/samsara
-
-# 2. 등록한 마켓플레이스에서 samsara 플러그인을 설치합니다.
-zcode plugins install samsara@samsara
-```
-
-> ZCode는 플러그인 마켓플레이스 기능이 비교적 최근에 도입되어 CLI 버전에 따라 세부 옵션이 달라질 수 있습니다. 위 명령이 동작하지 않으면 `zcode plugins --help`로 최신 문법을 확인해 주세요.
 
 </details>
 

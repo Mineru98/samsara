@@ -31,7 +31,7 @@ description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 �
     <rule>버전 소스 파일은 전부 함께 올린다. 하나만 올리고 끝내지 않는다.</rule>
     <rule>태그도 파일에 적힌 버전도 없을 때만 인자와 무관하게 `v0.1.0` 에서 시작한다. `v0.0.1` 이나 `v1.0.0` 으로 시작하지 않는다. 태그가 없어도 파일 버전이 하나면 그 값에서 올린다.</rule>
     <rule>버전 소스 파일끼리 값이 다르면 태그 유무와 무관하게 올리지 않는다. `--force` 로도 `--dry-run` 으로도 통과시키지 않는다 — 어느 값이 맞는지 모르면 올릴 값도 미리 보여 줄 값도 정할 수 없다.</rule>
-    <rule>막을 때는 무엇을 하면 되는지 함께 알린다. 파일끼리 어긋났거나 값이 비었으면 `set <버전>` 으로 하나에 맞춘 뒤 올린다. `set` 이 고칠 수 없는 것은 파일이 아예 없거나 JSON 이 깨진 경우뿐이고, 그때는 무엇이 막는지와 무엇을 해야 하는지 파일 이름과 함께 적는다. 사용자가 8개 파일을 손으로 뒤지게 두지 않는다.</rule>
+    <rule>막을 때는 무엇을 하면 되는지 함께 알린다. 파일끼리 어긋났거나 값이 비었으면 `set <버전>` 으로 하나에 맞춘 뒤 올린다. `set` 이 고칠 수 없는 것은 파일이 아예 없거나 JSON 이 깨진 경우뿐이고, 그때는 무엇이 막는지와 무엇을 해야 하는지 파일 이름과 함께 적는다. 사용자가 6개 파일을 손으로 뒤지게 두지 않는다.</rule>
     <rule>`set` 은 파일만 바꾼다. 커밋도 브랜치 생성도 하지 않으므로 기본 브랜치에서 부르면 그 자리가 dirty 해진다. 릴리즈 흐름 안에서 쓸 때는 `bump --branch` 가 만든 브랜치 위에서 부른다.</rule>
     <rule>태그와 파일 버전이 어긋났을 때는 `DRIFT_DIRECTION` 으로 갈린다. `tag-ahead` 와 `files-inconsistent` 는 사고이므로 사용자에게 알리고 판단을 받는다. `files-ahead` 는 bump PR 이 merge 된 정상 상태이므로 묻지 않고 2단계로 간다.</rule>
     <rule>1단계는 PR 생성에서 멈춘다. PR 을 스스로 merge 하거나 그대로 태그로 넘어가지 않는다.</rule>
@@ -58,7 +58,7 @@ description: 현재 버전을 판정해 한 단계 올리고 GitHub 태그와 �
 flowchart TD
     A[/"/issue-version {major|minor|patch}"/] --> B{git repo + gh auth}
     B -- 실패 --> B1[gh-setup 안내 후 중단] --> Z[종료]
-    B -- 통과 --> C[current: 태그와 8개 파일 버전 수집]
+    B -- 통과 --> C[current: 태그와 6개 파일 버전 수집]
 
     C --> C1{SOURCE_PROBLEMS = 0?}
     C1 -- 아니오 --> C2[버전 소스 파일 복구 안내 후 중단] --> Z
@@ -70,13 +70,13 @@ flowchart TD
       S1 --> E{어떤 방향인가}
       E -->|tag-ahead| E1[AskUserQuestion: 어느 쪽을 정본으로 볼지] --> F
       E -->|files-inconsistent| E2[AskUserQuestion: 어느 값으로 통일할지]
-      E2 --> E3[set 통일값: 8개를 맞춘다] --> F
+      E2 --> E3[set 통일값: 6개를 맞춘다] --> F
       E -->|none · no-tag| F[plan: 다음 버전 계산]
       F --> F1{태그도 파일 버전도 0개?}
       F1 -- 예 --> F2[v0.1.0 으로 고정 · 이유 보고] --> G
       F1 -- 아니오 --> G[AskUserQuestion: 계산 결과 승인]
       G -- 취소 --> Z
-      G -- 승인 --> H[bump --branch: release 브랜치 + 8개 파일 갱신]
+      G -- 승인 --> H[bump --branch: release 브랜치 + 6개 파일 갱신]
       H --> I[notes: 릴리즈 노트 초안]
       I --> J[pr: 커밋 · push · PR 생성]
       J --> K[여기서 멈춘다]
@@ -159,13 +159,13 @@ RELEASE_READY=0           1 이면 2단계(태그·릴리즈)로 바로 갈 상�
 
 `tag-ahead` 또는 `files-inconsistent` 일 때만 **멈추고** AskUserQuestion 으로 묻는다.
 
-`files-inconsistent` 는 어느 값이 맞는지 정한 뒤 `set` 으로 8개를 맞추고 다시 시작한다.
+`files-inconsistent` 는 어느 값이 맞는지 정한 뒤 `set` 으로 6개를 맞추고 다시 시작한다.
 이 상태에서는 `plan` · `bump` 가 `--force` 와 `--dry-run` 을 포함해 전부 exit 3 이다 —
 올릴 값도, 미리 보여 줄 값도 정할 수 없기 때문이다.
 
 ```bash
 node <skill>/scripts/issue-version.mjs set 0.3.2 --dry-run   # 무엇이 바뀌는지 먼저 본다
-node <skill>/scripts/issue-version.mjs set 0.3.2             # 8개를 하나로 맞춘다
+node <skill>/scripts/issue-version.mjs set 0.3.2             # 6개를 하나로 맞춘다
 ```
 
 `set` 은 **올리지 않는다.** 지정한 값을 그대로 쓴다. 올리는 것은 그다음 `bump` 의 몫이다.
@@ -216,7 +216,7 @@ node <skill>/scripts/issue-version.mjs plan <level>
 ```
 
 `DRIFT_DIRECTION=files-inconsistent` 면 `plan` 이 exit 3 으로 멈춘다. 어느 값으로 통일할지
-사용자에게 물은 뒤 `set` 으로 8개를 맞추고 다시 부른다. 파일을 직접 고치지 않는다.
+사용자에게 물은 뒤 `set` 으로 6개를 맞추고 다시 부른다. 파일을 직접 고치지 않는다.
 
 ```bash
 node <skill>/scripts/issue-version.mjs set <통일값> --dry-run
@@ -316,7 +316,7 @@ gh api -X DELETE /repos/<owner>/<repo>/git/refs/tags/<tag>
 | --- | --- |
 | **단계** | 1/2 — bump PR |
 | **현재 → 다음** | v0.3.2 → v0.3.3 (patch) |
-| **갱신 파일** | 8개 |
+| **갱신 파일** | 6개 |
 | **브랜치** | `release/v0.3.3` |
 | **PR** | [#42 chore(release): bump version to v0.3.3](\<PR URL\>) |
 | **다음** | PR merge 후 `/issue-version patch` 재실행 |
@@ -336,9 +336,9 @@ gh api -X DELETE /repos/<owner>/<repo>/git/refs/tags/<tag>
 # 명령 요약
 
 ```text
-current                        태그·8개 파일 버전 진단
+current                        태그·6개 파일 버전 진단
 plan <level>                   다음 버전 계산 (부수효과 없음)
-set <X.Y.Z>                    8개 파일을 지정한 값으로 맞춘다 (올리지 않는다 · --dry-run)
+set <X.Y.Z>                    6개 파일을 지정한 값으로 맞춘다 (올리지 않는다 · --dry-run)
 bump <level> [--branch]        버전 소스 파일 갱신 (--dry-run · --force)
 notes [--from --to --version]  릴리즈 노트 생성 (--out 으로 저장)
 pr <vX.Y.Z>                    커밋 · push · PR 생성 (--dry-run)

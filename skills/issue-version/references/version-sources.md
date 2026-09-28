@@ -1,16 +1,14 @@
 # 버전 소스 파일
 
-이 저장소에서 버전이 박혀 있는 곳은 아래 8개다. 릴리즈는 이 값들이 **전부 같을 때만** 성립한다.
+이 저장소에서 버전이 박혀 있는 곳은 아래 6개다. 릴리즈는 이 값들이 **전부 같을 때만** 성립한다.
 
 | 파일 | 위치 | 형식 |
 | --- | --- | --- |
 | `VERSION` | 파일 전체 | 순수 텍스트 `0.3.2` + 개행 |
-| `marketplace.json` | `plugins[].version` | JSON |
 | `.claude-plugin/plugin.json` | `version` | JSON |
 | `.claude-plugin/marketplace.json` | `plugins[].version` | JSON |
 | `.codex-plugin/plugin.json` | `version` | JSON |
 | `.grok-plugin/plugin.json` | `version` | JSON |
-| `.zcode-plugin/plugin.json` | `version` | JSON |
 | `tools/issue-ontology/package.json` | `version` | JSON |
 
 목록의 정본은 스크립트의 `VERSION_SOURCES` 상수다. 배포 대상이 늘면 **문서가 아니라 그 상수를 먼저 고친다.**

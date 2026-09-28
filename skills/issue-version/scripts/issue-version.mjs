@@ -9,12 +9,10 @@ import { fileURLToPath } from 'node:url';
 // path 의 '*' 는 배열 전체를 뜻한다 (marketplace 의 plugins[] 처럼 항목이 늘 수 있다).
 export const VERSION_SOURCES = [
   { file: 'VERSION', kind: 'text' },
-  { file: 'marketplace.json', kind: 'json', path: ['plugins', '*', 'version'] },
   { file: '.claude-plugin/plugin.json', kind: 'json', path: ['version'] },
   { file: '.claude-plugin/marketplace.json', kind: 'json', path: ['plugins', '*', 'version'] },
   { file: '.codex-plugin/plugin.json', kind: 'json', path: ['version'] },
   { file: '.grok-plugin/plugin.json', kind: 'json', path: ['version'] },
-  { file: '.zcode-plugin/plugin.json', kind: 'json', path: ['version'] },
   { file: 'tools/issue-ontology/package.json', kind: 'json', path: ['version'] },
 ];
 
@@ -383,9 +381,9 @@ function fail(message, code = 2) {
 function usage() {
   console.log(`사용법: issue-version.mjs <command> [options]
 
-  current                          현재 버전 상태를 진단한다 (태그 · 8개 파일)
+  current                          현재 버전 상태를 진단한다 (태그 · 6개 파일)
   plan <major|minor|patch>         다음 버전을 계산만 한다 (파일을 건드리지 않는다)
-  set <X.Y.Z> [--dry-run]          8개 파일을 지정한 버전으로 맞춘다 (올리지 않는다)
+  set <X.Y.Z> [--dry-run]          6개 파일을 지정한 버전으로 맞춘다 (올리지 않는다)
                                    파일끼리 값이 어긋났을 때 통일하는 용도
   bump <major|minor|patch> [opts]  버전 소스 파일을 새 버전으로 갱신한다
       --dry-run                    갱신 없이 대상과 전후 값만 출력
@@ -544,7 +542,7 @@ function cmdBump(root, level, options) {
     console.log(`브랜치 생성 : ${branch}`);
   }
 
-  // 파일을 하나씩 쓰다가 중간에서 실패하면 "8개 중 5개만 올라간" 트리가 남는다.
+  // 파일을 하나씩 쓰다가 중간에서 실패하면 "6개 중 5개만 올라간" 트리가 남는다.
   // 그건 이 스킬이 막으려는 사고 그 자체다. 전부 렌더해 본 뒤에 한꺼번에 쓴다.
   const planned = [];
   for (const source of VERSION_SOURCES) {
