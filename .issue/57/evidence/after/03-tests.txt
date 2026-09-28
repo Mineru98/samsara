@@ -1,0 +1,11 @@
+$ node --test skills/issue-version/scripts/issue-version.test.mjs
+ℹ tests 56
+ℹ pass 56
+ℹ fail 0
+(전 54 → 후 56: lockfile bump 1건, 두 자리 불일치 판정 1건 추가)
+
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+
+$ node --check (skills/*/scripts/*.mjs, tools/issue-ontology/*.mjs)
+구문 실패: 0 건
