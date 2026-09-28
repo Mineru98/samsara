@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 // 버전이 박혀 있는 파일 전부. 하나라도 빠지면 태그와 매니페스트가 어긋난다.
 // path 의 '*' 는 배열 전체를 뜻한다 (marketplace 의 plugins[] 처럼 항목이 늘 수 있다).
+// 한 파일에 버전 자리가 여럿이면 paths 로 모두 적는다. 소스를 둘로 나누면 같은 파일을 두 번 쓰며 앞의 갱신을 덮는다.
 export const VERSION_SOURCES = [
   { file: 'VERSION', kind: 'text' },
   { file: '.claude-plugin/plugin.json', kind: 'json', path: ['version'] },
@@ -14,6 +15,8 @@ export const VERSION_SOURCES = [
   { file: '.codex-plugin/plugin.json', kind: 'json', path: ['version'] },
   { file: '.grok-plugin/plugin.json', kind: 'json', path: ['version'] },
   { file: 'tools/issue-ontology/package.json', kind: 'json', path: ['version'] },
+  // 의존성 항목(node_modules/*)의 version 은 건드리지 않는다. 루트 패키지 자리 두 곳만.
+  { file: 'tools/issue-ontology/package-lock.json', kind: 'json', paths: [['version'], ['packages', '', 'version']] },
 ];
 
 export const LEVELS = ['major', 'minor', 'patch'];
@@ -152,6 +155,10 @@ export function remoteSlug(root) {
 
 // ── 버전 소스 파일 ───────────────────────────────────────────────────────────
 
+function sourcePaths(source) {
+  return source.paths ?? [source.path];
+}
+
 function walk(node, segments) {
   if (!segments.length) return [node];
   const [head, ...rest] = segments;
@@ -193,7 +200,7 @@ export function readSourceVersion(root, source) {
   return {
     file: source.file,
     missing: false,
-    versions: walk(data, source.path).filter((value) => typeof value === 'string' && value.trim()),
+    versions: sourcePaths(source).flatMap((segments) => walk(data, segments)).filter((value) => typeof value === 'string' && value.trim()),
     raw,
   };
 }
@@ -228,8 +235,8 @@ export function renderSourceVersion(source, raw, next) {
     return next + (raw.endsWith('\n') ? '\n' : '');
   }
   const data = JSON.parse(raw);
-  const previousValues = walk(data, source.path).filter((value) => typeof value === 'string');
-  const changed = assign(data, source.path, next);
+  const previousValues = sourcePaths(source).flatMap((segments) => walk(data, segments)).filter((value) => typeof value === 'string');
+  const changed = sourcePaths(source).reduce((count, segments) => count + assign(data, segments, next), 0);
   if (!changed) throw new Error(`${source.file}: version 경로를 찾지 못했다.`);
   const trailing = raw.endsWith('\n') ? '\n' : '';
   // 원본을 그대로 다시 찍었을 때 바이트가 같아야 이 파일이 2-space 정규 포맷이라고 볼 수 있다.
