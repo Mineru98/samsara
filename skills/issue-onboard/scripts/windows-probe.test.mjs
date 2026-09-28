@@ -46,3 +46,18 @@ test('모르는 인자는 exit 2 로 거부한다', () => {
   assert.equal(r.status, 2);
   assert.match(r.stderr, /알 수 없는 인자/);
 });
+
+test('보고서는 사용자 홈 경로를 ~ 로 가린다', () => {
+  const r = spawnSync(process.execPath, [PROBE], { encoding: 'utf8', timeout: 60000, cwd: os.homedir() });
+  const home = os.homedir();
+  assert.ok(!r.stdout.includes(home), `홈 경로 ${home} 가 그대로 나오면 안 된다`);
+  assert.match(r.stdout, /cwd=~/);
+});
+
+test('프로브는 저장소 파일을 바꾸지 않는다', () => {
+  const repo = path.resolve(path.dirname(PROBE), '..', '..', '..');
+  const status = () => spawnSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).stdout;
+  const before = status();
+  spawnSync(process.execPath, [PROBE], { encoding: 'utf8', timeout: 60000, cwd: repo });
+  assert.equal(status(), before);
+});
