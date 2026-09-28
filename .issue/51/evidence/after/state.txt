@@ -1,0 +1,15 @@
+$ git grep -niIl -e glm-acp -e zcode -e glm -- ":!.issue"
+(exit=1 — 1 은 일치 없음)
+
+$ git status --short
+D  .zcode-plugin/plugin.json
+ M README.md
+D  agents/glm-acp-samsara.md
+D  commands/glm-acp.md
+D  marketplace.json
+D  skills/glm-acp/SKILL.md
+ M skills/issue-version/SKILL.md
+ M skills/issue-version/references/version-sources.md
+ M skills/issue-version/scripts/issue-version.mjs
+ M skills/issue-version/scripts/issue-version.test.mjs
+D  tools/glm-acp/verify-context.mjs

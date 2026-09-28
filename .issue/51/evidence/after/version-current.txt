@@ -1,0 +1,17 @@
+기본 브랜치 : main
+최신 태그   : v0.3.3
+  VERSION                              0.3.3
+  .claude-plugin/plugin.json           0.3.3
+  .claude-plugin/marketplace.json      0.3.3
+  .codex-plugin/plugin.json            0.3.3
+  .grok-plugin/plugin.json             0.3.3
+  tools/issue-ontology/package.json    0.3.3
+
+BASE_BRANCH=main
+LATEST_TAG=v0.3.3
+TAG_VERSION=0.3.3
+FILE_VERSIONS=0.3.3
+SOURCE_PROBLEMS=0
+VERSION_DRIFT=0
+DRIFT_DIRECTION=none
+RELEASE_READY=0

@@ -1,0 +1,21 @@
+$ git grep -niIl -e glm-acp -e zcode -e glm -- ":!.issue"
+README.md
+agents/glm-acp-samsara.md
+commands/glm-acp.md
+marketplace.json
+skills/glm-acp/SKILL.md
+skills/issue-version/references/version-sources.md
+skills/issue-version/scripts/issue-version.mjs
+skills/issue-version/scripts/issue-version.test.mjs
+tools/glm-acp/verify-context.mjs
+
+$ git grep -c (hits per file)
+README.md:5
+agents/glm-acp-samsara.md:4
+commands/glm-acp.md:2
+marketplace.json:2
+skills/glm-acp/SKILL.md:9
+skills/issue-version/references/version-sources.md:1
+skills/issue-version/scripts/issue-version.mjs:1
+skills/issue-version/scripts/issue-version.test.mjs:2
+tools/glm-acp/verify-context.mjs:16
