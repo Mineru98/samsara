@@ -1,0 +1,15 @@
+# 임시 복사본(scripts/, skills/)에서 재현 — 저장소 파일은 건드리지 않음. HEAD 51dd5e7
+
+## 1. 원본 그대로
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+exit=0
+
+## 2. sync 사본의 Git 탐지 코드 한 줄만 변조 (git 후보에서 /usr/bin/git 제거)
+$ diff skills/issue-onboard/scripts/issue-common.mjs skills/issue-sync/scripts/issue-common.mjs | grep "git: \["
+<   git: ['/usr/bin/git', '/bin/git', '/opt/homebrew/bin/git', '/usr/local/bin/git'],
+>   git: ['/bin/git', '/opt/homebrew/bin/git', '/usr/local/bin/git'],
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+exit=0
+→ 두 사본이 어긋났는데도 통과한다 (검사가 safeGraphTarget 구간만 본다)

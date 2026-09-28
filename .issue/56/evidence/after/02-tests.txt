@@ -1,0 +1,29 @@
+$ node --test scripts/check-shared.test.mjs   (신규)
+✔ 현재 사본은 두 검사를 모두 통과한다 (139.797702ms)
+✔ 한쪽 사본의 Git 후보 경로만 바꾸면 어긋난 선언과 파일을 알린다 (60.277026ms)
+✔ Windows 정책 함수 본문이 달라도 잡는다 (60.322243ms)
+✔ 탐지 그룹 사본에서 선언이 빠지면 missing 으로 실패한다 (108.820156ms)
+✔ executablePolicy 없이 탐지 선언만 들어간 부분 사본을 거부한다 (34.660132ms)
+✔ 기존 safeGraphTarget 구간 검출은 그대로 동작한다 (25.339294ms)
+✔ 한 사본이 탐지 코드를 통째로 잃으면 그룹 불일치로 실패한다 (42.794813ms)
+✔ isPathWithin 처럼 모든 사본에 있는 이름도 탐지 그룹 안에서는 비교한다 (90.219195ms)
+✔ 이름이 접두어로 겹치는 선언은 부분 사본으로 오인하지 않는다 (130.212124ms)
+✔ 닫는 줄 형식이 바뀌면 통과시키지 않고 실패한다 (117.946984ms)
+ℹ tests 10
+ℹ pass 10
+ℹ fail 0
+
+# awk 구현별 (PATH 앞에 awk 심을 끼워 실행)
+gawk     check-shared: git detection code: 2 copies match (12 declarations) / 테스트: ℹ pass 10
+mawk     check-shared: git detection code: 2 copies match (12 declarations) / 테스트: ℹ pass 10
+busybox  check-shared: git detection code: 2 copies match (12 declarations) / 테스트: ℹ pass 10
+※ nawk 는 이 머신에서 gawk 로 연결돼 있어 목록에서 뺐다. macOS 의 BSD awk(one-true-awk)는 직접 확인하지 못했다.
+
+$ dash scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+git detection code: 2 copies match (12 declarations)
+
+# PR #58(#55, 같은 issue-common.mjs 수정) 과 합친 트리
+merge-tree: clean
+shared cache-safety block: 6 copies match
+git detection code: 2 copies match (12 declarations)
