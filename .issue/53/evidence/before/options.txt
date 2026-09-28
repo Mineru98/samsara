@@ -1,0 +1,8 @@
+# before (origin/main)
+skills/issue-create/references/issue-draft.md:117:승인      이대로 등록 (여러 건이면 전부)
+skills/issue-create/references/issue-draft.md:118:수정      어느 이슈의 어느 항목을 고칠지 받아 그것만 다시 초안 제시
+skills/issue-create/references/issue-draft.md:119:취소      등록하지 않고 종료 (원래 요청은 계속 진행할지 함께 확인)
+skills/issue-create/SKILL.md:115:    H -- 일부 수정 --> G
+skills/issue-create/SKILL.md:116:    H -- 취소 --> Z0
+skills/issue-create/SKILL.md:117:    H -- 승인 --> I[create × N: 성격 라벨 + status:open · 실패는 건너뛰고 계속]
+skills/issue-create/SKILL.md:261:항목마다 초안을 채우고 **전문을 한 번에** 보여준 뒤, AskUserQuestion 으로 일괄 승인 / 일부 수정 / 취소를 받는다.
