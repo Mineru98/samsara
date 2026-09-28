@@ -1,0 +1,15 @@
+$ node --test skills/issue-onboard/scripts/*.test.mjs
+ℹ tests 84
+ℹ pass 84
+ℹ fail 0
+
+$ node --test skills/issue-sync/scripts/*.test.mjs
+
+(issue-sync 테스트 파일 없음)
+
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+
+$ ls scripts/windows-probe.mjs
+ls: cannot access 'scripts/windows-probe.mjs': No such file or directory
+→ Windows 실측용 프로브·절차 없음

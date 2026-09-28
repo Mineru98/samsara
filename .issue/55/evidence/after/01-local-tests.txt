@@ -1,0 +1,22 @@
+$ node --test "skills/issue-onboard/scripts/*.test.mjs"
+ℹ tests 90
+ℹ pass 90
+ℹ fail 0
+
+$ node --test skills/issue-onboard/scripts/windows-probe.test.mjs   (신규)
+ℹ tests 5
+ℹ pass 5
+ℹ fail 0
+
+$ node --test tools/issue-ontology/ontology.test.mjs
+ℹ tests 13
+ℹ pass 13
+ℹ fail 0
+
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+
+$ for f in skills/*/scripts/*.mjs; do node --check "$f"; done
+구문 실패: 0 건
+
+전: 84 통과 / 후: 90 통과 (H1 회귀 1건 + 프로브 5건 추가)
