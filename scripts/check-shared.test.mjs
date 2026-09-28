@@ -91,3 +91,39 @@ test('기존 safeGraphTarget 구간 검출은 그대로 동작한다', (t) => {
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /shared cache-safety block drift: skills\/issue-start/);
 });
+
+test('한 사본이 탐지 코드를 통째로 잃으면 그룹 불일치로 실패한다', (t) => {
+  const root = fixture(t);
+  // #40 을 되돌리는 잘못된 merge: onboard 사본이 탐지 코드 없는 옛 사본이 된다.
+  cpSync(common(root, 'create'), common(root, 'onboard'));
+  const r = check(root);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /git detection group mismatch/);
+});
+
+test('isPathWithin 처럼 모든 사본에 있는 이름도 탐지 그룹 안에서는 비교한다', (t) => {
+  const root = fixture(t);
+  edit(root, 'sync', "return relative === '' || (relative !== '..'", "return relative === '' || (relative !== '...'");
+  const r = check(root);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /git detection drift: isPathWithin/);
+});
+
+test('이름이 접두어로 겹치는 선언은 부분 사본으로 오인하지 않는다', (t) => {
+  const root = fixture(t);
+  const file = common(root, 'create');
+  writeFileSync(file, `export function executablePolicyNote() {\n  return 1;\n}\n${readFileSync(file, 'utf8')}`);
+  const r = check(root);
+  assert.equal(r.status, 0, r.stderr);
+});
+
+// 닫는 줄에 주석이 붙으면 추출이 다음 선언까지 이어진다. 사본마다 뒤따르는 코드가 달라 drift 로 실패한다.
+// 파일 끝까지 닫는 줄이 없는 경우(not closed)는 safeGraphTarget 구간을 깨지 않고는 만들 수 없어 여기서 다루지 않는다.
+test('닫는 줄 형식이 바뀌면 통과시키지 않고 실패한다', (t) => {
+  const root = fixture(t);
+  edit(root, 'sync', "export function trustedExecutable(command) {\n  return resolveTrustedExecutable(command);\n}",
+    "export function trustedExecutable(command) {\n  return resolveTrustedExecutable(command);\n} // note");
+  const r = check(root);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /git detection (drift|declaration not closed): trustedExecutable/);
+});
