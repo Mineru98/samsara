@@ -1,0 +1,32 @@
+# 새 워크트리(git worktree add --detach, node_modules 없음) — HEAD 450507c
+
+$ ls tools/issue-ontology
+fixtures
+ontology.test.mjs
+package.json
+schemas
+validate.mjs
+
+$ cd tools/issue-ontology && npm ci
+npm error code EUSAGE
+npm error
+npm error The `npm ci` command can only install with an existing package-lock.json or
+npm error npm-shrinkwrap.json with lockfileVersion >= 1. Run an install with npm@5 or
+npm error later to generate a package-lock.json file, then try again.
+npm error
+npm error Clean install a project
+npm error
+exit=1
+
+# 설치 전 테스트
+$ node --test tools/issue-ontology/ontology.test.mjs
+ℹ tests 13
+ℹ pass 3
+ℹ fail 10
+$ node --test "skills/issue-onboard/scripts/*.test.mjs"
+ℹ tests 84
+ℹ pass 61
+ℹ fail 23
+
+$ node --test "skills/issue-onboard/scripts/*.test.mjs" 2>&1 | grep -c "npm install을 실행하세요"
+2

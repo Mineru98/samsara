@@ -1,0 +1,15 @@
+$ sed -n 10,17p skills/issue-version/scripts/issue-version.mjs
+export const VERSION_SOURCES = [
+  { file: 'VERSION', kind: 'text' },
+  { file: '.claude-plugin/plugin.json', kind: 'json', path: ['version'] },
+  { file: '.claude-plugin/marketplace.json', kind: 'json', path: ['plugins', '*', 'version'] },
+  { file: '.codex-plugin/plugin.json', kind: 'json', path: ['version'] },
+  { file: '.grok-plugin/plugin.json', kind: 'json', path: ['version'] },
+  { file: 'tools/issue-ontology/package.json', kind: 'json', path: ['version'] },
+];
+
+→ tools/issue-ontology/package-lock.json 없음 (잠금 파일 자체가 없다)
+
+$ grep -n "npm install" tools/issue-ontology/validate.mjs skills/issue-onboard/scripts/issue-onboard.mjs
+tools/issue-ontology/validate.mjs:20:  const error = new Error(message + '. tools/issue-ontology에서 npm install을 실행하세요.');
+skills/issue-onboard/scripts/issue-onboard.mjs:1372:      console.error('✗ Ajv 온톨로지를 사용할 수 없습니다. tools/issue-ontology에서 npm install을 실행하세요.');

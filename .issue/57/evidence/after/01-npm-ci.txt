@@ -1,0 +1,35 @@
+# 새 워크트리(git worktree add --detach, node_modules 없음) — HEAD df1f105
+
+$ ls tools/issue-ontology
+fixtures
+ontology.test.mjs
+package-lock.json
+package.json
+schemas
+validate.mjs
+
+$ cd tools/issue-ontology && npm ci
+added 5 packages, and audited 6 packages in 1s
+exit=0
+
+$ node -p "require(\"./tools/issue-ontology/node_modules/ajv/package.json\").version"
+8.17.1
+
+# 설치 후 테스트
+$ node --test tools/issue-ontology/ontology.test.mjs
+ℹ tests 13
+ℹ pass 13
+ℹ fail 0
+$ node --test "skills/issue-onboard/scripts/*.test.mjs"
+ℹ tests 84
+ℹ pass 84
+ℹ fail 0
+
+$ git status --short   (npm ci 가 추적 파일을 바꾸지 않았는지)
+(출력 끝)
+
+$ npm audit (참고 — 이번 범위 밖)
+ajv  7.0.0-alpha.0 - 8.17.1
+Severity: moderate
+ajv has ReDoS when using `$data` option - https://github.com/advisories/GHSA-2g4f-4pwh-qvx6
+→ $data 옵션 사용 시에만 해당. validate.mjs:60 은 new Ajv2020({ allErrors: true, strict: true }) 로 $data 미사용
