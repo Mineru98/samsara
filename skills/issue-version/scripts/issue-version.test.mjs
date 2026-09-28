@@ -55,6 +55,20 @@ function fakeGh(failCommand) {
   return dir;
 }
 
+/** npm lockfileVersion 3 형태. 의존성 항목의 version 은 bump 와 무관한 값이어야 한다. */
+function seedLock(version) {
+  return {
+    name: 'x',
+    version,
+    lockfileVersion: 3,
+    requires: true,
+    packages: {
+      '': { name: 'x', version, dependencies: { ajv: '8.17.1' } },
+      'node_modules/ajv': { version: '8.17.1', resolved: 'https://registry.npmjs.org/ajv/-/ajv-8.17.1.tgz' },
+    },
+  };
+}
+
 function seedRepo({ withTags, withOrigin }) {
   const root = mkdtempSync(path.join(tmpdir(), 'issue-version-'));
   const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
@@ -74,6 +88,8 @@ function seedRepo({ withTags, withOrigin }) {
   mkdirSync(path.join(root, 'tools', 'issue-ontology'), { recursive: true });
   writeFileSync(path.join(root, 'tools', 'issue-ontology', 'package.json'),
     JSON.stringify({ name: 'x', version: '0.3.2', private: true }, null, 2) + '\n');
+  writeFileSync(path.join(root, 'tools', 'issue-ontology', 'package-lock.json'),
+    JSON.stringify(seedLock('0.3.2'), null, 2) + '\n');
 
   git('add', '-A');
   git('commit', '-q', '-m', 'chore: seed');
@@ -501,13 +517,15 @@ test('태그도 파일 버전도 없으면 단계와 무관하게 v0.1.0 에서 
   const root = seedRepo({ withTags: false });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   // VERSION 만 비우면 나머지 7개 매니페스트에 버전이 남아 "버전이 없는" 상태가 아니다.
-  // 6개 전부에서 버전을 없애야 첫 릴리즈다.
+  // 소스 전부에서 버전을 없애야 첫 릴리즈다.
   writeFileSync(path.join(root, 'VERSION'), '\n');
   for (const source of VERSION_SOURCES.filter((entry) => entry.kind === 'json')) {
     const file = path.join(root, source.file);
     const data = JSON.parse(readFileSync(file, 'utf8'));
     if (Array.isArray(data.plugins)) data.plugins.forEach((plugin) => { delete plugin.version; });
     else delete data.version;
+    // package-lock.json 은 루트 패키지 항목에도 버전이 있다.
+    if (data.packages?.['']) delete data.packages[''].version;
     writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
   }
   assert.deepEqual(collectVersionState(root).values, []);
@@ -567,7 +585,7 @@ test('bump 는 6개 파일을 모두 새 버전으로 맞춘다', (t) => {
 test('태그가 파일보다 앞서면 bump 를 막고 --force 로만 통과시킨다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  // 6개 전부를 0.3.1 로 내려 tag-ahead 를 만든다. 한 파일만 바꾸면 files-inconsistent 라
+  // 소스 전부를 0.3.1 로 내려 tag-ahead 를 만든다. 한 파일만 바꾸면 files-inconsistent 라
   // 다른 게이트에 걸린다 — 그 경우는 아래 테스트가 따로 확인한다.
   for (const source of VERSION_SOURCES) writeSourceVersion(root, source, '0.3.1');
   const blocked = run(root, ['bump', 'patch']);
@@ -787,4 +805,25 @@ test('pr 은 버전 소스가 목표 버전과 다르면 거부한다', (t) => {
   const result = run(root, ['pr', 'v0.9.0', '--dry-run']);
   assert.equal(result.status, 3);
   assert.match(result.stderr, /bump 를 먼저 돌린다/);
+});
+
+test('package-lock.json 은 루트 버전 두 곳만 올리고 의존성 버전은 그대로 둔다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const result = run(root, ['bump', 'patch']);
+  assert.equal(result.status, 0, result.stderr);
+  const lock = JSON.parse(readFileSync(path.join(root, 'tools', 'issue-ontology', 'package-lock.json'), 'utf8'));
+  assert.equal(lock.version, '0.3.3');
+  assert.equal(lock.packages[''].version, '0.3.3');
+  assert.equal(lock.packages['node_modules/ajv'].version, '8.17.1', '의존성 버전을 건드리면 안 된다');
+});
+
+test('package-lock.json 의 두 버전 자리가 서로 다르면 files-inconsistent 로 본다', (t) => {
+  const root = seedRepo({ withTags: true });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const file = path.join(root, 'tools', 'issue-ontology', 'package-lock.json');
+  const lock = JSON.parse(readFileSync(file, 'utf8'));
+  lock.packages[''].version = '9.9.9';
+  writeFileSync(file, JSON.stringify(lock, null, 2) + '\n');
+  assert.equal(field(run(root, ['current']).stdout, 'DRIFT_DIRECTION'), 'files-inconsistent');
 });

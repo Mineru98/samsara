@@ -1369,7 +1369,7 @@ function graphFromFile(root, file) {
 function ontologyProblems(graph, { required = false } = {}) {
   if (!ontologyModule || ontologyModule.ontologyAvailable === false) {
     if (required) {
-      console.error('✗ Ajv 온톨로지를 사용할 수 없습니다. tools/issue-ontology에서 npm install을 실행하세요.');
+      console.error('✗ Ajv 온톨로지를 사용할 수 없습니다. tools/issue-ontology에서 npm ci를 실행하세요.');
       if (ontologyLoadError) console.error('  ' + ontologyLoadError.message);
       process.exit(2);
     }

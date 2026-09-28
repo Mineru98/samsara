@@ -17,7 +17,7 @@ const ACTIONS = ['create', 'start', 'end', 'merge'];
 const cache = new Map();
 
 function unavailable(message) {
-  const error = new Error(message + '. tools/issue-ontology에서 npm install을 실행하세요.');
+  const error = new Error(message + '. tools/issue-ontology에서 npm ci를 실행하세요.');
   error.code = 'ONTOLOGY_UNAVAILABLE';
   if (ajvImportError) error.cause = ajvImportError;
   return error;

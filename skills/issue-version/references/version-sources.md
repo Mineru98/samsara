@@ -1,6 +1,6 @@
 # 버전 소스 파일
 
-이 저장소에서 버전이 박혀 있는 곳은 아래 6개다. 릴리즈는 이 값들이 **전부 같을 때만** 성립한다.
+이 저장소에서 버전이 박혀 있는 파일은 아래 7개다. 릴리즈는 이 값들이 **전부 같을 때만** 성립한다.
 
 | 파일 | 위치 | 형식 |
 | --- | --- | --- |
@@ -10,6 +10,7 @@
 | `.codex-plugin/plugin.json` | `version` | JSON |
 | `.grok-plugin/plugin.json` | `version` | JSON |
 | `tools/issue-ontology/package.json` | `version` | JSON |
+| `tools/issue-ontology/package-lock.json` | `version`, `packages[""].version` (의존성 항목은 제외) | JSON |
 
 목록의 정본은 스크립트의 `VERSION_SOURCES` 상수다. 배포 대상이 늘면 **문서가 아니라 그 상수를 먼저 고친다.**
 
