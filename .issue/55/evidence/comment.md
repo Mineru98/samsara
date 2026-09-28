@@ -101,6 +101,6 @@ FAIL 이 하나라도 있으면 exit 1 로 끝납니다.
 
 ## 남은 일: 실측 부탁드립니다
 
-Windows 에서 [`windows-verification.md`](https://github.com/Mineru98/samsara/blob/fix/55-windows-onboard-probe/skills/issue-onboard/references/windows-verification.md) 절차를 돌려 주세요.
+Windows 에서 `skills/issue-onboard/references/windows-verification.md` 절차(브랜치 `fix/55-windows-onboard-probe`)를 돌려 주세요.
 그리고 `windows-probe.txt` 전문과 테스트·`sync` 출력의 끝부분을 이 이슈 코멘트로 남겨 주세요.
 FAIL 이 나온 절이 H2~H4 중 무엇을 확정하는지 보고 같은 브랜치에서 수정합니다.
