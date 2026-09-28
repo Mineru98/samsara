@@ -1,0 +1,19 @@
+## H1 — 수정 후
+$ sed -n 138p skills/issue-onboard/scripts/issue-common.mjs
+  const systemRoot = env.SystemRoot || env.windir || 'C:\\Windows';
+$ node (SystemRoot·windir 미설정 시 정책 계산)
+curl 후보: [ 'C:\\Windows\\System32\\curl.exe' ]
+commandDirs: [
+  'C:\\Windows\\System32',
+  'C:\\Windows',
+  'C:\\Windows\\System32\\Wbem'
+]
+
+## 회귀 테스트가 수정 전 코드에서 실패하는지 확인
+issue-common.mjs 를 커밋 전 내용으로 되돌리고 trusted-executable.test.mjs 실행 → pass 22 / fail 1 (신규 테스트만 실패)
+
+## H2~H4 — 이번 회차에서 고치지 않음
+실측 전 추정이라 코드를 바꾸지 않았다. 프로브의 3·5·6절이 각각을 실제 Windows 에서 판정한다.
+  H2 gh 후보 경로       → 3절 "gh 탐지" + 2절 실제 설치 위치 비교
+  H3 자식 PATH          → 5절 gh auth status, 6절 graphql 이 제한 PATH 로 실행
+  H4 환경변수 허용 목록 → 5·6절이 제한 환경으로 gh 네트워크 호출

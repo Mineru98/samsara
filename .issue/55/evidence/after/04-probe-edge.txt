@@ -1,0 +1,7 @@
+$ node skills/issue-onboard/scripts/windows-probe.mjs --issue 99999   (없는 이슈 → 사유와 함께 FAIL)
+[FAIL] gh api graphql blockedBy — Mineru98/samsara#99999 조회 실패 — 이슈가 없거나 PR 이면 --issue 로 실제 이슈 번호를 지정해 다시 실행
+## 요약: PASS 4 / FAIL 1 / SKIP 0
+
+$ node skills/issue-onboard/scripts/windows-probe.mjs --nope
+✗ 알 수 없는 인자: --nope
+exit=2

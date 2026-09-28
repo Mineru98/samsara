@@ -1,0 +1,52 @@
+# 참고: 개발 머신(Linux)에서 돌린 프로브 결과. Windows 결과가 아니다 — 형식 확인용.
+# issue-onboard 환경 프로브
+
+## 1. 실행 환경
+platform=linux arch=x64 node=v24.18.0
+cwd=~/workspace/samsara-issue-55
+  SystemRoot=(없음)
+  windir=(없음)
+  ProgramFiles=(없음)
+  ProgramFiles(x86)=(없음)
+  ProgramW6432=(없음)
+  LOCALAPPDATA=(없음)
+  APPDATA=(없음)
+  USERPROFILE=(없음)
+  HOME=~
+  PATHEXT=(없음)
+  ComSpec=(없음)
+  GH_TOKEN=(없음)
+  GITHUB_TOKEN=(없음)
+  GH_CONFIG_DIR=(없음)
+
+## 2. 실제 설치 위치 (제한 없는 PATH)
+  git: /usr/bin/git
+  gh: /usr/bin/gh
+
+## 3. 탐지 정책
+  checkMode=true caseInsensitive=false
+  trustedCommandPath=/usr/bin:/usr/sbin:/bin:/sbin:/System/Cryptexes/App/usr/bin
+  git 후보:
+    있음  /usr/bin/git
+    있음  /bin/git
+    없음  /opt/homebrew/bin/git
+    없음  /usr/local/bin/git
+[PASS] git 탐지 — /usr/bin/git
+  gh 후보:
+    없음  /opt/homebrew/bin/gh
+    없음  /usr/local/bin/gh
+    있음  /usr/bin/gh
+    있음  /bin/gh
+[PASS] gh 탐지 — /usr/bin/gh
+
+## 4. 저장소 인식 (issue-onboard 와 같은 git 경로)
+[PASS] git rev-parse --show-toplevel — ~/workspace/samsara-issue-55
+
+## 5. gh 호출 (트래커의 제한 환경)
+[PASS] gh auth status — github.com
+
+## 6. 네이티브 의존성 조회 (issue-native-deps 의 제한 환경)
+  저장소=Mineru98/samsara (출처: gh repo view)
+[PASS] gh api graphql blockedBy — Mineru98/samsara#1 조회 성공
+
+## 요약: PASS 5 / FAIL 0 / SKIP 0

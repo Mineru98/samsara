@@ -1,0 +1,32 @@
+## H1 — Windows 기본 SystemRoot 폴백 문자열 (확정)
+$ sed -n 138p skills/issue-onboard/scripts/issue-common.mjs
+  const systemRoot = env.SystemRoot || env.windir || 'C:\Windows';
+$ node -e "console.log(JSON.stringify('C:\Windows' 를 소스 그대로 해석))"
+"C:Windows"
+$ node (SystemRoot·windir 미설정 시 정책 계산)
+curl 후보: [ 'C:Windows\\System32\\curl.exe' ]
+commandDirs: [ 'C:Windows\\System32', 'C:Windows', 'C:Windows\\System32\\Wbem' ]
+
+## H2 — gh 후보 경로 (추정, 실측 필요)
+C:\Program Files\GitHub CLI\bin\gh.exe
+C:\Program Files (x86)\GitHub CLI\bin\gh.exe
+C:\Users\dev\AppData\Local\Programs\GitHub CLI\bin\gh.exe
+
+## H3 — 자식 프로세스 PATH (Unix 고정, 추정)
+const SYSTEM_COMMAND_PATH = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+];
+const SYSTEM_PATH = [
+  '/usr/bin', '/usr/sbin', '/bin', '/sbin',
+  '/System/Cryptexes/App/usr/bin',
+];
+
+## H4 — 자식 프로세스 환경변수 허용 목록 (추정)
+const COMMAND_ENV_KEYS = [
+  'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TMP', 'TEMP',
+  'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'GH_CONFIG_DIR',
+  'GH_HOST', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN',
+];
+→ SystemRoot / USERPROFILE / APPDATA / LOCALAPPDATA / PATHEXT / ComSpec 없음
