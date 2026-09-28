@@ -253,3 +253,18 @@ test('실행 파일 미탐지와 저장소 아님을 구분한다', async () => 
   const notRepo = gitFailureMessage('fatal: not a git repository', 'win32');
   assert.match(notRepo, /git 저장소가 아닙니다/);
 });
+
+/* ------------------ 이슈 #55: SystemRoot·windir 가 없을 때의 기본 경로 */
+
+test('SystemRoot·windir 가 없으면 C:\\Windows 를 기본값으로 쓴다', () => {
+  const policy = executablePolicy('win32', { ProgramFiles: 'C:\\Program Files' });
+  assert.deepEqual(policy.candidates.curl, ['C:\\Windows\\System32\\curl.exe']);
+  assert.deepEqual(policy.commandDirs, [
+    'C:\\Windows\\System32',
+    'C:\\Windows',
+    'C:\\Windows\\System32\\Wbem',
+  ]);
+  for (const dir of policy.commandDirs) {
+    assert.ok(path.win32.isAbsolute(dir), `${dir} 는 드라이브 기준 절대 경로여야 한다`);
+  }
+});

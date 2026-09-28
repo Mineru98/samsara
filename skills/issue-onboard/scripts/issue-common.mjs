@@ -135,7 +135,7 @@ const UNIX_TRUSTED_EXECUTABLE_ROOTS = [
  */
 function windowsExecutablePolicy(env) {
   const win = path.win32;
-  const systemRoot = env.SystemRoot || env.windir || 'C:\Windows';
+  const systemRoot = env.SystemRoot || env.windir || 'C:\\Windows';
   const system32 = win.join(systemRoot, 'System32');
 
   const installBases = [];
