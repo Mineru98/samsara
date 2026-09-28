@@ -12,6 +12,8 @@
 | `tools/issue-ontology/package.json` | `version` | JSON |
 | `tools/issue-ontology/package-lock.json` | `version`, `packages[""].version` (의존성 항목은 제외) | JSON |
 
+`package-lock.json` 은 npm 이 쓰는 형식(2칸 들여쓰기, LF) 그대로 둔다. 형식이 바뀌면 문자열 치환 폴백으로 넘어가는데, 의존성 버전이 프로젝트 버전과 같으면 치환 개수가 어긋나 bump 가 아무것도 바꾸지 않고 멈춘다. 그때는 `npm install --package-lock-only` 로 형식을 되돌린 뒤 다시 실행한다.
+
 목록의 정본은 스크립트의 `VERSION_SOURCES` 상수다. 배포 대상이 늘면 **문서가 아니라 그 상수를 먼저 고친다.**
 
 ## v 접두사 규약

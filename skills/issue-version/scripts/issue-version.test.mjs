@@ -490,7 +490,7 @@ test('폴백 치환 개수가 기대와 다르면 파일을 쓰지 않고 던진
   );
 });
 
-test('current 는 태그와 6개 파일 버전을 함께 보고한다', (t) => {
+test('current 는 태그와 버전 소스 파일 버전을 함께 보고한다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const result = run(root, ['current']);
@@ -516,7 +516,7 @@ test('plan 은 파일을 건드리지 않고 세 단계를 계산한다', (t) =>
 test('태그도 파일 버전도 없으면 단계와 무관하게 v0.1.0 에서 시작한다', (t) => {
   const root = seedRepo({ withTags: false });
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  // VERSION 만 비우면 나머지 7개 매니페스트에 버전이 남아 "버전이 없는" 상태가 아니다.
+  // VERSION 만 비우면 나머지 매니페스트에 버전이 남아 "버전이 없는" 상태가 아니다.
   // 소스 전부에서 버전을 없애야 첫 릴리즈다.
   writeFileSync(path.join(root, 'VERSION'), '\n');
   for (const source of VERSION_SOURCES.filter((entry) => entry.kind === 'json')) {
@@ -567,7 +567,7 @@ test('bump --dry-run 은 아무 파일도 바꾸지 않는다', (t) => {
   assert.deepEqual(state.values, ['0.3.2']);
 });
 
-test('bump 는 6개 파일을 모두 새 버전으로 맞춘다', (t) => {
+test('bump 는 버전 소스 파일을 모두 새 버전으로 맞춘다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const result = run(root, ['bump', 'minor']);
@@ -626,7 +626,7 @@ test('태그가 있어도 파일끼리 버전이 다르면 bump 를 막는다', 
   });
 });
 
-test('set 은 6개 파일을 지정한 값으로 맞춰 불일치에서 빠져나오게 한다', (t) => {
+test('set 은 버전 소스 파일을 지정한 값으로 맞춰 불일치에서 빠져나오게 한다', (t) => {
   const root = seedRepo({ withTags: true });
   t.after(() => rmSync(root, { recursive: true, force: true }));
   writeSourceVersion(root, VERSION_SOURCES[VERSION_SOURCES.length - 1], '9.9.9');
@@ -654,7 +654,7 @@ test('set 은 값이 빈 파일도 채운다 — 고칠 수 있는 상태를 거
   t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, 'VERSION'), '\n');
   // problems 에 "version 값을 찾지 못했다" 가 뜨지만 renderSourceVersion 은 처리할 수 있다.
-  // 이걸 거부하면 사용자에게 6개 파일 손편집만 남는다.
+  // 이걸 거부하면 사용자에게 버전 소스 파일 손편집만 남는다.
   assert.ok(collectVersionState(root).problems.length > 0);
 
   const result = run(root, ['set', '0.3.2']);
