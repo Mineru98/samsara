@@ -2,7 +2,7 @@
   "version": 2,
   "provider": "github",
   "repository": "Mineru98/samsara",
-  "updatedAt": "2026-09-05T09:35:30.619Z",
+  "updatedAt": "2026-09-29T03:39:32.218Z",
   "snapshot": {
     "status": "complete",
     "fetchedAt": "2026-08-31T05:01:20.510Z",
@@ -1533,6 +1533,15 @@
       ],
       "url": "https://github.com/Mineru98/samsara/issues/38"
     },
+    "40": {
+      "number": 40,
+      "title": "Windows에서 issue-onboard의 Git 실행 파일 탐지 지원",
+      "status": "close",
+      "labels": [
+        "bug"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/40"
+    },
     "41": {
       "number": 41,
       "title": "issue-version 스킬 추가 — semver 판정·태그·릴리즈 자동화",
@@ -1568,6 +1577,51 @@
         "documentation"
       ],
       "url": "https://github.com/Mineru98/samsara/issues/47"
+    },
+    "51": {
+      "number": 51,
+      "title": "glm-acp·ZCode 지원 제거",
+      "status": "close",
+      "labels": [
+        "chore"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/51"
+    },
+    "53": {
+      "number": 53,
+      "title": "issue-create 초안 승인에 '등록 없이 진행' 선택지 추가",
+      "status": "close",
+      "labels": [
+        "enhancement"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/53"
+    },
+    "55": {
+      "number": 55,
+      "title": "Windows 실제 환경에서 issue-onboard Git 탐지 실측 검증",
+      "status": "close",
+      "labels": [
+        "enhancement"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/55"
+    },
+    "56": {
+      "number": 56,
+      "title": "check-shared.sh 가 issue-common.mjs 의 Git 탐지 코드 사본 차이를 잡도록 확장",
+      "status": "close",
+      "labels": [
+        "chore"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/56"
+    },
+    "57": {
+      "number": 57,
+      "title": "tools/issue-ontology 에 package-lock.json 추가",
+      "status": "close",
+      "labels": [
+        "chore"
+      ],
+      "url": "https://github.com/Mineru98/samsara/issues/57"
     }
   },
   "edges": [],
