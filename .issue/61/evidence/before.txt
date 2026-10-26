@@ -1,0 +1,19 @@
+$ grep -n "^model:\|^effort:" agents/*.md
+agents/shikamaru-merge-analyst.md:4:model: sonnet
+agents/neji-verifier.md:4:model: haiku
+agents/itachi-merge-critic.md:4:model: opus
+agents/yamato-merge-resolver.md:4:model: opus
+
+$ grep -rn "claude-model=\|(model: " skills
+skills/issue-end/SKILL.md:32:    <agent name="neji-verifier" claude-model="haiku" codex-model="gpt-5.6-luna">
+skills/issue-end/SKILL.md:196:claude  agents/neji-verifier.md   (model: haiku)
+skills/issue-start/SKILL.md:42:    <agent name="neji-verifier" claude-model="haiku" codex-model="gpt-5.6-luna">
+skills/issue-start/SKILL.md:225:claude  agents/neji-verifier.md   (model: haiku)
+skills/issue-merge/SKILL.md:33:    <agent name="shikamaru-merge-analyst" claude-model="haiku" codex-model="gpt-5.6-luna">
+skills/issue-merge/SKILL.md:36:    <agent name="yamato-merge-resolver" claude-model="sonnet" codex-model="gpt-5.6-terra">
+skills/issue-merge/SKILL.md:39:    <agent name="itachi-merge-critic" claude-model="haiku" codex-model="gpt-5.6-luna">
+skills/issue-merge/SKILL.md:151:claude  agents/shikamaru-merge-analyst.md   (model: haiku)
+skills/issue-merge/SKILL.md:152:        agents/yamato-merge-resolver.md     (model: sonnet)
+skills/issue-merge/SKILL.md:153:        agents/itachi-merge-critic.md       (model: haiku)
+skills/issue-create/SKILL.md:36:    <agent name="neji-verifier" claude-model="haiku" codex-model="gpt-5.6-luna">
+skills/issue-create/SKILL.md:153:claude  agents/neji-verifier.md   (model: haiku)
