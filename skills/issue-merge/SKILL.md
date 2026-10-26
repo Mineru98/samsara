@@ -30,13 +30,13 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
   </routing>
 
   <subagents>
-    <agent name="shikamaru-merge-analyst" claude-model="haiku" codex-model="gpt-5.6-luna">
+    <agent name="shikamaru-merge-analyst" claude-model="opus" codex-model="gpt-5.6-luna">
       워크트리 하나씩 분석. 워크트리 개수만큼 병렬로 스폰
     </agent>
-    <agent name="yamato-merge-resolver" claude-model="sonnet" codex-model="gpt-5.6-terra">
+    <agent name="yamato-merge-resolver" claude-model="opus" codex-model="gpt-5.6-terra">
       충돌 헌크를 양쪽 의도를 보존하는 방향으로 해소. 충돌이 있는 워크트리마다 스폰
     </agent>
-    <agent name="itachi-merge-critic" claude-model="haiku" codex-model="gpt-5.6-luna">
+    <agent name="itachi-merge-critic" claude-model="opus" codex-model="gpt-5.6-luna">
       계획의 모호성·검증되지 않은 전제·되돌릴 수 없는 순서를 지적. 해소 결과도 검토
     </agent>
   </subagents>
@@ -148,9 +148,9 @@ skills/issue-merge              # 플러그인 루트 (Claude Code / Codex)
 # 서브에이전트
 
 ```text
-claude  agents/shikamaru-merge-analyst.md   (model: haiku)
-        agents/yamato-merge-resolver.md     (model: sonnet)
-        agents/itachi-merge-critic.md       (model: haiku)
+claude  agents/shikamaru-merge-analyst.md   (model: opus)
+        agents/yamato-merge-resolver.md     (model: opus)
+        agents/itachi-merge-critic.md       (model: opus)
 codex   agents/shikamaru-merge-analyst.toml (model = "gpt-5.6-luna")
         agents/yamato-merge-resolver.toml   (model = "gpt-5.6-terra")
         agents/itachi-merge-critic.toml     (model = "gpt-5.6-luna")

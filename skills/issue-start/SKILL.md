@@ -39,7 +39,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
   </routing>
 
   <subagents>
-    <agent name="neji-verifier" claude-model="haiku" codex-model="gpt-5.6-luna">
+    <agent name="neji-verifier" claude-model="opus" codex-model="gpt-5.6-luna">
       전제 확인 · 작업 성격 판정 · 증거 완결성 점검
     </agent>
   </subagents>
@@ -222,7 +222,7 @@ skills/issue-start              # 플러그인 루트 (Claude Code / Codex)
 판정성 작업은 값싼 모델에 맡긴다. 계열별 모델은 에이전트 정의 파일이 소유한다.
 
 ```text
-claude  agents/neji-verifier.md   (model: haiku)
+claude  agents/neji-verifier.md   (model: opus)
 codex   agents/neji-verifier.toml (model = "gpt-5.6-luna")
 ```
 
