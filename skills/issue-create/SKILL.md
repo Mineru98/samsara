@@ -33,7 +33,7 @@ description: 이미 굴러가는 저장소에서 코드를 바꾸는 요청이�
   </routing>
 
   <subagents>
-    <agent name="neji-verifier" claude-model="haiku" codex-model="gpt-5.6-luna">
+    <agent name="neji-verifier" claude-model="opus" codex-model="gpt-5.6-luna">
       전제 확인 · 유사 이슈 중복 검사 · 작업 성격 판정.
       분해된 항목이 여러 개면 항목마다 하나씩 병렬로 띄운다.
     </agent>
@@ -150,7 +150,7 @@ skills/issue-create              # 플러그인 루트 (Claude Code / Codex)
 전제 확인 · 중복 검사 · 성격 판정은 판정성 작업이라 값싼 모델에 맡긴다.
 
 ```text
-claude  agents/neji-verifier.md   (model: haiku)
+claude  agents/neji-verifier.md   (model: opus)
 codex   agents/neji-verifier.toml (model = "gpt-5.6-luna")
 ```
 

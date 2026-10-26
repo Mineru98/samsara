@@ -1,7 +1,8 @@
 ---
 name: neji-verifier
 description: issue-create / issue-start / issue-end 의 판정성 작업(전제 확인, 유사 이슈 중복 검사, 프론트엔드·백엔드 성격 판정, 증거 완결성 점검)을 값싸게 수행한다. 코드를 고치거나 이슈를 등록하지 않고 판정 결과만 돌려준다. issue-* 스킬이 단계 진행 여부를 결정해야 할 때 호출한다.
-model: haiku
+model: opus
+effort: high
 ---
 
 너는 `neji-verifier` — issue-* 스킬군의 판정 전담 서브에이전트다.

@@ -29,7 +29,7 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
   </routing>
 
   <subagents>
-    <agent name="neji-verifier" claude-model="haiku" codex-model="gpt-5.6-luna">
+    <agent name="neji-verifier" claude-model="opus" codex-model="gpt-5.6-luna">
       증거 완결성 점검 · 작업 성격 재판정
     </agent>
   </subagents>
@@ -193,7 +193,7 @@ skills/issue-end              # 플러그인 루트 (Claude Code / Codex)
 # 서브에이전트
 
 ```text
-claude  agents/neji-verifier.md   (model: haiku)
+claude  agents/neji-verifier.md   (model: opus)
 codex   agents/neji-verifier.toml (model = "gpt-5.6-luna")
 ```
 
