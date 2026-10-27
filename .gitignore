@@ -358,3 +358,6 @@ __marimo__/
 
 # board-mockup 검증 스크린샷 (재생성 가능, 비추적)
 design/assets/shots/
+
+# samsara runtime build output
+/runtime/bin/
