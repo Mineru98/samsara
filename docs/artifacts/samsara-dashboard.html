@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>삼사라 대시보드</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0d1117}
+a{color:#7ab8ff}a:hover{color:#a9d1ff}
+.dash{font-family:'IBM Plex Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo',sans-serif;color:#e6ebf2;font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.dash button,.dash select,.dash input{font-family:inherit;color:inherit}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clamp2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.hov:hover{background:#1c2430 !important}
+.node:hover{background:#1a222d !important}
+.dash :focus-visible{outline:2px solid #e6ebf2;outline-offset:2px}
+.dots{background-color:#0f141b;background-image:radial-gradient(#1e2733 1px,transparent 1px);background-size:22px 22px}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:780px}
+.tbl th{text-align:left;font-weight:600;color:#9aa7b8;padding:7px 12px;border-bottom:1px solid #222b37;white-space:nowrap;position:sticky;top:0;background:#0f141b}
+.tbl td{padding:7px 12px;border-bottom:1px solid #1a212b;vertical-align:top}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.pulse{animation:none}}
+@media (max-width: 900px){.side{flex-basis:100% !important;border-right:0 !important;border-bottom:1px solid #222b37}.side-list{max-height:240px;overflow:auto}}
+</style>
+</helmet>
+<div class="dash" style="min-height: 100vh; background: #0d1117; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; min-height: 48px; box-sizing: border-box; border-bottom: 1px solid #222b37; background: #0a0e13">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f0b24a" style="stroke-width: 1.6; stroke-linecap: round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="2.5"></circle><path d="M12 3v6.5M12 14.5V21M3 12h6.5M14.5 12H21M5.6 5.6l4.6 4.6M13.8 13.8l4.6 4.6M18.4 5.6l-4.6 4.6M10.2 13.8l-4.6 4.6"></path></svg>
+    <span style="font-weight: 700; font-size: 16px; letter-spacing: 0.02em">삼사라</span>
+    <span class="mono" style="font-size: 11px; color: #8592a5">runtime 0.4 · 로컬 단일 호스트</span>
+  </div>
+  <div role="status" style="display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid #2a3441; background: #121821; font-size: 12px">
+    <span class="{{conn.dotClass}}" style="width: 8px; height: 8px; border-radius: 50%; background: {{conn.dot}}"></span>
+    <span>{{conn.text}}</span>
+  </div>
+  <label style="flex: 1 1 220px; max-width: 420px; margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 0 10px; height: 32px; border-radius: 8px; border: 1px solid #2a3441; background: #121821">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8592a5" style="stroke-width: 2; stroke-linecap: round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+    <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">전체 검색</span>
+    <input type="search" placeholder="이슈·브랜치·PR·세션 검색" style="flex: 1; min-width: 0; border: 0; background: transparent; font-size: 12.5px; outline: none">
+  </label>
+  <button type="button" class="hov" aria-label="런타임 진단과 설정" style="width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; border: 1px solid #2a3441; background: #121821; cursor: pointer">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c3ccd8" style="stroke-width: 1.8; stroke-linecap: round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"></path></svg>
+  </button>
+</header>
+
+<sc-if value="{{banner.show}}" hint-placeholder-val="{{false}}">
+  <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 16px; background: {{banner.bg}}; border-bottom: 1px solid {{banner.bd}}; font-size: 12.5px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{banner.fg}}" style="stroke-width: 2; stroke-linecap: round; flex: 0 0 auto; margin-top: 1px" aria-hidden="true"><path d="M12 3l9.5 17h-19z"></path><path d="M12 10v4M12 17.5v.5"></path></svg>
+    <span><strong style="color: {{banner.fg}}">{{banner.title}}</strong> {{banner.text}}</span>
+  </div>
+</sc-if>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 auto; min-height: 0">
+
+  <nav class="side" aria-label="프로젝트 목록" style="flex: 0 0 248px; box-sizing: border-box; border-right: 1px solid #222b37; background: #0f141b; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-size: 13px; font-weight: 600">프로젝트</h2>
+      <span style="font-size: 11.5px; color: #8592a5">{{projCount}}</span>
+    </div>
+    <label style="display: flex; flex-direction: column; gap: 4px">
+      <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">이름·경로·저장소로 프로젝트 검색</span>
+      <input type="search" value="{{q}}" onChange="{{onSearch}}" placeholder="이름·경로·저장소 검색" style="height: 32px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; border: 1px solid #2a3441; background: #121821; font-size: 12.5px">
+    </label>
+    <div role="group" aria-label="프로젝트 필터" style="display: flex; flex-wrap: wrap; gap: 4px">
+      <sc-for list="{{pfilters}}" as="f" hint-placeholder-count="5">
+        <button type="button" class="hov" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="height: 26px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; cursor: pointer; {{f.css}}">{{f.label}} <span style="opacity: 0.7">{{f.count}}</span></button>
+      </sc-for>
+    </div>
+    <div class="side-list" style="display: flex; flex-direction: column; gap: 4px">
+      <sc-for list="{{projects}}" as="p" hint-placeholder-count="6">
+        <button type="button" class="hov" aria-current="{{p.current}}" onClick="{{p.pick}}" style="text-align: left; width: 100%; padding: 9px 10px; border-radius: 9px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; {{p.css}}">
+          <span style="display: flex; align-items: center; gap: 6px; width: 100%">
+            <sc-if value="{{p.pinned}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f0b24a" aria-label="고정됨" role="img"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z"></path></svg></sc-if>
+            <span class="ell" style="font-weight: 600; font-size: 13px; flex: 1 1 auto; min-width: 0">{{p.name}}</span>
+            <span style="font-size: 10.5px; padding: 1px 6px; border-radius: 999px; white-space: nowrap; {{p.actCss}}">{{p.actLabel}}</span>
+          </span>
+          <span class="mono ell" style="font-size: 10.5px; color: #8592a5; width: 100%">{{p.path}}</span>
+          <span style="display: flex; justify-content: space-between; gap: 6px; width: 100%; font-size: 11.5px">
+            <span class="ell" style="color: {{p.statColor}}">{{p.stats}}</span>
+            <span style="color: #8592a5; white-space: nowrap">{{p.last}}</span>
+          </span>
+        </button>
+      </sc-for>
+      <sc-if value="{{noProjects}}" hint-placeholder-val="{{false}}">
+        <p style="margin: 8px 2px; font-size: 12px; color: #9aa7b8">검색 결과가 없습니다. 등록된 프로젝트 6개 중 일치하는 항목이 없어요.</p>
+      </sc-if>
+    </div>
+    <p style="margin: auto 2px 0; padding-top: 8px; font-size: 11px; color: #8592a5; line-height: 1.5">목록은 런타임 프로젝트 카탈로그 기준입니다. 열람만으로 프로젝트를 활성화하거나 daemon을 다시 띄우지 않습니다.</p>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+  <sc-if value="{{isMain}}" hint-placeholder-val="{{true}}">
+    <section aria-label="프로젝트 요약" style="padding: 14px 20px 14px; border-bottom: 1px solid #222b37; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start">
+        <div style="min-width: 0">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+            <h1 style="margin: 0; font-size: 19px; font-weight: 700">samsara</h1>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; color: #6fdc9f; background: rgba(95,211,150,.12); border: 1px solid rgba(95,211,150,.35)">사용 중 · ENABLED</span>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; color: #aab4c3; border: 1px solid #2f3a48">경로 확인됨</span>
+          </div>
+          <div class="mono" style="font-size: 11px; color: #8592a5; margin-top: 3px">~/work/samsara · github.com/mineru98/samsara</div>
+        </div>
+        <div style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9aa7b8">Run
+            <select value="{{runSel}}" onChange="{{onRun}}" style="height: 30px; padding: 0 8px; border-radius: 7px; border: 1px solid #2a3441; background: #121821; font-size: 12.5px">
+              <option value="r14">#14 · ACTIVE (현재)</option>
+              <option value="r13">#13 · COMPLETED · 10/25</option>
+              <option value="r12">#12 · FAILED · 10/22</option>
+            </select>
+          </label>
+          <span class="mono" style="font-size: 11.5px; padding: 5px 9px; border-radius: 7px; border: 1px solid #2a3441; background: #121821">대상 main @ 7c1e2a9</span>
+          <span style="font-size: 11.5px; padding: 5px 9px; border-radius: 7px; border: 1px solid #2a3441; background: #121821; color: #c3ccd8">신규 Backend 자동 선택: herdr → tmux → Standalone</span>
+        </div>
+      </div>
+
+      <sc-if value="{{isCurrentRun}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 11.5px; color: #8592a5">
+            <span>범위: 현재 Run #14 · run_generation 3 · 이슈 11개</span>
+            <span>수치를 누르면 그래프를 해당 기준으로 강조합니다. 진행률을 하나의 백분율로 합치지 않습니다.</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px">
+            <sc-for list="{{metrics}}" as="m" hint-placeholder-count="6">
+              <button type="button" class="hov" aria-pressed="{{m.pressed}}" onClick="{{m.pick}}" style="text-align: left; padding: 9px 12px; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; {{m.css}}">
+                <span style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #aab4c3"><span style="width: 8px; height: 8px; border-radius: 2px; background: {{m.color}}; {{m.dotCss}}"></span>{{m.label}}</span>
+                <span style="font-size: 22px; font-weight: 700; line-height: 1.2">{{m.value}}<span style="font-size: 12px; font-weight: 500; color: #8592a5">{{m.suffix}}</span></span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <sc-if value="{{isCurrentRun}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-wrap: wrap; min-height: 0">
+
+        <section aria-label="작업 그래프" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid #222b37">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; min-height: 44px; box-sizing: border-box; border-bottom: 1px solid #1c232d">
+            <div role="group" aria-label="보기 방식" style="display: flex; padding: 2px; border-radius: 8px; border: 1px solid #2a3441; background: #121821">
+              <button type="button" aria-pressed="{{viewIssue.pressed}}" onClick="{{viewIssue.pick}}" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 0; cursor: pointer; font-size: 12px; {{viewIssue.css}}">이슈 DAG</button>
+              <button type="button" aria-pressed="{{viewWt.pressed}}" onClick="{{viewWt.pick}}" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 0; cursor: pointer; font-size: 12px; {{viewWt.css}}">Worktree 묶음</button>
+            </div>
+            <sc-if value="{{metricChip.show}}" hint-placeholder-val="{{false}}">
+              <button type="button" class="hov" onClick="{{metricChip.clear}}" aria-label="강조 필터 해제" style="height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid #3a4656; background: #18202a; cursor: pointer; font-size: 12px">강조: {{metricChip.label}} ✕</button>
+            </sc-if>
+            <span style="flex: 1 1 auto"></span>
+            <sc-if value="{{isIssueView}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; align-items: center; gap: 4px">
+                <button type="button" class="hov" aria-label="축소" onClick="{{zoomOut}}" style="width: 30px; height: 28px; border-radius: 6px; border: 1px solid #2a3441; background: #121821; cursor: pointer; font-size: 15px">−</button>
+                <span class="mono" style="min-width: 44px; text-align: center; font-size: 11.5px; color: #aab4c3">{{zoomLabel}}</span>
+                <button type="button" class="hov" aria-label="확대" onClick="{{zoomIn}}" style="width: 30px; height: 28px; border-radius: 6px; border: 1px solid #2a3441; background: #121821; cursor: pointer; font-size: 15px">+</button>
+                <button type="button" class="hov" onClick="{{zoomFit}}" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #2a3441; background: #121821; cursor: pointer; font-size: 12px">전체 보기</button>
+              </div>
+            </sc-if>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 6px 14px; font-size: 11px; color: #9aa7b8; border-bottom: 1px solid #1c232d">
+            <span style="display: inline-flex; align-items: center; gap: 5px"><svg width="22" height="6" aria-hidden="true"><path d="M0 3h22" style="stroke: #5b6a7e; stroke-width: 1.5"></path></svg>조건 충족</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px"><svg width="22" height="6" aria-hidden="true"><path d="M0 3h22" style="stroke: #e07b39; stroke-width: 1.5; stroke-dasharray: 4 3"></path></svg>미충족</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px"><svg width="22" height="6" aria-hidden="true"><path d="M0 3h22" style="stroke: #e6ebf2; stroke-width: 2"></path></svg>선택 경로</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px"><span style="width: 10px; height: 10px; transform: rotate(45deg); border: 1px solid #8592a5"></span>통합 게이트 (조건 집계)</span>
+            <span style="margin-left: auto">화살표는 선행 → 후속 · 가로 위치는 의존 단계이며 시간축이 아닙니다</span>
+          </div>
+
+          <sc-if value="{{isIssueView}}" hint-placeholder-val="{{true}}">
+            <div class="dots" style="height: 540px; overflow: auto; position: relative">
+              <div style="position: relative; width: {{graph.ow}}px; height: {{graph.oh}}px">
+                <div style="position: absolute; left: 0; top: 0; width: 2048px; height: 764px; transform-origin: 0 0; transform: scale({{zoom}})">
+                  <svg width="2048" height="764" viewBox="0 0 2048 764" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+                    <path d="{{edges.met}}" style="fill: none; stroke: #4a586b; stroke-width: 1.5"></path>
+                    <path d="{{edges.metA}}" style="fill: none; stroke: #4a586b; stroke-width: 1.5; stroke-linejoin: round"></path>
+                    <path d="{{edges.un}}" style="fill: none; stroke: #e07b39; stroke-width: 1.5; stroke-dasharray: 6 5"></path>
+                    <path d="{{edges.unA}}" style="fill: none; stroke: #e07b39; stroke-width: 1.5; stroke-linejoin: round"></path>
+                    <path d="{{edges.hi}}" style="fill: none; stroke: #e6ebf2; stroke-width: 2.2"></path>
+                    <path d="{{edges.hiUn}}" style="fill: none; stroke: #ff9a52; stroke-width: 2.2; stroke-dasharray: 6 5"></path>
+                    <path d="{{edges.hiA}}" style="fill: none; stroke: #e6ebf2; stroke-width: 2.2; stroke-linejoin: round"></path>
+                  </svg>
+                  <sc-for list="{{edgeLabels}}" as="l" hint-placeholder-count="0">
+                    <span style="position: absolute; transform: translate(-50%, -50%); padding: 2px 7px; border-radius: 999px; font-size: 11px; white-space: nowrap; background: #0d1117; border: 1px solid #3a4656; {{l.css}}">{{l.text}}</span>
+                  </sc-for>
+                  <sc-for list="{{gates}}" as="g" hint-placeholder-count="2">
+                    <button type="button" class="node" aria-pressed="{{g.pressed}}" aria-label="{{g.aria}}" onClick="{{g.pick}}" style="position: absolute; width: 168px; height: 72px; box-sizing: border-box; padding: 8px 10px; border-radius: 12px; background: #121821; cursor: pointer; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 2px; {{g.css}}">
+                      <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9aa7b8"><span style="width: 9px; height: 9px; transform: rotate(45deg); border: 1.5px solid #e07b39"></span>게이트 → {{g.target}}</span>
+                      <span style="font-size: 13px; font-weight: 600; color: #ff9a52">{{g.progress}}</span>
+                      <span style="font-size: 11px; color: #9aa7b8">{{g.req}}</span>
+                    </button>
+                  </sc-for>
+                  <sc-for list="{{nodes}}" as="n" hint-placeholder-count="11">
+                    <button type="button" class="node" aria-pressed="{{n.pressed}}" aria-label="{{n.aria}}" onClick="{{n.pick}}" style="position: absolute; width: 240px; height: 124px; box-sizing: border-box; padding: 9px 11px; border-radius: 12px; background: #151b24; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 5px; {{n.css}}">
+                      <span style="display: flex; gap: 6px; align-items: flex-start; width: 100%">
+                        <span class="mono" style="font-size: 11px; color: #f2b957; padding-top: 1px">{{n.num}}</span>
+                        <span class="clamp2" style="font-size: 12.5px; font-weight: 600; line-height: 1.35; min-height: 34px">{{n.title}}</span>
+                      </span>
+                      <span style="display: flex; gap: 4px; flex-wrap: nowrap; overflow: hidden">
+                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; {{n.badgeCss}}">
+                          <sc-if value="{{n.icRun}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg></sc-if>
+                          <sc-if value="{{n.icUser}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.4" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg></sc-if>
+                          <sc-if value="{{n.icTerm}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.4; stroke-linecap: round" aria-hidden="true"><path d="M4 6l6 6-6 6M12 19h8"></path></svg></sc-if>
+                          <sc-if value="{{n.icLock}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.4" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+                          <sc-if value="{{n.icQueue}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.4; stroke-linecap: round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg></sc-if>
+                          <sc-if value="{{n.icCheck}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.8; stroke-linecap: round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"></path></svg></sc-if>
+                          <sc-if value="{{n.icAlert}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.4; stroke-linecap: round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"></path><path d="M12 10v4M12 17v.5"></path></svg></sc-if>
+                          <sc-if value="{{n.icUnknown}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width: 2.4; stroke-linecap: round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17v.5"></path></svg></sc-if>
+                          {{n.label}}
+                        </span>
+                        <sc-for list="{{n.subs}}" as="b" hint-placeholder-count="1">
+                          <span style="padding: 1px 6px; border-radius: 6px; font-size: 10.5px; color: #aab4c3; border: 1px solid #2f3a48; white-space: nowrap">{{b}}</span>
+                        </sc-for>
+                      </span>
+                      <span class="mono ell" style="font-size: 10.5px; color: #8592a5">{{n.wt}}</span>
+                      <span class="ell" style="font-size: 11px; color: {{n.footColor}}">{{n.foot}}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isWtView}}" hint-placeholder-val="{{false}}">
+            <div style="height: 540px; overflow: auto; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; background: #0f141b">
+              <p style="margin: 0 2px 4px; font-size: 11.5px; color: #9aa7b8">같은 이슈 데이터를 Worktree별 레인으로 묶은 보기입니다. 묶음은 의존성을 바꾸지 않으며, 레인 사이 연결은 개수와 대상으로 표시합니다.</p>
+              <sc-for list="{{lanes}}" as="w" hint-placeholder-count="10">
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; padding: 10px; border-radius: 10px; border: 1px solid #222b37; background: #131922">
+                  <div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+                    <span class="mono ell" style="font-size: 12px; font-weight: 500">{{w.path}}</span>
+                    <span class="mono ell" style="font-size: 11px; color: #8592a5">{{w.branch}}</span>
+                    <span style="display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px">
+                      <span style="padding: 1px 7px; border-radius: 999px; {{w.stateCss}}">{{w.state}}</span>
+                      <span style="color: #9aa7b8">{{w.session}}</span>
+                    </span>
+                  </div>
+                  <div style="flex: 999 1 320px; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+                    <sc-for list="{{w.items}}" as="n" hint-placeholder-count="1">
+                      <button type="button" class="node" aria-pressed="{{n.pressed}}" onClick="{{n.pick}}" style="display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 8px 10px; border-radius: 10px; background: #151b24; cursor: pointer; min-width: 220px; max-width: 320px; {{n.css2}}">
+                        <span class="ell" style="font-size: 12.5px; font-weight: 600"><span class="mono" style="color: #f2b957; font-weight: 400">{{n.num}}</span> {{n.title}}</span>
+                        <span style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap">
+                          <span style="padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; {{n.badgeCss}}">{{n.label}}</span>
+                          <span style="font-size: 11px; color: #9aa7b8">{{n.bound}}</span>
+                        </span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+
+        <aside aria-label="상세 패널" style="flex: 1 1 340px; max-width: 480px; min-width: 0; box-sizing: border-box; max-height: 628px; overflow: auto; background: #10151c">
+
+          <sc-if value="{{insp.isIssue}}" hint-placeholder-val="{{false}}">
+            <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 14px">
+              <div style="display: flex; gap: 8px; align-items: flex-start">
+                <div style="flex: 1 1 auto; min-width: 0">
+                  <div class="mono" style="font-size: 11.5px; color: #f2b957">{{insp.i.num}} · issue_{{insp.i.key}}</div>
+                  <h2 style="margin: 2px 0 6px; font-size: 15px; font-weight: 700; line-height: 1.35">{{insp.i.title}}</h2>
+                  <span style="display: inline-flex; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; {{insp.i.badgeCss}}">{{insp.i.label}}</span>
+                </div>
+                <button type="button" class="hov" onClick="{{clearSel}}" style="flex: 0 0 auto; height: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid #2a3441; background: #121821; cursor: pointer; font-size: 11.5px">통합 대기열 보기</button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 5px 10px; font-size: 12px; padding: 10px 12px; border-radius: 10px; background: #151b24; border: 1px solid #222b37">
+                <sc-for list="{{insp.d.axes}}" as="a" hint-placeholder-count="3">
+                  <span style="color: #9aa7b8">{{a.k}}</span><span>{{a.v}}</span>
+                </sc-for>
+              </div>
+
+              <div style="padding: 10px 12px; border-radius: 10px; border: 1px solid #3a4656; background: #141c26; display: flex; flex-direction: column; gap: 8px">
+                <span style="font-size: 11px; font-weight: 600; color: #9aa7b8; letter-spacing: 0.03em">다음 조치</span>
+                <span style="font-size: 12.5px">{{insp.d.next}}</span>
+                <sc-if value="{{insp.op.show}}" hint-placeholder-val="{{false}}">
+                  <span role="status" style="display: flex; gap: 6px; align-items: flex-start; font-size: 11.5px; padding: 7px 9px; border-radius: 8px; {{insp.op.css}}"><span class="{{insp.op.dotClass}}" style="flex: 0 0 auto; margin-top: 5px; width: 7px; height: 7px; border-radius: 50%; background: currentColor"></span><span>{{insp.op.text}}</span></span>
+                </sc-if>
+                <sc-if value="{{insp.hasActions}}" hint-placeholder-val="{{false}}">
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                    <sc-for list="{{insp.actions}}" as="a" hint-placeholder-count="1">
+                      <button type="button" disabled="{{a.disabled}}" onClick="{{a.run}}" style="min-height: 34px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 600; {{a.css}}">{{a.label}}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{insp.lockReason.show}}" hint-placeholder-val="{{false}}">
+                  <span style="font-size: 11px; color: #f5c066">{{insp.lockReason.text}}</span>
+                </sc-if>
+                <sc-if value="{{insp.queueLink}}" hint-placeholder-val="{{false}}">
+                  <button type="button" onClick="{{insp.goQueue}}" style="align-self: flex-start; padding: 0; border: 0; background: none; color: #7ab8ff; cursor: pointer; font-size: 12px; text-decoration: underline">통합 대기열에서 위치 보기</button>
+                </sc-if>
+              </div>
+
+              <sc-if value="{{insp.hasWhy}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: #c3ccd8">왜 대기하는가 · {{insp.whyCount}}</h3>
+                  <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px">
+                    <sc-for list="{{insp.d.why}}" as="y" hint-placeholder-count="2">
+                      <li style="display: flex; gap: 7px; font-size: 12px"><span style="flex: 0 0 auto; margin-top: 6px; width: 6px; height: 6px; border-radius: 1px; background: #e07b39"></span><span>{{y}}</span></li>
+                    </sc-for>
+                  </ul>
+                </div>
+              </sc-if>
+
+              <sc-for list="{{insp.sections}}" as="sec" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: #c3ccd8">{{sec.title}}</h3>
+                  <div style="display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 10px; font-size: 12px">
+                    <sc-for list="{{sec.rows}}" as="r" hint-placeholder-count="3">
+                      <span style="color: #9aa7b8">{{r.k}}</span><span class="mono" style="font-size: 11.5px; word-break: break-all">{{r.v}}</span>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: #c3ccd8">기록</h3>
+                <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; border-left: 1px solid #2a3441; padding-left: 10px">
+                  <sc-for list="{{insp.d.hist}}" as="h" hint-placeholder-count="3">
+                    <li style="font-size: 12px"><span class="mono" style="color: #8592a5; font-size: 11px">{{h.t}}</span> {{h.v}}</li>
+                  </sc-for>
+                </ol>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{insp.isGate}}" hint-placeholder-val="{{false}}">
+            <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 14px">
+              <div style="display: flex; gap: 8px; align-items: flex-start">
+                <div style="flex: 1 1 auto; min-width: 0">
+                  <div class="mono" style="font-size: 11.5px; color: #9aa7b8">{{insp.g.gid}} · 구성 버전 v{{insp.g.mv}}</div>
+                  <h2 style="margin: 2px 0 4px; font-size: 15px; font-weight: 700">통합 게이트 → {{insp.g.target}}</h2>
+                  <span style="font-size: 13px; font-weight: 600; color: #ff9a52">{{insp.g.progress}} · {{insp.g.req}}</span>
+                </div>
+                <button type="button" class="hov" onClick="{{clearSel}}" style="flex: 0 0 auto; height: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid #2a3441; background: #121821; cursor: pointer; font-size: 11.5px">통합 대기열 보기</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: #c3ccd8">조건 (모두 충족해야 통과)</h3>
+                <sc-for list="{{insp.g.members}}" as="c" hint-placeholder-count="3">
+                  <button type="button" class="hov" onClick="{{c.pick}}" style="display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 8px 10px; border-radius: 9px; border: 1px solid #222b37; background: #151b24; cursor: pointer">
+                    <span style="flex: 0 0 auto; margin-top: 2px; width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #e07b39"></span>
+                    <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+                      <span style="font-size: 12.5px; font-weight: 600"><span class="mono" style="color: #f2b957; font-weight: 400">{{c.num}}</span> {{c.title}}</span>
+                      <span style="font-size: 11.5px; color: #9aa7b8">필요: {{c.need}} · 현재: {{c.now}}</span>
+                    </span>
+                  </button>
+                </sc-for>
+              </div>
+              <div style="padding: 10px 12px; border-radius: 10px; background: #151b24; border: 1px solid #222b37; font-size: 12px; display: flex; flex-direction: column; gap: 6px">
+                <span>조건이 모두 충족되어도 {{insp.g.target}} 시작 여부는 런타임이 backend·lease·native permission·자원 한도를 다시 확인해 결정합니다.</span>
+                <span style="color: #9aa7b8">게이트는 dependency edge 집합의 화면 투영입니다. 별도 작업이나 Lease를 만들지 않으며, 구성이 바뀌면 이전 통과 결과를 재사용하지 않습니다.</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{insp.isQueue}}" hint-placeholder-val="{{true}}">
+            <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+              <div>
+                <h2 style="margin: 0; font-size: 15px; font-weight: 700">통합 대기열</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 11.5px">
+                  <span class="mono" style="padding: 2px 8px; border-radius: 6px; border: 1px solid #2a3441">samsara · refs/heads/main</span>
+                  <span style="padding: 2px 8px; border-radius: 6px; border: 1px solid #2a3441; color: #c3ccd8">로컬 통합 · 단일 통합 권한</span>
+                  <span style="padding: 2px 8px; border-radius: 6px; border: 1px solid #2a3441; color: #c3ccd8">자동 통합 꺼짐</span>
+                </div>
+              </div>
+              <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+                <sc-for list="{{queue}}" as="q" hint-placeholder-count="3">
+                  <li>
+                    <button type="button" class="hov" onClick="{{q.pick}}" style="width: 100%; text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: #151b24; cursor: pointer; {{q.css}}">
+                      <span style="display: flex; align-items: center; gap: 8px; width: 100%">
+                        <span class="mono" style="flex: 0 0 auto; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: #1f2834; font-size: 11.5px">{{q.pos}}</span>
+                        <span class="ell" style="flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600"><span class="mono" style="color: #f2b957; font-weight: 400">{{q.num}}</span> {{q.title}}</span>
+                        <span style="flex: 0 0 auto; padding: 1px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 600; {{q.stCss}}">{{q.st}}</span>
+                      </span>
+                      <span class="mono" style="font-size: 11px; color: #9aa7b8">소스 {{q.src}} · 검증 기준 {{q.base}}</span>
+                      <span style="display: flex; flex-wrap: wrap; gap: 4px">
+                        <sc-for list="{{q.conds}}" as="c" hint-placeholder-count="4">
+                          <span style="padding: 1px 6px; border-radius: 5px; font-size: 10.5px; white-space: nowrap; {{c.css}}">{{c.mark}} {{c.t}}</span>
+                        </sc-for>
+                      </span>
+                      <span style="font-size: 11.5px; color: {{q.validColor}}">{{q.valid}}</span>
+                      <span style="font-size: 11.5px; color: #c3ccd8">다음: {{q.next}}</span>
+                    </button>
+                  </li>
+                </sc-for>
+              </ol>
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <h3 style="margin: 0; font-size: 12px; font-weight: 600; color: #c3ccd8">순서 미정</h3>
+                <sc-for list="{{queueWaiting}}" as="q" hint-placeholder-count="1">
+                  <button type="button" class="hov" onClick="{{q.pick}}" style="text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 8px 12px; border-radius: 10px; border: 1px dashed #3a4656; background: transparent; cursor: pointer">
+                    <span style="font-size: 12.5px; font-weight: 600"><span class="mono" style="color: #f2b957; font-weight: 400">{{q.num}}</span> {{q.title}}</span>
+                    <span style="font-size: 11.5px; color: #9aa7b8">{{q.st}} · {{q.next}}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <p style="margin: 0; font-size: 11px; color: #8592a5; line-height: 1.55">순서와 적격 여부는 서버가 계산합니다. 화면에서 순서를 다시 매기거나 강제 통합·보호 규칙 우회를 제공하지 않습니다. 충돌 없음과 테스트·승인 통과는 별개로 표시합니다.</p>
+            </div>
+          </sc-if>
+        </aside>
+      </div>
+
+      <section aria-label="세션·이벤트·이력" style="border-top: 1px solid #222b37; background: #0f141b">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 12px; border-bottom: 1px solid #1c232d">
+          <div role="tablist" aria-label="하단 패널" style="display: flex; flex-wrap: wrap; gap: 2px">
+            <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+              <button type="button" role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 7px; cursor: pointer; font-size: 12px; {{t.css}}">{{t.label}} <span style="opacity: 0.65">{{t.count}}</span></button>
+            </sc-for>
+          </div>
+          <span style="flex: 1 1 auto"></span>
+          <button type="button" class="hov" aria-expanded="{{bottom.expanded}}" onClick="{{bottom.toggle}}" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #2a3441; background: #121821; cursor: pointer; font-size: 11.5px">{{bottom.label}}</button>
+        </div>
+        <sc-if value="{{bottom.open}}" hint-placeholder-val="{{true}}">
+          <div role="tabpanel" style="height: 248px; overflow: auto">
+            <sc-if value="{{tabIs.sessions}}" hint-placeholder-val="{{true}}">
+              <table class="tbl">
+                <thead><tr><th>이슈</th><th>Attempt</th><th>Backend</th><th>관찰 상태</th><th>삼사라 실행권</th><th>마지막 활동</th><th>다음 조치</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{sessions}}" as="r" hint-placeholder-count="6">
+                    <tr><td><span class="mono" style="color: #f2b957">{{r.num}}</span></td><td class="mono">{{r.att}}</td><td>{{r.backend}}</td><td style="color: {{r.obsColor}}">{{r.obs}}</td><td>{{r.lease}}</td><td>{{r.last}}</td><td style="color: #c3ccd8">{{r.next}}</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </sc-if>
+            <sc-if value="{{tabIs.events}}" hint-placeholder-val="{{false}}">
+              <table class="tbl">
+                <thead><tr><th>seq</th><th>발생 시각</th><th>기록 시각</th><th>종류</th><th>심각도</th><th>내용</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{events}}" as="e" hint-placeholder-count="8">
+                    <tr><td class="mono" style="color: #8592a5">{{e.seq}}</td><td class="mono">{{e.at}}</td><td class="mono" style="color: #8592a5">{{e.rec}}</td><td class="mono">{{e.kind}}</td><td style="color: {{e.sevColor}}">{{e.sev}}</td><td>{{e.text}}</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </sc-if>
+            <sc-if value="{{tabIs.github}}" hint-placeholder-val="{{false}}">
+              <p style="margin: 8px 12px 0; font-size: 11px; color: #8592a5">GitHub 동기화 14:02:05 · PR 제목·본문은 외부 입력으로 텍스트만 표시합니다.</p>
+              <table class="tbl">
+                <thead><tr><th>종류</th><th>참조</th><th>제목</th><th>삼사라 연결</th><th>상태</th><th>동기화</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{github}}" as="g" hint-placeholder-count="6">
+                    <tr><td>{{g.kind}}</td><td class="mono" style="color: #7ab8ff">{{g.ref}}</td><td>{{g.title}}</td><td class="mono" style="font-size: 11.5px">{{g.link}}</td><td>{{g.state}}</td><td style="color: #8592a5">{{g.sync}}</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </sc-if>
+            <sc-if value="{{tabIs.worktrees}}" hint-placeholder-val="{{false}}">
+              <table class="tbl">
+                <thead><tr><th>경로</th><th>브랜치</th><th>현재 Attempt</th><th>기준 Commit</th><th>변경</th><th>연결 세션</th><th>정리 상태</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{wtRows}}" as="w" hint-placeholder-count="9">
+                    <tr><td class="mono">{{w.path}}</td><td class="mono" style="color: #9aa7b8">{{w.branch}}</td><td class="mono">{{w.att}}</td><td class="mono">{{w.base}}</td><td>{{w.dirty}}</td><td>{{w.session}}</td><td><span style="padding: 1px 7px; border-radius: 999px; {{w.stateCss}}">{{w.state}}</span></td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isPastRun}}" hint-placeholder-val="{{false}}">
+      <section aria-label="과거 Run 결과" style="padding: 18px 20px 28px; display: flex; flex-direction: column; gap: 14px">
+        <div style="padding: 10px 12px; border-radius: 10px; border: 1px solid #3a4656; background: #141c26; font-size: 12.5px">
+          <strong>과거 Run {{past.id}} 기록</strong> · HISTORICAL snapshot입니다. 현재 실행 중인 세션 배지와 실시간 이벤트로 이 기록을 덮어쓰지 않습니다.
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12.5px">
+          <span>상태 <strong style="color: {{past.stateColor}}">{{past.state}}</strong></span>
+          <span>기간 <span class="mono">{{past.period}}</span></span>
+          <span>run_generation <span class="mono">{{past.gen}}</span></span>
+          <span>결과 {{past.summary}}</span>
+        </div>
+        <div style="overflow-x: auto; border: 1px solid #222b37; border-radius: 10px">
+          <table class="tbl">
+            <thead><tr><th>이슈</th><th>제목</th><th>최종 결과</th><th>당시 증거</th></tr></thead>
+            <tbody>
+              <sc-for list="{{past.rows}}" as="r" hint-placeholder-count="4">
+                <tr><td class="mono" style="color: #f2b957">{{r.num}}</td><td>{{r.title}}</td><td><span style="padding: 1px 7px; border-radius: 6px; font-size: 11.5px; font-weight: 600; {{r.css}}">{{r.result}}</span></td><td class="mono" style="font-size: 11.5px">{{r.ev}}</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin: 0; font-size: 11.5px; color: #8592a5">임의 시점의 전체 화면 재현은 제공하지 않습니다. 보관된 Run 결과·이벤트·Commit·PR 연결과 당시 검증 증거만 표시합니다.</p>
+      </section>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{isOther}}" hint-placeholder-val="{{false}}">
+    <section aria-label="프로젝트 개요" style="padding: 18px 20px 28px; display: flex; flex-direction: column; gap: 16px; max-width: 920px">
+      <div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+          <h1 style="margin: 0; font-size: 19px; font-weight: 700">{{op.name}}</h1>
+          <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; {{op.actCss}}">{{op.actLabel}}</span>
+        </div>
+        <div class="mono" style="font-size: 11px; color: #8592a5; margin-top: 3px">{{op.path}}</div>
+      </div>
+      <div style="padding: 12px 14px; border-radius: 10px; border: 1px solid {{op.msgBd}}; background: #141c26; font-size: 12.5px; display: flex; flex-direction: column; gap: 4px">
+        <strong style="color: {{op.msgFg}}">{{op.msgTitle}}</strong>
+        <span>{{op.msg}}</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600">실행 기록</h2>
+        <sc-if value="{{op.hasRuns}}" hint-placeholder-val="{{true}}">
+          <div style="overflow-x: auto; border: 1px solid #222b37; border-radius: 10px">
+            <table class="tbl" style="min-width: 520px">
+              <thead><tr><th>Run</th><th>상태</th><th>기간</th><th>결과</th></tr></thead>
+              <tbody>
+                <sc-for list="{{op.runs}}" as="r" hint-placeholder-count="2">
+                  <tr><td class="mono">{{r.id}}</td><td style="color: {{r.color}}">{{r.state}}</td><td class="mono">{{r.period}}</td><td>{{r.result}}</td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+        <sc-if value="{{op.noRuns}}" hint-placeholder-val="{{false}}">
+          <p style="margin: 0; padding: 14px; border-radius: 10px; border: 1px dashed #3a4656; font-size: 12.5px; color: #9aa7b8">실행 기록이 없습니다. 사용 여부를 정하면 첫 Run 계획을 가져올 수 있습니다.</p>
+        </sc-if>
+      </div>
+      <p style="margin: 0; font-size: 11.5px; color: #8592a5">{{op.note}}</p>
+    </section>
+  </sc-if>
+
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"connection":{"editor":"enum","options":["live","reconnecting","stale"],"default":"live","section":"런타임 연결"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { proj: 'p_samsara', q: '', pf: 'all', run: 'r14', view: 'issue', zoom: 0.8, sel: null, metric: null, tab: 'sessions', bottomOpen: true, ops: {}, qFocus: null, seq: 4826, sec: 2, live: [] };
+    this._timers = [];
+  }
+
+  componentDidMount() {
+    this._iv = setInterval(() => this.tick(), 1000);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this._iv);
+    this._timers.forEach((t) => clearTimeout(t));
+  }
+
+  tick() {
+    if ((this.props.connection ?? 'live') !== 'live') return;
+    const sec = this.state.sec + 1;
+    if (sec < 7) { this.setState({ sec }); return; }
+    const feed = this.data().feed;
+    const seq = this.state.seq + 1;
+    const ev = Object.assign({}, feed[(seq - 4827) % feed.length], { seq: String(seq), at: this.clock(seq), rec: this.clock(seq) });
+    this.setState({ seq, sec: 0, live: [ev].concat(this.state.live).slice(0, 30) });
+  }
+
+  clock(seq) {
+    const t = 14 * 3600 + 2 * 60 + 11 + (seq - 4826) * 7;
+    const p = (x) => String(x).padStart(2, '0');
+    return p(Math.floor(t / 3600)) + ':' + p(Math.floor((t % 3600) / 60)) + ':' + p(t % 60);
+  }
+
+  data() {
+    if (this._d) return this._d;
+    const W = 240, X = [24, 352, 680, 992, 1232, 1544, 1784];
+    const Y = (r) => 24 + r * 148;
+    const kv = (rows) => rows.map((r) => ({ k: r[0], v: r[1] }));
+    const hs = (rows) => rows.map((r) => ({ t: r[0], v: r[1] }));
+    const issues = [
+      { id: 'i101', key: '101', num: '#101', title: '공통 API 계약·JSON Schema 생성', x: X[0], y: Y(1), tone: 'done', icon: 'check', label: '통합 완료', subs: ['검증 통과'], wt: 'wt/101-api-contract', attempt: '시도 1회', backend: 'herdr', act: '어제 18:42', warn: '', cats: ['integrated'], lane: '정리 가능', dirty: '깨끗함', base: 'a41d0c2', session: '종료' },
+      { id: 'i102', key: '102', num: '#102', title: 'SQLite 스키마·migration 001~004', x: X[0], y: 394, tone: 'done', icon: 'check', label: '통합 완료', subs: [], wt: 'wt/102-sqlite-schema', attempt: '시도 2회', backend: 'tmux', act: '어제 21:05', warn: '', cats: ['integrated'], lane: '정리 가능', dirty: '깨끗함', base: 'e5c0b11', session: '종료' },
+      { id: 'i103', key: '103', num: '#103', title: '프로젝트 활성화·로컬 trust 등록', x: X[1], y: Y(0), tone: 'queue', icon: 'queue', label: '통합 준비 · 대기열 1번', subs: ['검증 통과'], wt: 'wt/103-activation-trust', attempt: '시도 1회', backend: 'tmux', act: '2분 전', warn: '', cats: ['implemented'], lane: '보존 중', dirty: '깨끗함', base: '7c1e2a9', session: '종료' },
+      { id: 'i104', key: '104', num: '#104', title: 'Fake backend lease·fencing 정책', x: X[1], y: Y(1), tone: 'run', icon: 'run', label: '실행 중', subs: ['실행권 유효'], wt: 'wt/104-fake-backend', attempt: '시도 1회', backend: 'herdr', act: '12초 전', warn: '', cats: ['running'], lane: '사용 중', dirty: '변경 있음', base: '3fa90d1', session: 'herdr · ses_91be' },
+      { id: 'i105', key: '105', num: '#105', title: 'Snapshot·영속 SSE replay', x: X[1], y: Y(2), tone: 'approval', icon: 'user', label: '결과 승인 대기', subs: ['구현 완료'], wt: 'wt/105-snapshot-sse', attempt: '시도 2회', backend: 'herdr', act: '방금', warn: '삼사라 결과 승인 필요', cats: ['approval', 'implemented'], lane: '보존 중', dirty: '깨끗함', base: '3fa90d1', session: '종료' },
+      { id: 'i106', key: '106', num: '#106', title: 'herdr Socket adapter·관찰 연결', x: X[1], y: Y(3), tone: 'native', icon: 'term', label: 'Claude 권한 요청', subs: ['실행권 유효'], wt: 'wt/106-herdr-adapter', attempt: '시도 1회', backend: 'herdr', act: '41초 전', warn: 'Bash 권한 응답 대기 · 터미널에서 처리', cats: ['running'], lane: '사용 중', dirty: '변경 있음', base: '3fa90d1', session: 'herdr · ses_b2e7' },
+      { id: 'i107', key: '107', num: '#107', title: 'tmux adapter·capability probe', x: X[1], y: Y(4), tone: 'unknown', icon: 'unknown', label: '관찰 불가', subs: ['시도 실행 중'], wt: 'wt/107-tmux-adapter', attempt: '시도 1회', backend: 'tmux', act: '4분 전 관찰', warn: 'UNKNOWN · 종료로 판정하지 않음', cats: ['unknown'], lane: '정리 보류', dirty: '확인 불가', base: '3fa90d1', session: 'tmux · ses_5a03 (UNKNOWN)' },
+      { id: 'i108', key: '108', num: '#108', title: '통합 컨트롤러·브랜치 원자적 갱신', x: X[2], y: Y(3), tone: 'stale', icon: 'alert', label: '최신 기준 재검증 필요', subs: [], wt: 'wt/108-integration-ctl', attempt: '시도 1회', backend: 'herdr', act: '7분 전', warn: '기준 3fa90d1 → 7c1e2a9 변경', cats: ['implemented'], lane: '보존 중', dirty: '깨끗함', base: '3fa90d1', session: '종료' },
+      { id: 'i111', key: '111', num: '#111', title: 'GitHub 이슈·PR·commit 이력 동기화', x: X[2], y: Y(4), tone: 'fail', icon: 'alert', label: '충돌 · 해결 필요', subs: ['검증 통과'], wt: 'wt/111-github-history', attempt: '시도 1회', backend: 'Standalone', act: '21분 전', warn: 'internal/history/sync.go 충돌', cats: ['implemented'], lane: '보존 중', dirty: '깨끗함', base: '7c1e2a9', session: '종료' },
+      { id: 'i109', key: '109', num: '#109', title: '읽기 전용 React 대시보드', x: X[4], y: Y(1), tone: 'dep', icon: 'lock', label: '의존성 대기', subs: ['미할당'], wt: 'Worktree 미할당', attempt: '시작 전', backend: '할당 시 결정', act: '', warn: '게이트: 선행 결과 0/3 통합', cats: ['dependency'], lane: '', dirty: '', base: '', session: '' },
+      { id: 'i110', key: '110', num: '#110', title: '승인·중단·통합 제어 UI', x: X[6], y: Y(2), tone: 'dep', icon: 'lock', label: '의존성 대기', subs: ['미할당'], wt: 'Worktree 미할당', attempt: '시작 전', backend: '할당 시 결정', act: '', warn: '게이트: 선행 결과 0/2 통합', cats: ['dependency'], lane: '', dirty: '', base: '', session: '' }
+    ];
+    const gates = [
+      { id: 'g1', gid: 'gate_9c41', mv: '3', target: '#109', x: X[3], y: 198, progress: '선행 결과 0/3 통합', req: '통합 완료 후 실행', members: [['i103', '통합 완료', '통합 준비 · 대기열 1번'], ['i104', '통합 완료', '실행 중'], ['i105', '통합 완료', '결과 승인 대기']] },
+      { id: 'g2', gid: 'gate_2b7e', mv: '2', target: '#110', x: X[5], y: 346, progress: '선행 결과 0/2 통합', req: '통합 완료 후 실행', members: [['i108', '통합 완료', '기준 변경 · 재검증 필요'], ['i109', '통합 완료', '대기 · 시작 전']] }
+    ];
+    const edges = [
+      ['i101', 'i103', 1, '통합 완료 ✓'], ['i101', 'i104', 1, '통합 완료 ✓'], ['i101', 'i105', 1, '통합 완료 ✓'], ['i101', 'i106', 1, '통합 완료 ✓'], ['i101', 'i107', 1, '통합 완료 ✓'],
+      ['i102', 'i103', 1, '통합 완료 ✓'], ['i102', 'i105', 1, '통합 완료 ✓'], ['i102', 'i111', 1, '통합 완료 ✓'],
+      ['i103', 'i108', 1, '검증 완료 ✓ · 선택 조건'], ['i103', 'i111', 1, '검증 완료 ✓ · 선택 조건'],
+      ['i103', 'g1', 0, '통합 필요'], ['i104', 'g1', 0, '통합 필요'], ['i105', 'g1', 0, '승인·통합 필요'], ['g1', 'i109', 0, '게이트 미통과'],
+      ['i108', 'g2', 0, '재검증·통합 필요'], ['i109', 'g2', 0, '통합 필요'], ['g2', 'i110', 0, '게이트 미통과']
+    ];
+    const S = (title, rows) => ({ title, rows: kv(rows) });
+    const detail = {
+      i101: { axes: [['실행', '검증 통과 · 세션 종료'], ['승인', '결과·통합 승인됨'], ['통합', '통합됨 · main@e5c0b11']], next: '조치 없음 · #103~#107의 선행 조건으로 사용 중', why: [],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_101_1'], ['세션', 'ses_7f2a (종료)'], ['Backend', 'herdr · 생성 시 연결'], ['herdr 관찰', 'done'], ['삼사라 실행권', '반환됨 (RELEASED)']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/101-api-contract'], ['브랜치', 'samsara/101-api-contract'], ['기준 Commit', 'a41d0c2'], ['현재 Head', 'e19b7f4']]), S('결과', [['테스트', 'contracts 42건 통과'], ['PR', 'PR #71 · merged'], ['통합 증거', 'ie_101 · main@e5c0b11']])],
+        hist: [['어제 18:42', '통합됨 · main@e5c0b11'], ['어제 18:30', '통합 승인'], ['어제 17:05', '검증 통과']], actions: [] },
+      i102: { axes: [['실행', '검증 통과 · 세션 종료'], ['승인', '결과·통합 승인됨'], ['통합', '통합됨 · main@3fa90d1']], next: '조치 없음 · #103·#105·#111의 선행 조건으로 사용 중', why: [],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_102_2 (att_102_1 FAILED)'], ['세션', 'ses_e01c (종료)'], ['Backend', 'tmux · 생성 시 연결'], ['tmux 관찰', 'exited'], ['삼사라 실행권', '반환됨 (RELEASED)']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/102-sqlite-schema'], ['브랜치', 'samsara/102-sqlite-schema'], ['기준 Commit', 'e5c0b11'], ['현재 Head', '8d21aa0']]), S('결과', [['테스트', 'migration up/down 18건 통과'], ['PR', 'PR #69 · merged'], ['통합 증거', 'ie_102 · main@3fa90d1']])],
+        hist: [['어제 21:05', '통합됨 · main@3fa90d1'], ['어제 20:40', '검증 통과'], ['어제 16:12', 'att_102_1 FAILED · WAL 잠금']], actions: [] },
+      i103: { axes: [['실행', '검증 통과 · 세션 종료'], ['승인', '결과 승인됨 · 통합 승인 대기'], ['통합', '통합 준비 · 대기열 1번']], next: '통합 승인 후 통합 · 현재 기준 7c1e2a9 기준 검증 유효', why: ['통합 승인 필요 (cand_103 rev 2)'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_103_1'], ['세션', 'ses_3c90 (종료)'], ['Backend', 'tmux · 생성 시 연결'], ['tmux 관찰', 'exited'], ['삼사라 실행권', '반환됨 · 통합권 인계']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/103-activation-trust'], ['브랜치', 'samsara/103-activation-trust'], ['기준 Commit', '7c1e2a9 (최신)'], ['현재 Head', 'e3a1f07']]), S('결과', [['테스트', 'go test ./... 118건 통과'], ['PR', 'PR #73 · open'], ['후보', 'cand_103 rev 2']])],
+        hist: [['14:00', '최신 기준 재검증 통과 → 통합 준비'], ['13:55', 'main 외부 push로 기준 변경'], ['13:20', '검증 통과']],
+        queue: true, actions: [{ label: '통합 승인', primary: true, result: '승인 반영 확인 · 통합 컨트롤러가 브랜치 갱신을 준비합니다', effect: { label: '통합 진행 중', tone: 'queue', icon: 'queue', warn: '' } }] },
+      i104: { axes: [['실행', '실행 중 · lease 유효'], ['승인', '해당 없음'], ['통합', '시작 전']], next: '조치 없음 · 작업 진행 중', why: [],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_104_1'], ['세션', 'ses_91be'], ['Backend', 'herdr · ws samsara / tab 2'], ['herdr 관찰', 'working'], ['삼사라 실행권', '유효 · gen 3 / fence 18']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/104-fake-backend'], ['브랜치', 'samsara/104-fake-backend'], ['기준 Commit', '3fa90d1'], ['현재 Head', 'c02f9e1 + 미커밋 변경']]), S('결과', [['테스트', '아직 제출 전'], ['PR', '없음']])],
+        hist: [['09:40', '시작 → 실행 중'], ['09:39', 'lease 발급 gen 3 · fence 18'], ['09:38', 'Worktree 생성']],
+        actions: [{ label: '일시 정지 요청', result: '권한 회수 반영 · 진행 중 도구가 끝나면 정지 상태로 전환됩니다', effect: { label: '정지 중', tone: 'dep', icon: 'lock', warn: '진행 중 도구 종료 확인 대기', cats: [] } }] },
+      i105: { axes: [['실행', '구현 완료 · 세션 종료'], ['승인', '결과 승인 대기 '], ['통합', '대기 · 순서 미정']], next: '결과를 승인하거나 반려 · 승인 후 최신 기준 기준 검증을 거쳐 대기열에 진입', why: ['삼사라 결과 승인 필요 · digest 8f3c…a91', '승인 후에도 통합 검증은 최신 기준 기준으로 다시 수행'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_105_2 (att_105_1 FAILED)'], ['세션', 'ses_44d1 (종료)'], ['Backend', 'herdr · 생성 시 연결'], ['herdr 관찰', 'done'], ['삼사라 실행권', '반환됨 · 산출물 고정']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/105-snapshot-sse'], ['브랜치', 'samsara/105-snapshot-sse'], ['기준 Commit', '3fa90d1'], ['현재 Head', '0c7d2b8']]), S('결과', [['테스트', 'replay·cursor gap 36건 통과'], ['산출물', 'out_105_2 · 불변 manifest'], ['PR', '아직 없음']])],
+        hist: [['14:02', '결과 승인 요청'], ['13:49', '구현 완료'], ['11:12', 'att_105_1 FAILED · cursor 중복']],
+        actions: [{ label: '결과 승인', primary: true, result: '승인 저장 확인 · 검증 후 대기열에 진입합니다', effect: { label: '승인됨 · 대기열 진입 대기', tone: 'queue', icon: 'queue', warn: '', cats: ['implemented'] } }, { label: '반려', result: '반려 기록 · 새 Attempt 계획이 필요합니다', effect: { label: '반려됨', tone: 'fail', icon: 'alert', warn: '새 Attempt 필요', cats: [] } }] },
+      i106: { axes: [['실행', '실행 중 · lease 유효'], ['승인', '삼사라 승인 없음'], ['통합', '시작 전']], next: 'herdr 패널에서 Claude Code의 Bash 권한 요청에 직접 응답', why: ['Claude Code 자체 권한 요청 (native permission) · 삼사라 승인과 별개', '브라우저에서 대신 승인하지 않습니다'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_106_1'], ['세션', 'ses_b2e7'], ['Backend', 'herdr · ws samsara / tab 3 / pane 2'], ['herdr 관찰', 'blocked'], ['삼사라 실행권', '유효 · fence 17']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/106-herdr-adapter'], ['브랜치', 'samsara/106-herdr-adapter'], ['기준 Commit', '3fa90d1'], ['현재 Head', '77ab310 + 미커밋 변경']]), S('결과', [['테스트', '아직 제출 전'], ['권한 요청', 'Bash: go test ./adapters/herdr/...']])],
+        hist: [['14:01', 'native permission 요청 (Bash)'], ['10:15', '시작 → 실행 중'], ['10:14', 'lease 발급 · fence 17']],
+        actions: [{ label: 'herdr 패널로 이동', result: 'herdr에 포커스 요청 전달 · 권한 응답은 터미널에서 직접 하세요' }] },
+      i107: { axes: [['실행', '실행 중 (확정 불가)'], ['승인', '해당 없음'], ['통합', '시작 전']], next: '관찰을 다시 시도 · 실제 종료가 확인될 때까지 결과를 확정하지 않음', why: ['tmux 관찰 응답 없음 · 마지막 관찰 13:57:30', 'UNKNOWN은 종료 확인이 아니며 다른 backend로 복제하지 않음'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_107_1'], ['세션', 'ses_5a03'], ['Backend', 'tmux · session samsara-107'], ['tmux 관찰', 'UNKNOWN · 4분 전'], ['삼사라 실행권', '유효 · 14:09 만료 예정']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/107-tmux-adapter'], ['브랜치', 'samsara/107-tmux-adapter'], ['기준 Commit', '3fa90d1'], ['현재 Head', '확인 불가']])],
+        hist: [['13:57', 'liveness ALIVE → UNKNOWN'], ['11:02', '시작 → 실행 중'], ['11:01', 'tmux 세션 생성']],
+        actions: [{ label: '관찰 다시 시도', result: '관찰 응답 수신 · ALIVE · BUSY', effect: { label: '실행 중', tone: 'run', icon: 'run', warn: '', cats: ['running'] } }] },
+      i108: { axes: [['실행', '검증 통과 · 세션 종료'], ['승인', '결과 승인됨 · 통합 승인 무효화'], ['통합', '기준 변경 · 대기열 2번']], next: '최신 기준 7c1e2a9 기준으로 재검증', why: ['이전 기준(3fa90d1)에서는 통과 · 최신 기준 재검증 필요', '통합 승인이 기준 변경으로 무효화'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_108_1'], ['세션', 'ses_0f6e (종료)'], ['Backend', 'herdr · 생성 시 연결'], ['herdr 관찰', 'done'], ['삼사라 실행권', '반환됨 · 통합권 인계']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/108-integration-ctl'], ['브랜치', 'samsara/108-integration-ctl'], ['기준 Commit', '3fa90d1'], ['현재 Head', '9b44c2e']]), S('결과', [['테스트', '3fa90d1 기준 64건 통과 (이전 기준)'], ['PR', 'PR #74 · open']])],
+        hist: [['13:55', '기준 변경 · main 외부 push'], ['13:30', '통합 준비'], ['13:02', '검증 통과']],
+        queue: true, actions: [{ label: '최신 기준 재검증 요청', primary: true, result: '검증 접수 · 검증 중', effect: { label: '재검증 중', tone: 'queue', icon: 'queue', warn: '' } }] },
+      i111: { axes: [['실행', '검증 통과 · 세션 종료'], ['승인', '결과 승인됨'], ['통합', '충돌 · 대기열 3번']], next: '충돌을 해결하는 새 Attempt 필요 · 자동으로 해결하지 않음', why: ['internal/history/sync.go 충돌 (#103 변경과 겹침)', '충돌 없음과 테스트·승인 통과는 별개'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', 'att_111_1'], ['세션', 'ses_c771 (종료)'], ['Backend', 'Standalone · 현재 Claude 세션'], ['관찰', 'Hook 기준 Stop 수신'], ['삼사라 실행권', '반환됨']]), S('코드', [['Worktree', '~/.samsara/wt/samsara/111-github-history'], ['브랜치', 'samsara/111-github-history'], ['기준 Commit', '7c1e2a9'], ['현재 Head', '51c0d9a']]), S('결과', [['테스트', '단독 기준 27건 통과'], ['PR', 'PR #75 · open']])],
+        hist: [['13:41', '충돌 · 후보 구성 실패'], ['13:38', '검증 중'], ['12:50', '검증 통과']],
+        queue: true, actions: [{ label: '충돌 해결 Attempt 계획', result: '계획 요청 접수 · Standalone이므로 현재 Claude 세션에서 직접 이어가세요' }] },
+      i109: { axes: [['실행', '대기 · 시작 전'], ['승인', '해당 없음'], ['통합', '시작 전']], next: '조치 없음 · 선행 조건이 충족되면 런타임이 Worktree와 세션을 준비', why: ['#103 통합 완료 필요 · 현재 통합 준비', '#104 통합 완료 필요 · 현재 실행 중', '#105 통합 완료 필요 · 현재 결과 승인 대기'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', '없음'], ['Backend', '할당 시 결정 (herdr → tmux → Standalone)'], ['삼사라 실행권', '미발급']]), S('코드', [['Worktree', '미할당'], ['브랜치', '없음']])],
+        hist: [['09:30', '계획 등록 · graph v9']], actions: [] },
+      i110: { axes: [['실행', '대기 · 시작 전'], ['승인', '해당 없음'], ['통합', '시작 전']], next: '조치 없음 · 선행 조건이 충족되면 런타임이 시작 여부를 판단', why: ['#108 통합 완료 필요 · 현재 기준 변경', '#109 통합 완료 필요 · 현재 대기'],
+        sections: [S('실행', [['Run', '#14 · gen 3'], ['Attempt', '없음'], ['Backend', '할당 시 결정'], ['삼사라 실행권', '미발급']]), S('코드', [['Worktree', '미할당'], ['브랜치', '없음']])],
+        hist: [['09:30', '계획 등록 · graph v9']], actions: [] }
+    };
+    Object.keys(detail).forEach((k) => { detail[k].axes = kv(detail[k].axes); detail[k].hist = hs(detail[k].hist); });
+    const queue = [
+      { id: 'i103', pos: '1', src: 'e3a1f07', base: '7c1e2a9 (현재)', st: '통합 준비', tone: 'queue', conds: [['결과 승인', 'ok'], ['충돌 검사', 'ok'], ['테스트 118', 'ok'], ['보호 규칙', 'ok'], ['통합 승인', 'wait']], valid: '현재 기준 기준 검증 유효', validColor: '#5fd6c8', next: '통합 승인' },
+      { id: 'i108', pos: '2', src: '9b44c2e', base: '3fa90d1 → 현재 7c1e2a9', st: '기준 변경', tone: 'stale', conds: [['결과 승인', 'ok'], ['충돌 검사', 'stale'], ['테스트 64', 'stale'], ['통합 승인', 'bad']], valid: '이전 기준에서는 통과 · 최신 기준 재검증 필요', validColor: '#f5c066', next: '재검증 실행' },
+      { id: 'i111', pos: '3', src: '51c0d9a', base: '7c1e2a9 (현재)', st: '충돌', tone: 'fail', conds: [['결과 승인', 'ok'], ['충돌 검사', 'bad'], ['테스트', 'wait']], valid: 'internal/history/sync.go 자동 후보 구성 실패', validColor: '#ff8597', next: '충돌 해결 후 새 Attempt' }
+    ];
+    const queueWaiting = [{ id: 'i105', st: '대기', next: '결과 승인 후 검증' }];
+    const sessions = [
+      ['#104', 'att_104_1', 'herdr', 'ALIVE · BUSY (herdr: working)', 'ok', '유효 · gen 3 / fence 18', '12초 전', '없음'],
+      ['#106', 'att_106_1', 'herdr', 'ALIVE · NATIVE_PERMISSION (herdr: blocked)', 'warn', '유효 · fence 17', '41초 전', '터미널에서 Claude 권한 응답'],
+      ['#107', 'att_107_1', 'tmux', 'UNKNOWN · 13:57:30 마지막 관찰', 'unk', '유효 · 14:09 만료 예정', '4분 전', '관찰 재시도 · 종료 판정 안 함'],
+      ['#105', 'att_105_2', 'herdr', 'EXITED', 'off', '반환됨 (RELEASED)', '13분 전', '결과 승인'],
+      ['#103', 'att_103_1', 'tmux', 'EXITED', 'off', '반환됨 · 통합권 인계', '41분 전', '통합 승인'],
+      ['#111', 'att_111_1', 'Standalone', 'Hook 기준 종료', 'off', '반환됨', '21분 전', '충돌 해결 · 현재 Claude 세션에서 재개']
+    ];
+    const events = [
+      ['4826', '14:02:11', '14:02:11', 'approval.requested', 'info', '#105 결과 승인 요청 · digest 8f3c…a91'],
+      ['4825', '14:01:58', '14:01:59', 'session.observed', 'warn', '#106 herdr blocked · Claude native permission (Bash)'],
+      ['4824', '14:00:40', '14:00:40', 'integration.ready', 'info', '#103 최신 기준 7c1e2a9 기준 재검증 통과 → 통합 준비'],
+      ['4823', '13:57:30', '13:57:31', 'session.liveness', 'warn', '#107 tmux 관찰 응답 없음 → liveness UNKNOWN'],
+      ['4822', '13:55:03', '13:55:03', 'integration.stale', 'warn', '#103·#108 기준 변경으로 기준 변경 · 통합 승인 무효화'],
+      ['4821', '13:55:01', '13:55:02', 'target.updated', 'info', 'main 외부 push 3fa90d1 → 7c1e2a9'],
+      ['4820', '13:49:22', '13:49:22', 'attempt.implemented', 'info', '#105 att_105_2 산출물 제출 · out_105_2'],
+      ['4819', '13:41:05', '13:41:06', 'integration.conflict', 'error', '#111 internal/history/sync.go 충돌 · 후보 구성 실패']
+    ];
+    const feed = [
+      { kind: 'lease.renewed', sev: 'info', text: '#104 lease 갱신 · gen 3 / fence 18' },
+      { kind: 'session.observed', sev: 'info', text: '#104 herdr working · hook PostToolUse' },
+      { kind: 'session.observed', sev: 'warn', text: '#106 herdr blocked 유지 · native permission 응답 대기' },
+      { kind: 'session.probe', sev: 'warn', text: '#107 tmux 관찰 재시도 응답 없음 · UNKNOWN 유지' }
+    ];
+    const github = [
+      ['PR', 'PR #75', 'feat(history): GitHub 이력 동기화', '#111 · att_111_1', 'open · 충돌', '13:41'],
+      ['PR', 'PR #74', 'feat(integration): CAS 기반 ref 갱신', '#108 · att_108_1', 'open', '13:30'],
+      ['PR', 'PR #73', 'feat(activation): 로컬 trust 등록', '#103 · cand_103 rev 2', 'open', '14:00'],
+      ['Commit', '7c1e2a9', 'fix: README 링크 수정 (외부 push)', '삼사라 외부 · target 갱신', 'main', '13:55'],
+      ['Commit', '3fa90d1', 'Merge #102 SQLite 스키마', 'ie_102 · att_102_2', 'main', '어제 21:05'],
+      ['PR', 'PR #71', 'feat(contracts): 공통 API 계약', '#101 · ie_101', 'merged', '어제 18:42'],
+      ['Issue', '#105', 'Snapshot·영속 SSE replay', 'Run #14 · att_105_2', 'open', '14:02']
+    ];
+    const past = {
+      r13: { id: '#13', state: 'COMPLETED', stateColor: '#6fdc9f', period: '10/25 09:12 – 16:40', gen: '2', summary: '통합 2 · 실패 1 · 취소 1',
+        rows: [['#91', 'Hook bridge 정책 검사 초안', '통합 완료', 'done', 'main@1d2e3f4 · ie_91'], ['#92', 'herdr capability manifest', '통합 완료', 'done', 'main@5b6a7c8 · ie_92'], ['#93', 'tmux probe spike', '실패', 'fail', 'att_93_2 FAILED · #107로 재계획'], ['#94', '문서 정합성 검토', '취소', 'dep', '사용자 취소 · 10/25 15:02']] },
+      r12: { id: '#12', state: 'FAILED', stateColor: '#ff8597', period: '10/22 10:05 – 12:31', gen: '1', summary: '통합 1 · 실패 1 · LOST 1',
+        rows: [['#88', 'Activation 초안', '실패', 'fail', 'stale fence 제출 거부'], ['#89', 'SQLite WAL 설정', '통합 완료', 'done', 'main@0aa1b2c · ie_89'], ['#90', 'Hook 응답 timeout 처리', 'LOST', 'fail', '세션 소실 확인 · 새 Attempt 필요']] }
+    };
+    const projects = [
+      { id: 'p_samsara', name: 'samsara', path: '~/work/samsara', act: 'ENABLED', pinned: true, last: '방금', cats: ['running', 'action', 'recent'] },
+      { id: 'p_herdr', name: 'herdr-playground', path: '~/lab/herdr-playground', act: 'ENABLED', last: '3분 전', stats: '실행 1 · Run #3', cats: ['running', 'recent'],
+        msgTitle: '실행 중', msg: '현재 Run #3에서 Attempt 1개가 실행 중입니다. 사용자 조치가 필요한 항목은 없습니다.', tone: 'run',
+        runs: [['#3', 'ACTIVE', '오늘 13:10 –', '실행 1 · 통합 0/2'], ['#2', 'COMPLETED', '10/24 14:00 – 17:22', '통합 3/3']], note: '이 프로젝트의 신규 worker는 herdr로 생성됩니다 (자동 선택 결과).' },
+      { id: 'p_docs', name: 'docs-site', path: '~/work/docs-site', act: 'ENABLED', last: '2일 전', stats: '유휴 · 실행 없음', cats: ['recent'],
+        msgTitle: '유휴', msg: '사용 중이지만 진행 중인 작업이 없습니다. 실행 없음은 사용 안 함과 다른 상태입니다.', tone: 'dep',
+        runs: [['#5', 'COMPLETED', '10/25 10:30 – 11:48', '통합 4/4']], note: '새 Run을 시작하면 런타임이 Worktree와 backend를 준비합니다.' },
+      { id: 'p_legacy', name: 'legacy-api', path: '~/old/legacy-api', act: 'DISABLED', last: '3주 전', stats: '과거 Run 6', cats: ['disabled'],
+        msgTitle: '사용 안 함 (DISABLED)', msg: '신규 할당, 자동 시작, backend 탐색을 하지 않습니다. 과거 기록은 그대로 열람할 수 있습니다.', tone: 'dep',
+        runs: [['#6', 'COMPLETED', '10/05 09:00 – 18:10', '통합 5/6 · 취소 1'], ['#5', 'CANCELLED', '10/02 13:20 – 13:41', '사용자 취소']], note: '활성화는 프로젝트 설정에서 명시적으로만 바꿀 수 있습니다. 이 화면을 연 것만으로는 바뀌지 않습니다.' },
+      { id: 'p_ml', name: 'ml-notebooks', path: '~/tmp/ml-notebooks', act: 'MISSING', last: '2개월 전', stats: '경로 없음 · 이력 보존', cats: ['action'],
+        msgTitle: '저장소 경로를 찾을 수 없음 (MISSING)', msg: '경로를 자동으로 다시 만들지 않습니다. 이력은 삭제하지 않고 보존합니다.', tone: 'fail',
+        runs: [['#2', 'COMPLETED', '08/21 11:00 – 15:30', '통합 2/2'], ['#1', 'FAILED', '08/20 16:00 – 16:44', '실패 1']], note: '경로를 다시 연결하거나 프로젝트를 보관 처리할 수 있습니다.' },
+      { id: 'p_new', name: 'new-service', path: '~/work/new-service', act: 'UNCONFIGURED', last: '기록 없음', stats: '사용 여부 미설정', cats: [],
+        msgTitle: '미설정 (UNCONFIGURED)', msg: '아직 삼사라 사용 여부를 정하지 않았습니다. 이 상태에서는 daemon 연결, 자동 시작, backend 탐색을 하지 않습니다.', tone: 'dep',
+        runs: [], note: '삼사라 작업을 요청하고 프로젝트를 활성화하면 로컬 trust와 설정이 등록됩니다.' }
+    ];
+    this._d = { issues, gates, edges, detail, queue, queueWaiting, sessions, events, feed, github, past, projects };
+    return this._d;
+  }
+
+  renderVals() {
+    const D = this.data();
+    const s = this.state;
+    const connMode = this.props.connection ?? 'live';
+    const live = connMode === 'live';
+    const T = {
+      run: { fg: '#7ab8ff', bg: 'rgba(90,162,255,.13)', bd: 'rgba(90,162,255,.4)' },
+      approval: { fg: '#f5c066', bg: 'rgba(240,178,74,.14)', bd: 'rgba(240,178,74,.42)' },
+      native: { fg: '#f5c066', bg: 'transparent', bd: 'rgba(240,178,74,.6)' },
+      dep: { fg: '#b3bccb', bg: 'rgba(170,180,195,.10)', bd: 'rgba(170,180,195,.3)' },
+      impl: { fg: '#c4a3fa', bg: 'rgba(177,140,245,.13)', bd: 'rgba(177,140,245,.4)' },
+      queue: { fg: '#5fd6c8', bg: 'rgba(60,198,184,.12)', bd: 'rgba(60,198,184,.4)' },
+      stale: { fg: '#f5c066', bg: 'rgba(60,198,184,.10)', bd: 'rgba(240,178,74,.45)' },
+      done: { fg: '#6fdc9f', bg: 'rgba(95,211,150,.12)', bd: 'rgba(95,211,150,.38)' },
+      fail: { fg: '#ff8597', bg: 'rgba(240,100,122,.13)', bd: 'rgba(240,100,122,.42)' },
+      unknown: { fg: '#b3bccb', bg: 'transparent', bd: 'rgba(170,180,195,.55)' }
+    };
+    const badge = (tone) => { const t = T[tone]; return 'color: ' + t.fg + '; background: ' + t.bg + '; border: 1px ' + (tone === 'unknown' ? 'dashed' : 'solid') + ' ' + t.bd + ';'; };
+
+    // effective issue state: server-confirmed operation effects override the snapshot
+    const eff = {};
+    D.issues.forEach((n) => {
+      const op = s.ops[n.id];
+      eff[n.id] = op && op.phase === 'done' && op.effect ? Object.assign({}, n, op.effect, { cats: op.effect.cats || n.cats }) : n;
+    });
+    const sel = s.sel;
+    const pick = (id) => () => this.setState({ sel: s.sel === id ? null : id, qFocus: null });
+
+    // connection
+    const conn = live
+      ? { dot: '#5fd396', dotClass: 'pulse', text: '런타임 연결됨 · seq ' + s.seq + ' · ' + s.sec + '초 전' }
+      : connMode === 'reconnecting'
+        ? { dot: '#f5c066', dotClass: 'pulse', text: '재연결 중 · cursor ' + s.seq + ' 이후 재생 대기' }
+        : { dot: '#8592a5', dotClass: '', text: '오래된 정보 · 38초 전 마지막 갱신' };
+    const banner = live ? { show: false } : connMode === 'reconnecting'
+      ? { show: true, fg: '#f5c066', bg: 'rgba(240,178,74,.08)', bd: 'rgba(240,178,74,.3)', title: 'SSE 재연결 중', text: '마지막 cursor 이후 이벤트를 재생한 뒤 화면을 갱신합니다. 그동안 제어 명령을 보내지 않습니다.' }
+      : { show: true, fg: '#c3ccd8', bg: 'rgba(170,180,195,.07)', bd: '#2f3a48', title: '표시된 상태가 오래되었습니다', text: '38초 이상 갱신이 없어 제어 가능 여부를 다시 확인하기 전까지 명령을 비활성화합니다. 런타임과 worker는 브라우저와 무관하게 계속 동작합니다.' };
+
+    // metrics
+    const cnt = (c) => D.issues.filter((n) => eff[n.id].cats.indexOf(c) >= 0).length;
+    const M = [
+      ['running', '실행 중', '#5aa2ff', ''], ['approval', '사용자 승인 대기', '#f0b24a', ''], ['dependency', '의존성 대기', '#8a96a8', ''],
+      ['implemented', '구현 결과 제출', '#b18cf5', ''], ['integrated', '통합 완료', '#4fc98a', ' / 11'], ['unknown', '관찰 불가', 'transparent', '']
+    ];
+    const metrics = M.map((m) => ({
+      label: m[1], value: String(cnt(m[0])), suffix: m[3], color: m[2], dotCss: m[0] === 'unknown' ? 'border: 1px dashed #b3bccb; box-sizing: border-box;' : '',
+      pressed: s.metric === m[0] ? 'true' : 'false',
+      css: s.metric === m[0] ? 'border: 1px solid #e6ebf2; background: #1a222d;' : 'border: 1px solid #222b37; background: #131922;',
+      pick: () => this.setState({ metric: s.metric === m[0] ? null : m[0] })
+    }));
+    const metricChip = s.metric ? { show: true, label: M.find((m) => m[0] === s.metric)[1], clear: () => this.setState({ metric: null }) } : { show: false };
+
+    // graph nodes
+    const icons = ['run', 'user', 'term', 'lock', 'queue', 'check', 'alert', 'unknown'];
+    const icKey = { run: 'icRun', user: 'icUser', term: 'icTerm', lock: 'icLock', queue: 'icQueue', check: 'icCheck', alert: 'icAlert', unknown: 'icUnknown' };
+    const nodeVm = (n0) => {
+      const n = eff[n0.id];
+      const dim = s.metric && n.cats.indexOf(s.metric) < 0;
+      const isSel = sel === n.id;
+      const ring = isSel ? '0 0 0 2px #e6ebf2, 0 12px 30px -12px rgba(0,0,0,.8)' : '0 6px 18px -12px rgba(0,0,0,.7)';
+      const border = '1px ' + (n.tone === 'unknown' ? 'dashed #6b7a8f' : 'solid #2a3441');
+      const vm = Object.assign({}, n, {
+        css: 'left: ' + n.x + 'px; top: ' + n.y + 'px; opacity: ' + (dim ? 0.28 : 1) + '; border: ' + border + '; box-shadow: ' + ring + ';',
+        css2: 'opacity: ' + (dim ? 0.35 : 1) + '; border: ' + border + '; box-shadow: ' + (isSel ? '0 0 0 2px #e6ebf2' : 'none') + ';',
+        badgeCss: badge(n.tone), pressed: isSel ? 'true' : 'false',
+        aria: n.num + ' ' + n.title + ' · ' + n.label + (n.warn ? ' · ' + n.warn : ''),
+        foot: n.warn ? n.warn : n.attempt + ' · ' + n.backend + (n.act ? ' · ' + n.act : ''),
+        footColor: n.warn ? (n.tone === 'fail' ? '#ff8597' : n.tone === 'dep' ? '#ff9a52' : n.tone === 'unknown' ? '#b3bccb' : '#f5c066') : '#9aa7b8',
+        pick: pick(n.id)
+      });
+      icons.forEach((k) => { vm[icKey[k]] = n.icon === k; });
+      return vm;
+    };
+    const nodes = D.issues.map(nodeVm);
+    const gates = D.gates.map((g) => {
+      const isSel = sel === g.id;
+      return Object.assign({}, g, {
+        pressed: isSel ? 'true' : 'false', aria: '통합 게이트 ' + g.target + ' · ' + g.progress,
+        css: 'left: ' + g.x + 'px; top: ' + g.y + 'px; opacity: ' + (s.metric === 'dependency' || !s.metric ? 1 : 0.35) + '; border: 1px solid rgba(224,123,57,.5); box-shadow: ' + (isSel ? '0 0 0 2px #e6ebf2' : 'none') + ';',
+        pick: pick(g.id)
+      });
+    });
+
+    // edges
+    const box = {};
+    D.issues.forEach((n) => { box[n.id] = { x: n.x, y: n.y, w: 240, h: 124 }; });
+    D.gates.forEach((g) => { box[g.id] = { x: g.x, y: g.y, w: 168, h: 72 }; });
+    const ed = { met: '', metA: '', un: '', unA: '', hi: '', hiUn: '', hiA: '' };
+    const edgeLabels = [];
+    D.edges.forEach((e) => {
+      const a = box[e[0]], b = box[e[1]];
+      const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x - 1, y2 = b.y + b.h / 2;
+      const c = Math.max(36, (x2 - x1) / 2);
+      const p = 'M' + x1 + ' ' + y1 + ' C' + (x1 + c) + ' ' + y1 + ' ' + (x2 - c) + ' ' + y2 + ' ' + x2 + ' ' + y2 + ' ';
+      const ar = 'M' + (x2 - 8) + ' ' + (y2 - 5) + ' L' + x2 + ' ' + y2 + ' L' + (x2 - 8) + ' ' + (y2 + 5) + ' ';
+      const hi = sel && (e[0] === sel || e[1] === sel);
+      if (hi) {
+        if (e[2]) ed.hi += p; else ed.hiUn += p;
+        ed.hiA += ar;
+        edgeLabels.push({ text: e[3], css: 'left: ' + ((x1 + x2) / 2) + 'px; top: ' + ((y1 + y2) / 2) + 'px; color: ' + (e[2] ? '#c3ccd8' : '#ff9a52') + ';' });
+      } else if (e[2]) { ed.met += p; ed.metA += ar; } else { ed.un += p; ed.unA += ar; }
+    });
+    const zoom = s.zoom;
+
+    // worktree lanes
+    const bound = (id) => {
+      const inn = D.edges.filter((e) => e[1] === id).length, out = D.edges.filter((e) => e[0] === id).length;
+      return '선행 ' + inn + ' · 후행 ' + out;
+    };
+    const laneCss = (st) => st === '사용 중' ? badge('run') : st === '정리 보류' ? badge('unknown') : st === '정리 가능' ? badge('done') : badge('dep');
+    const byId = {};
+    nodes.forEach((n) => { byId[n.id] = n; });
+    const assigned = D.issues.filter((n) => n.lane);
+    const lanes = assigned.map((n) => ({
+      path: '~/.samsara/wt/samsara/' + n.wt.replace('wt/', ''), branch: 'samsara/' + n.wt.replace('wt/', ''), state: n.lane, stateCss: laneCss(n.lane),
+      session: '세션: ' + n.session, items: [Object.assign({}, byId[n.id], { bound: bound(n.id) })]
+    }));
+    lanes.push({ path: 'Worktree 미할당', branch: '선행 조건 충족 시 런타임이 생성', state: '대기', stateCss: badge('dep'), session: '세션 없음', items: D.issues.filter((n) => !n.lane).map((n) => Object.assign({}, byId[n.id], { bound: bound(n.id) })) });
+    const wtRows = assigned.map((n) => ({ path: '~/.samsara/wt/samsara/' + n.wt.replace('wt/', ''), branch: 'samsara/' + n.wt.replace('wt/', ''), att: 'att_' + n.key + '_' + (n.attempt === '시도 2회' ? '2' : '1'), base: n.base, dirty: n.dirty, session: n.session, state: n.lane, stateCss: laneCss(n.lane) }));
+
+    // inspector
+    const insp = { isIssue: false, is게이트: false, isQueue: true, i: {}, d: { axes: [], why: [], hist: [], next: '' }, op: { show: false }, actions: [], hasActions: false, lockReason: { show: false }, hasWhy: false, sections: [], queueLink: false, g: { members: [] } };
+    const issueSel = sel && sel[0] === 'i';
+    const gateSel = sel && sel[0] === 'g';
+    if (issueSel) {
+      const n = byId[sel], d = D.detail[sel], op = s.ops[sel];
+      const opView = !op ? { show: false } : op.phase === 'pending'
+        ? { show: true, dotClass: 'pulse', css: 'color: #f5c066; background: rgba(240,178,74,.08); border: 1px solid rgba(240,178,74,.3);', text: '요청 접수 · 서버 확인 대기 (' + op.opId + ' · ' + op.label + ')' }
+        : { show: true, dotClass: '', css: 'color: #6fdc9f; background: rgba(95,211,150,.08); border: 1px solid rgba(95,211,150,.3);', text: '서버 반영 확인 · ' + op.result };
+      const busy = !!op;
+      const actions = d.actions.map((a) => ({
+        label: a.label, disabled: !live || busy,
+        css: (!live || busy) ? 'cursor: not-allowed; opacity: 0.5; border: 1px solid #2a3441; background: #121821;' : a.primary ? 'cursor: pointer; border: 1px solid #e6ebf2; background: #e6ebf2; color: #0d1117;' : 'cursor: pointer; border: 1px solid #3a4656; background: #18202a;',
+        run: () => this.runAction(sel, a)
+      }));
+      Object.assign(insp, {
+        isIssue: true, isQueue: false, i: n, d: d, op: opView, actions, hasActions: actions.length > 0,
+        lockReason: !live && actions.length ? { show: true, text: '연결이 최신이 아니어서 명령을 비활성화했습니다. 재연결 후 다시 확인하세요.' } : { show: false },
+        hasWhy: d.why.length > 0, whyCount: d.why.length + '개', sections: d.sections,
+        queueLink: !!d.queue, goQueue: () => this.setState({ sel: null, qFocus: sel })
+      });
+    } else if (gateSel) {
+      const g = D.gates.find((x) => x.id === sel);
+      Object.assign(insp, { is게이트: true, isQueue: false, g: Object.assign({}, g, { members: g.members.map((m) => { const n = byId[m[0]]; return { num: n.num, title: n.title, need: m[1], now: m[2], pick: pick(m[0]) }; }) }) });
+    }
+    const condCss = { ok: 'color: #6fdc9f; border: 1px solid rgba(95,211,150,.35);', wait: 'color: #b3bccb; border: 1px dashed #4a586b;', stale: 'color: #f5c066; border: 1px solid rgba(240,178,74,.4);', bad: 'color: #ff8597; border: 1px solid rgba(240,100,122,.45);' };
+    const condMark = { ok: '✓', wait: '…', stale: '↻', bad: '✕' };
+    const queue = D.queue.map((q) => {
+      const n = byId[q.id];
+      return Object.assign({}, q, {
+        num: n.num, title: n.title, stCss: badge(q.tone), pick: pick(q.id),
+        css: s.qFocus === q.id ? 'border: 1px solid #e6ebf2;' : 'border: 1px solid #222b37;',
+        conds: q.conds.map((c) => ({ t: c[0], mark: condMark[c[1]], css: condCss[c[1]] }))
+      });
+    });
+    const queueWaiting = D.queueWaiting.map((q) => { const n = eff[q.id]; const done = s.ops[q.id] && s.ops[q.id].phase === 'done'; return { num: n.num, title: n.title, st: done ? n.label : q.st, next: done ? '서버 검증 후 순서 확정' : q.next, pick: pick(q.id) }; });
+
+    // bottom panel
+    const obsColor = { ok: '#7ab8ff', warn: '#f5c066', unk: '#b3bccb', off: '#9aa7b8' };
+    const sessions = D.sessions.map((r) => ({ num: r[0], att: r[1], backend: r[2], obs: r[3], obsColor: obsColor[r[4]], lease: r[5], last: r[6], next: r[7] }));
+    const sevColor = { info: '#9aa7b8', warn: '#f5c066', error: '#ff8597' };
+    const baseEvents = D.events.map((e) => ({ seq: e[0], at: e[1], rec: e[2], kind: e[3], sev: e[4], text: e[5] }));
+    const events = s.live.concat(baseEvents).map((e) => Object.assign({}, e, { sevColor: sevColor[e.sev] }));
+    const github = D.github.map((g) => ({ kind: g[0], ref: g[1], title: g[2], link: g[3], state: g[4], sync: g[5] }));
+    const TABS = [['sessions', '세션', sessions.length], ['events', '이벤트', events.length], ['github', 'GitHub 이력', github.length], ['worktrees', 'Worktree', wtRows.length]];
+    const tabs = TABS.map((t) => ({
+      label: t[1], count: String(t[2]), selected: s.tab === t[0] ? 'true' : 'false',
+      css: s.tab === t[0] ? 'background: #1f2834; font-weight: 600;' : 'background: transparent; color: #9aa7b8;',
+      pick: () => this.setState({ tab: t[0], bottomOpen: true })
+    }));
+    const tabIs = { sessions: s.tab === 'sessions', events: s.tab === 'events', github: s.tab === 'github', worktrees: s.tab === 'worktrees' };
+    const bottom = { open: s.bottomOpen, expanded: s.bottomOpen ? 'true' : 'false', label: s.bottomOpen ? '패널 접기' : '패널 펼치기', toggle: () => this.setState({ bottomOpen: !s.bottomOpen }) };
+
+    // sidebar
+    const actBadge = { ENABLED: ['사용 중', 'done'], DISABLED: ['사용 안 함', 'dep'], MISSING: ['경로 없음', 'fail'], UNCONFIGURED: ['미설정', 'unknown'] };
+    const running = cnt('running'), appr = cnt('approval'), unk = cnt('unknown');
+    const q = s.q.trim().toLowerCase();
+    const PF = [['all', '전체'], ['running', '실행 중'], ['action', '조치 필요'], ['recent', '최근 기록'], ['disabled', '사용 안 함']];
+    const matchQ = (p) => !q || (p.name + ' ' + p.path).toLowerCase().indexOf(q) >= 0;
+    const pfilters = PF.map((f) => ({
+      label: f[1], count: String(D.projects.filter((p) => matchQ(p) && (f[0] === 'all' || p.cats.indexOf(f[0]) >= 0)).length),
+      pressed: s.pf === f[0] ? 'true' : 'false',
+      css: s.pf === f[0] ? 'border: 1px solid #e6ebf2; background: #1f2834;' : 'border: 1px solid #2a3441; background: transparent; color: #c3ccd8;',
+      pick: () => this.setState({ pf: f[0] })
+    }));
+    const shown = D.projects.filter((p) => matchQ(p) && (s.pf === 'all' || p.cats.indexOf(s.pf) >= 0));
+    const projects = shown.map((p) => {
+      const isMainP = p.id === 'p_samsara';
+      const ab = actBadge[p.act];
+      const stats = isMainP ? '실행 ' + running + ' · 승인 ' + appr + (unk ? ' · 관찰 불가 ' + unk : '') : p.stats;
+      return {
+        name: p.name, path: p.path, pinned: !!p.pinned, last: isMainP ? (live ? s.sec + '초 전' : '갱신 대기') : p.last, stats,
+        statColor: isMainP && (appr || unk) ? '#f5c066' : p.act === 'MISSING' ? '#ff8597' : '#9aa7b8',
+        actLabel: ab[0], actCss: badge(ab[1]), current: s.proj === p.id ? 'page' : 'false',
+        css: s.proj === p.id ? 'border: 1px solid #3a4656; background: #1a222d;' : 'border: 1px solid transparent; background: transparent;',
+        pick: () => this.setState({ proj: p.id, sel: null })
+      };
+    });
+    const projCount = q || s.pf !== 'all' ? shown.length + ' / 6개' : '6개';
+
+    // other project / past run
+    const isMain = s.proj === 'p_samsara';
+    const other = D.projects.find((p) => p.id === s.proj);
+    const stColor = { ACTIVE: '#7ab8ff', COMPLETED: '#6fdc9f', FAILED: '#ff8597', CANCELLED: '#b3bccb' };
+    const op = isMain ? { runs: [] } : {
+      name: other.name, path: other.path, actLabel: actBadge[other.act][0] + ' · ' + other.act, actCss: badge(actBadge[other.act][1]),
+      msgTitle: other.msgTitle, msg: other.msg, msgFg: T[other.tone].fg, msgBd: T[other.tone].bd, note: other.note,
+      hasRuns: other.runs.length > 0, noRuns: other.runs.length === 0,
+      runs: other.runs.map((r) => ({ id: r[0], state: r[1], color: stColor[r[1]], period: r[2], result: r[3] }))
+    };
+    const pr = D.past[s.run];
+    const past = pr ? Object.assign({}, pr, { rows: pr.rows.map((r) => ({ num: r[0], title: r[1], result: r[2], css: badge(r[3]), ev: r[4] })) }) : { rows: [] };
+
+    const setView = (v) => () => this.setState({ view: v });
+    const segCss = (on) => on ? 'background: #2a3441; font-weight: 600;' : 'background: transparent; color: #9aa7b8;';
+
+    return {
+      conn, banner, q: s.q, onSearch: (e) => this.setState({ q: e.target.value }), pfilters, projects, noProjects: projects.length === 0, projCount,
+      isMain, isOther: !isMain, isCurrentRun: s.run === 'r14', isPastRun: s.run !== 'r14', runSel: s.run,
+      onRun: (e) => this.setState({ run: e.target.value, sel: null }), past, op,
+      metrics, metricChip,
+      viewIssue: { pressed: s.view === 'issue' ? 'true' : 'false', css: segCss(s.view === 'issue'), pick: setView('issue') },
+      viewWt: { pressed: s.view === 'wt' ? 'true' : 'false', css: segCss(s.view === 'wt'), pick: setView('wt') },
+      isIssueView: s.view === 'issue', isWtView: s.view === 'wt',
+      zoom, zoomLabel: Math.round(zoom * 100) + '%',
+      zoomIn: () => this.setState({ zoom: Math.min(1.3, Math.round((s.zoom + 0.1) * 10) / 10) }),
+      zoomOut: () => this.setState({ zoom: Math.max(0.4, Math.round((s.zoom - 0.1) * 10) / 10) }),
+      zoomFit: () => this.setState({ zoom: 0.5 }),
+      graph: { ow: Math.round(2048 * zoom), oh: Math.round(764 * zoom) },
+      edges: ed, edgeLabels, nodes, gates, lanes, wtRows,
+      insp, clearSel: () => this.setState({ sel: null }), queue, queueWaiting,
+      tabs, tabIs, bottom, sessions, events, github
+    };
+  }
+
+  runAction(id, a) {
+    const opId = 'op_' + Math.random().toString(36).slice(2, 8);
+    this.setState((st) => ({ ops: Object.assign({}, st.ops, { [id]: { phase: 'pending', label: a.label, opId } }) }));
+    this._timers.push(setTimeout(() => {
+      this.setState((st) => ({ ops: Object.assign({}, st.ops, { [id]: { phase: 'done', label: a.label, opId, result: a.result, effect: a.effect } }) }));
+    }, 1600));
+  }
+}
+</script>
+</body>
+</html>
