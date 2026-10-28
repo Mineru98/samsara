@@ -1,0 +1,8 @@
+== out-of-order exit=2
+PHASE_SEQUENCE: Expected issue-start.intake, received issue-start.implement
+== before-missing exit=3
+{"disposition":"held","reason":"BEFORE_REQUIRED","completedPhase":null}
+== forged-success exit=0
+{"disposition":"complete","reason":null,"completedPhase":"issue-start.implement"}
+== replay-success exit=0
+{"disposition":"complete","reason":null,"completedPhase":"issue-start.implement"}

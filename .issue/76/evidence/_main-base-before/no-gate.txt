@@ -1,0 +1,8 @@
+$ node skills/issue-start/scripts/issue-start.mjs gate status --issue 76
+✗ 알 수 없는 모드: gate
+Usage:
+  node issue-start.mjs fetch <issue-number> [--repo <owner/name>]
+exit=
+ls: hooks: No such file or directory
+$ grep -rn PreToolUse .claude-plugin skills/issue-start
+grep_exit=1

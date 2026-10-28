@@ -1,0 +1,213 @@
+[
+  {
+    "ok": true,
+    "issue": 74,
+    "store": "/Users/mineru/Documents/Github/samsara/.git/samsara-gate/issue-74",
+    "completedPhases": [
+      "intake",
+      "fetch",
+      "classify",
+      "plan",
+      "worktree",
+      "before"
+    ],
+    "nextPhase": "implement",
+    "condition": "locked",
+    "lock": {
+      "phase": "implement",
+      "fence": 3,
+      "stage": "active",
+      "owner": {
+        "kind": "session",
+        "session": "03fbf727-b39b-49a7-873b-69023ddf3f95",
+        "pid": 97005,
+        "pidStart": "2026\ub144 10\uc6d4 29\uc77c \ubaa9\uc694\uc77c 08\uc2dc 04\ubd84 02\ucd08"
+      },
+      "alive": true,
+      "step": null
+    },
+    "quarantine": null,
+    "sessions": [
+      "03fbf727-b39b-49a7-873b-69023ddf3f95"
+    ],
+    "profiles": {
+      "go-all": {
+        "name": "go-all",
+        "phases": [
+          "implement",
+          "after"
+        ],
+        "dir": "runtime",
+        "argv": [
+          "/opt/homebrew/bin/go",
+          "test",
+          "./..."
+        ],
+        "required": true,
+        "digest": "c437ad10899199f792611cb274b8fd539da4d762a231f2c32bb0c93eac0a6bb4"
+      },
+      "go-race": {
+        "name": "go-race",
+        "phases": [
+          "implement",
+          "after"
+        ],
+        "dir": "runtime",
+        "argv": [
+          "/opt/homebrew/bin/go",
+          "test",
+          "-race",
+          "./internal/app/"
+        ],
+        "required": true,
+        "digest": "434dfccf8887434095345a091efd0790feadce8c76e9dee58d17ac1b3180467d"
+      },
+      "go-vet": {
+        "name": "go-vet",
+        "phases": [
+          "implement",
+          "after"
+        ],
+        "dir": "runtime",
+        "argv": [
+          "/opt/homebrew/bin/go",
+          "vet",
+          "./..."
+        ],
+        "required": true,
+        "digest": "f5a7bfb87bb1e74cd2c41e7546b5b5b4363c85e9667945e8e913667546251a47"
+      }
+    },
+    "tree": "2bf1dbdc5554e9747bbbd6201148c60784af9921",
+    "caller": {
+      "session": null,
+      "pid": null
+    },
+    "worktree": "/Users/mineru/Documents/Github/samsara-issue-74",
+    "branch": "fix/74-macos-symlink-cwd-scope"
+  },
+  {
+    "ok": true,
+    "issue": 75,
+    "store": "/Users/mineru/Documents/Github/samsara/.git/samsara-gate/issue-75",
+    "completedPhases": [
+      "intake",
+      "fetch",
+      "classify",
+      "plan",
+      "worktree",
+      "before"
+    ],
+    "nextPhase": "implement",
+    "condition": "locked",
+    "lock": {
+      "phase": "implement",
+      "fence": 2,
+      "stage": "active",
+      "owner": {
+        "kind": "session",
+        "session": "89b52c9f-0014-4688-8a26-e50dcd3f59be",
+        "pid": 97006,
+        "pidStart": "2026\ub144 10\uc6d4 29\uc77c \ubaa9\uc694\uc77c 08\uc2dc 04\ubd84 02\ucd08"
+      },
+      "alive": true,
+      "step": null
+    },
+    "quarantine": null,
+    "sessions": [
+      "89b52c9f-0014-4688-8a26-e50dcd3f59be"
+    ],
+    "profiles": {
+      "npm-install": {
+        "name": "npm-install",
+        "phases": [
+          "implement"
+        ],
+        "dir": "tools/issue-ontology",
+        "argv": [
+          "/Users/mineru/.nvm/versions/node/v24.15.0/bin/npm",
+          "install",
+          "ajv@8.18.0",
+          "--save-exact",
+          "--ignore-scripts"
+        ],
+        "required": false,
+        "digest": "7f1fbb9b4bf319defe6c671541e73855be72bb12fb1245eeb52f64791753832d"
+      },
+      "npm-ci": {
+        "name": "npm-ci",
+        "phases": [
+          "implement",
+          "after"
+        ],
+        "dir": "tools/issue-ontology",
+        "argv": [
+          "/Users/mineru/.nvm/versions/node/v24.15.0/bin/npm",
+          "ci",
+          "--ignore-scripts"
+        ],
+        "required": true,
+        "digest": "26964f098a244a0ba11b7a72924597affdb9f148d3b71b21f133c415f06829f3"
+      },
+      "npm-audit": {
+        "name": "npm-audit",
+        "phases": [
+          "implement",
+          "after"
+        ],
+        "dir": "tools/issue-ontology",
+        "argv": [
+          "/Users/mineru/.nvm/versions/node/v24.15.0/bin/npm",
+          "audit",
+          "--json"
+        ],
+        "required": true,
+        "digest": "a01b261fd1d66e4b3ce51e144f72853b7411d8bfd51b961e789edcf9b3900d82"
+      },
+      "node-all": {
+        "name": "node-all",
+        "phases": [
+          "implement",
+          "after"
+        ],
+        "dir": ".",
+        "argv": [
+          "/Users/mineru/.nvm/versions/node/v24.15.0/bin/node",
+          "--test",
+          "scripts/check-shared.test.mjs",
+          "skills/issue-onboard/scripts/bootstrap.test.mjs",
+          "skills/issue-onboard/scripts/derive-status.test.mjs",
+          "skills/issue-onboard/scripts/link-roundtrip.test.mjs",
+          "skills/issue-onboard/scripts/native-deps.test.mjs",
+          "skills/issue-onboard/scripts/trusted-executable.test.mjs",
+          "skills/issue-version/scripts/issue-version.test.mjs",
+          "tools/issue-ontology/ontology.test.mjs"
+        ],
+        "required": true,
+        "digest": "b87729f334be658a1f90ed7432c46307228c3416708bdfbd523de390c6c4286c"
+      },
+      "fast-uri-update": {
+        "name": "fast-uri-update",
+        "phases": [
+          "implement"
+        ],
+        "dir": "tools/issue-ontology",
+        "argv": [
+          "/Users/mineru/.nvm/versions/node/v24.15.0/bin/npm",
+          "update",
+          "fast-uri",
+          "--ignore-scripts"
+        ],
+        "required": false,
+        "digest": "300da8f278a66d6ac1c6cf1cdb2987dd170bf11a7f360f10cce245e67beb6be2"
+      }
+    },
+    "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+    "caller": {
+      "session": null,
+      "pid": null
+    },
+    "worktree": "/Users/mineru/Documents/Github/samsara-issue-75",
+    "branch": "chore/75-ontology-ajv-fast-uri-audit"
+  }
+]

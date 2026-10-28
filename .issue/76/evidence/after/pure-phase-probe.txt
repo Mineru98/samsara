@@ -1,0 +1,10 @@
+== out-of-order exit=2
+PHASE_SEQUENCE: Expected issue-start.intake, received issue-start.implement
+== before-missing exit=3
+{"disposition":"held","reason":"BEFORE_REQUIRED","completedPhase":null}
+== forged-success exit=0
+{"disposition":"complete","reason":null,"completedPhase":"issue-start.implement"}
+== replay-success exit=0
+{"disposition":"complete","reason":null,"completedPhase":"issue-start.implement"}
+# pure API 는 의도대로 무변경(stateless). issue-start-phase.mjs sha256:
+e64632a89ba472de40297ebcc6612276bc5c32ecd72919d053942f86493452bc  /Users/mineru/Documents/Github/samsara-issue-76/skills/issue-start/scripts/issue-start-phase.mjs

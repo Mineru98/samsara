@@ -1,0 +1,967 @@
+✔ 현재 사본은 두 검사를 모두 통과한다 (172.552416ms)
+✔ 한쪽 사본의 Git 후보 경로만 바꾸면 어긋난 선언과 파일을 알린다 (71.324084ms)
+✔ Windows 정책 함수 본문이 달라도 잡는다 (86.092333ms)
+✔ 탐지 그룹 사본에서 선언이 빠지면 missing 으로 실패한다 (136.97875ms)
+✔ executablePolicy 없이 탐지 선언만 들어간 부분 사본을 거부한다 (41.954ms)
+✔ 기존 safeGraphTarget 구간 검출은 그대로 동작한다 (34.0325ms)
+✔ 한 사본이 탐지 코드를 통째로 잃으면 그룹 불일치로 실패한다 (59.062333ms)
+✔ isPathWithin 처럼 모든 사본에 있는 이름도 탐지 그룹 안에서는 비교한다 (105.0035ms)
+✔ 이름이 접두어로 겹치는 선언은 부분 사본으로 오인하지 않는다 (135.925208ms)
+✔ 닫는 줄 형식이 바뀌면 통과시키지 않고 실패한다 (125.215ms)
+✖ missing, incomplete, or invalid caches request a sync bootstrap (2.460167ms)
+✔ malformed graph caches can be handed to the onboarding bootstrap path (36.515125ms)
+✔ only a complete issue-sync result can unlock onboarding (0.178417ms)
+✖ cache coverage and revisions are compared with current open issues (0.382667ms)
+✖ complete caches require a matching live snapshot and cache integrity digest (0.232459ms)
+✖ complete caches reject a repository identity that differs from the live checkout (0.103333ms)
+✖ complete caches reject graph edges that are absent from the live issue sources (0.218084ms)
+✖ complete caches reject forged metadata on a live relationship edge (0.530291ms)
+✖ an empty complete cache still requires both integrity digests (0.146625ms)
+✔ default issue-list probing continues past a full page before declaring completeness (0.55125ms)
+✔ Jira pagination requires authoritative totals and follows startAt (0.348ms)
+✖ the onboarding CLI bootstraps a complete sync before recommending issues (13.824292ms)
+✖ next and plan use the same live bootstrap validation as onboard (13.150458ms)
+✖ the onboarding CLI never recommends after partial or failed sync (14.426375ms)
+✖ the onboarding CLI rejects a graph that remains stale after a reported-success sync (10.707125ms)
+✖ the onboarding CLI fails closed when the graph cache changes during live issue reads (10.889125ms)
+✖ the onboarding CLI reports invalid caches and fails when bootstrap fails (10.447291ms)
+✖ the onboarding CLI fails closed when the graph cache changes after the final graph load (10.565292ms)
+✖ the onboarding CLI fails closed when the graph cache changes before recommendation output (10.142792ms)
+✖ the onboarding CLI holds the cache lock while official writers attempt recommendation output (13.931375ms)
+✖ the onboarding CLI fails closed when the ontology validator is unavailable (11.788291ms)
+✖ automatic onboarding does not import an ontology outside its trusted installation (11.566125ms)
+✖ automatic bootstrap does not execute a repository-local sync outside its trusted installation (11.033958ms)
+✖ automatic bootstrap preserves project-local flavor skill discovery (10.536708ms)
+✔ issue-sync does not fall back to a project-local issue-onboard entrypoint (43.28925ms)
+✔ bootstrap subprocess receives only the explicit environment allowlist (0.251625ms)
+✔ project-local bootstrap scripts do not receive provider credentials (0.08425ms)
+✔ untrusted bootstrap scripts receive an empty HOME and XDG state (22.574792ms)
+✔ same-installation bootstrap scripts receive the explicit provider credentials (0.212667ms)
+✖ production CLI rejects test-only command directory overrides (11.563625ms)
+✔ explicit command environments do not regain ambient variables in the shared runner (19.710416ms)
+✔ runSyncBootstrap executes the discovered issue-sync entrypoint with bounded output and time (0.755167ms)
+✔ saveGraph rejects a symlinked .issue directory before writing outside the repository (0.691083ms)
+✔ graph writers fail closed when onboarding owns the cache lock (2.6085ms)
+✔ reclaims a cache lock whose recorded owner is no longer alive (2.510459ms)
+✔ does not remove a live lock handed off during stale-lock recovery (17.140875ms)
+✔ restores a live lock replaced before stale-lock cleanup and blocks the next writer (17.141ms)
+✔ does not release a replacement live lock during normal writer cleanup (14.813208ms)
+✔ all graph writers reject symlinked cache paths (5.311208ms)
+✔ all graph writers reject hard-linked cache files (5.277375ms)
+✔ all graph writers reject a symlink swap at the final open (9.087458ms)
+✔ all graph writers reject a parent-directory symlink swap at the final open (9.946458ms)
+✔ saveGraph rejects a parent-directory swap at the final rename (2.542459ms)
+✔ all graph writers reject a final-file symlink swap before replacement (15.804375ms)
+✔ saveGraph does not create cache data through a swapped repository root (0.691375ms)
+✔ all graph writers reject an attacker-replaced temporary file (11.914542ms)
+✔ saveGraph rejects an attacker-replaced temporary file (1.918917ms)
+✔ tracker CLOSED and MERGED states override stale status labels (0.287709ms)
+✔ open issues retain status labels or fall back to open (0.065834ms)
+✔ a closed derived node is classified as done (0.321792ms)
+✖ cmdLink approval comment round-trips into a valid depends-on edge (4.079375ms)
+✔ cmdUnlink revoke comment drops the edge on the next resolve (0.371291ms)
+✔ splitSlug parses owner/repo and rejects garbage (0.590875ms)
+✔ fetchBlockedBy returns predecessor numbers from GraphQL nodes (0.198458ms)
+✔ fetchBlockedBy flags unsupported when the field is missing (0.132042ms)
+✔ fetchBlockedBy returns null on transient failure and bad args (0.092417ms)
+✔ collectNativeDependencies builds from->to (blocked-by) candidates and honors seen (0.09875ms)
+✔ collectNativeDependencies skips cleanly when repo unknown or API unsupported (0.05275ms)
+✔ collectNativeDependencies marks any later node failure as incomplete (0.049708ms)
+✖ buildNativeEdge produces a schema-valid depends-on edge (0.328875ms)
+✔ a depends-on edge blocks the successor until the predecessor closes (0.160708ms)
+✔ findCycle rejects a predecessor/successor cycle (0.17925ms)
+✔ 플랫폼에 따라 후보와 검증 정책이 갈린다 (1.391375ms)
+✔ linux 는 darwin 과 같은 Unix 정책을 쓴다 (0.664584ms)
+✔ Git for Windows 표준 설치 경로의 git.exe 를 찾는다 (0.5325ms)
+✔ bin\git.exe 만 있어도 찾는다 (0.238417ms)
+✔ 사용자 단위 설치(%LOCALAPPDATA%)도 찾는다 (0.382125ms)
+✔ 32비트 설치 경로도 찾는다 (1.547208ms)
+✔ 시스템 드라이브가 C: 가 아니어도 환경변수를 따라간다 (0.229875ms)
+✔ 실행 비트가 없어도 거부하지 않는다 (이슈 #40 의 핵심) (0.336041ms)
+✔ gh 와 curl 도 Windows 경로로 찾는다 (0.358375ms)
+✔ 신뢰 루트 밖의 실행 파일은 거부한다 (0.2895ms)
+✔ 임시 폴더에 심어 둔 git 도 거부한다 (0.278875ms)
+✔ 후보 경로가 심볼릭 링크로 신뢰 루트 밖을 가리키면 거부한다 (0.699084ms)
+✔ 디렉터리는 실행 파일로 받아들이지 않는다 (0.573208ms)
+✔ 아무 후보도 없으면 null 을 돌려준다 (0.31225ms)
+✔ 알 수 없는 명령은 null 을 돌려준다 (0.145458ms)
+✔ Unix 는 모드 비트 검사를 그대로 유지한다 (0.274ms)
+✔ Unix 는 그룹·기타 쓰기 가능 파일을 계속 거부한다 (0.165291ms)
+✔ Unix 의 정상 git 은 통과한다 (0.102292ms)
+✔ Unix 는 신뢰 루트 밖을 계속 거부한다 (0.276791ms)
+✔ 자식 프로세스 PATH 가 플랫폼별로 갈린다 (0.176584ms)
+✔ 주입 없이 부르면 현재 플랫폼의 실제 git 을 찾는다 (0.306917ms)
+✔ 실행 파일 미탐지와 저장소 아님을 구분한다 (0.265167ms)
+✔ semver 를 파싱하고 v 접두사를 허용한다 (0.7255ms)
+✔ 단계별로 한 자리만 올리고 아래 자리는 0 으로 내린다 (0.439583ms)
+✔ 태그는 문자열 순서가 아니라 숫자 순서로 고른다 (0.188625ms)
+✔ conventional commit 제목을 type·scope·설명으로 나눈다 (0.37225ms)
+✔ 제목 끝의 squash PR 번호는 설명에서 떼어내 참조로만 남긴다 (0.484625ms)
+✔ 이슈·PR 번호를 중복 없이 뽑는다 (0.10475ms)
+✔ 커밋을 type 별 섹션으로 묶고 호환성 파괴를 맨 위로 올린다 (0.254542ms)
+✔ 릴리즈 노트에 이전 태그·커밋 수·compare 링크가 들어간다 (0.29025ms)
+✔ 첫 릴리즈 노트에는 compare 링크가 없다 (0.1725ms)
+✔ JSON 은 version 필드만 바꾸고 다른 같은 숫자는 남긴다 (0.345792ms)
+✔ 배열 안의 모든 plugins[].version 을 갱신한다 (0.139125ms)
+✔ 포맷이 특이한 JSON 은 텍스트 폴백으로 version 만 바꾼다 (0.459125ms)
+✔ VERSION 텍스트 파일은 개행을 보존한다 (0.055792ms)
+✔ 쓰기 도중 실패해도 반쯤 bump 된 트리를 남기지 않는다 (145.443708ms)
+✔ 원격 조회가 실패하면 stale tracking ref 로 대신하지 않는다 (239.410083ms)
+✔ remote-tracking ref 가 없어도 ls-remote 로 원격과 대조한다 (417.806708ms)
+✔ 원격 위치를 확인할 수 없으면 태그를 달지 않는다 (364.843583ms)
+✔ remoteState 는 remote-tracking ref 가 없어도 ls-remote 로 원격 head 를 짚는다 (215.349042ms)
+✔ 원격에만 태그가 있으면 날 git 오류 대신 이유를 알려 준다 (372.446625ms)
+✔ 한 파일이라도 렌더에 실패하면 아무 파일도 바꾸지 않는다 (109.667209ms)
+✔ pr 도 버전 소스가 온전하지 않으면 거부한다 (165.064ms)
+✔ 원격 태그를 지우지 못하면 로컬 태그를 남기고 gh api 를 안내한다 (725.385833ms)
+✔ drift 는 방향으로 구분한다 — 파일이 앞서면 사고가 아니라 릴리즈할 상태다 (0.080708ms)
+✔ 파일이 태그보다 앞서면 RELEASE_READY=1 이 나온다 (203.142042ms)
+✔ 파일이 앞선 상태의 bump 는 release 로 가라고 알려 준다 (166.308958ms)
+✔ 버전 소스 파일이 사라지면 drift 가 0 이어도 release 를 막는다 (240.207833ms)
+✔ 로컬 기본 브랜치가 origin 보다 앞서 있으면 태그를 달지 않는다 (318.597625ms)
+✔ 릴리즈 생성이 실패하면 원격·로컬 태그를 되돌린다 (630.514333ms)
+✔ 되돌린 뒤 같은 버전으로 다시 릴리즈할 수 있다 (1037.842958ms)
+✔ 폴백 치환 개수가 기대와 다르면 파일을 쓰지 않고 던진다 (0.125292ms)
+✔ current 는 태그와 버전 소스 파일 버전을 함께 보고한다 (111.095333ms)
+✔ plan 은 파일을 건드리지 않고 세 단계를 계산한다 (182.159791ms)
+✔ 태그도 파일 버전도 없으면 단계와 무관하게 v0.1.0 에서 시작한다 (163.772292ms)
+✔ 태그가 없어도 파일 버전이 하나면 그 값에서 올린다 (첫 릴리즈가 아니다) (79.034292ms)
+✔ VERSION 파일이 비어도 나머지 파일 버전을 불일치로 오판하지 않는다 (88.57075ms)
+✔ bump --dry-run 은 아무 파일도 바꾸지 않는다 (130.992709ms)
+✔ bump 는 버전 소스 파일을 모두 새 버전으로 맞춘다 (119.699417ms)
+✔ 태그가 파일보다 앞서면 bump 를 막고 --force 로만 통과시킨다 (165.878666ms)
+✔ 태그가 있어도 파일끼리 버전이 다르면 bump 를 막는다 (253.108375ms)
+✔ set 은 버전 소스 파일을 지정한 값으로 맞춰 불일치에서 빠져나오게 한다 (200.823584ms)
+✔ set 은 값이 빈 파일도 채운다 — 고칠 수 있는 상태를 거부하지 않는다 (105.397958ms)
+✔ set 이 고칠 수 없는 것은 이유를 대고 막는다 (104.38825ms)
+✔ set 은 올리지 않는다 — 지정한 값을 그대로 쓴다 (134.63625ms)
+✔ 파일끼리 버전이 다르면 태그가 없어도 bump 를 막는다 (164.011ms)
+✔ 파일끼리 버전이 다르면 plan 이 v0.1.0 을 제안하지 않는다 (79.506833ms)
+✔ 알 수 없는 단계는 거부한다 (125.35275ms)
+✔ notes 는 직전 태그 이후 커밋만 type 별로 묶는다 (121.201209ms)
+✔ notes --out 은 파일로 저장한다 (118.840459ms)
+✔ release 는 기본 브랜치의 버전이 안 맞으면 태그를 만들지 않는다 (121.64875ms)
+✔ release --dry-run 은 노트만 출력하고 태그를 남기지 않는다 (182.47025ms)
+✔ 이미 있는 태그로는 릴리즈하지 않는다 (117.666458ms)
+✔ pr 은 기본 브랜치에서 실행되면 거부한다 (145.349333ms)
+✔ bump --branch 는 release 브랜치를 만들고 pr --dry-run 이 통과한다 (162.348333ms)
+✔ pr 은 버전 소스가 목표 버전과 다르면 거부한다 (156.707917ms)
+✔ package-lock.json 은 루트 버전 두 곳만 올리고 의존성 버전은 그대로 둔다 (113.890167ms)
+✔ package-lock.json 의 두 버전 자리가 서로 다르면 files-inconsistent 로 본다 (114.161417ms)
+! issue-onboard plan --json 실패로 ready 판정을 생략합니다.
+✖ valid graph passes Ajv and the schema contains the live snapshot keys (0.434625ms)
+✖ Ajv rejects blocks and unknown graph root properties (0.081208ms)
+✖ the walker rejects a parent-of cycle after Ajv shape validation (0.070833ms)
+✖ the schema edge enum stays aligned with the onboard walker (0.034167ms)
+✖ the schema edge kind enum stays aligned with the onboard walker (0.030917ms)
+✖ Ajv accepts the rich sync edge shape and top-level staleEdges (0.092292ms)
+✖ Ajv accepts a github-native dependency edge (0.075958ms)
+✖ start requires an open tracker issue and a ready result when checked (0.229125ms)
+✖ create has only git and tracker preconditions (0.099208ms)
+✖ end and merge require complete before and after evidence (0.232125ms)
+✔ missing island is an explicit skip for the human end guard (35.177584ms)
+✔ sibling skills resolve from the plugin root without hidden install directories (0.164625ms)
+✔ a failed sibling plan probe keeps start ready unchecked (37.396959ms)
+ℹ tests 163
+ℹ suites 0
+ℹ pass 130
+ℹ fail 33
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8970.874334
+
+✖ failing tests:
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:345:1
+✖ missing, incomplete, or invalid caches request a sync bootstrap (2.460167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - 'empty'
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:351:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: 'empty',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:392:1
+✖ cache coverage and revisions are compared with current open issues (0.382667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - null
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:394:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:417:1
+✖ complete caches require a matching live snapshot and cache integrity digest (0.232459ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - null
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:423:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:432:1
+✖ complete caches reject a repository identity that differs from the live checkout (0.103333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - 'repository-changed'
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:434:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: 'repository-changed',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:439:1
+✖ complete caches reject graph edges that are absent from the live issue sources (0.218084ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - 'edge-source-changed'
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:452:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: 'edge-source-changed',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:455:1
+✖ complete caches reject forged metadata on a live relationship edge (0.530291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - null
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:472:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:486:1
+✖ an empty complete cache still requires both integrity digests (0.146625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'ontology-unavailable'
+  - 'invalid'
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:490:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'ontology-unavailable',
+    expected: 'invalid',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:532:1
+✖ the onboarding CLI bootstraps a complete sync before recommending issues (13.824292ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:533:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:546:1
+✖ next and plan use the same live bootstrap validation as onboard (13.150458ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:547:23)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:565:1
+✖ the onboarding CLI never recommends after partial or failed sync (14.426375ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:567:21)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:579:1
+✖ the onboarding CLI rejects a graph that remains stale after a reported-success sync (10.707125ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:583:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:595:1
+✖ the onboarding CLI fails closed when the graph cache changes during live issue reads (10.889125ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:600:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:617:1
+✖ the onboarding CLI reports invalid caches and fails when bootstrap fails (10.447291ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:626:21)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:644:1
+✖ the onboarding CLI fails closed when the graph cache changes after the final graph load (10.565292ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:649:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:666:1
+✖ the onboarding CLI fails closed when the graph cache changes before recommendation output (10.142792ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:671:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:688:1
+✖ the onboarding CLI holds the cache lock while official writers attempt recommendation output (13.931375ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:693:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:712:1
+✖ the onboarding CLI fails closed when the ontology validator is unavailable (11.788291ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:713:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:728:1
+✖ automatic onboarding does not import an ontology outside its trusted installation (11.566125ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:736:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:751:1
+✖ automatic bootstrap does not execute a repository-local sync outside its trusted installation (11.033958ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at trustedInstallWithRepositoryFallback (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:269:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:752:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:763:1
+✖ automatic bootstrap preserves project-local flavor skill discovery (10.536708ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at trustedInstallWithProjectFlavor (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:313:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:764:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/bootstrap.test.mjs:889:1
+✖ production CLI rejects test-only command directory overrides (11.563625ms)
+  Error: ENOENT: no such file or directory, lstat '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+      at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+      at cpSync (node:fs:3147:3)
+      at cliFixture (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:188:3)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/bootstrap.test.mjs:890:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: '/Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/node_modules'
+  }
+
+test at skills/issue-onboard/scripts/link-roundtrip.test.mjs:25:1
+✖ cmdLink approval comment round-trips into a valid depends-on edge (4.079375ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/link-roundtrip.test.mjs:53:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at skills/issue-onboard/scripts/native-deps.test.mjs:77:1
+✖ buildNativeEdge produces a schema-valid depends-on edge (0.328875ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/skills/issue-onboard/scripts/native-deps.test.mjs:95:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:29:1
+✖ valid graph passes Ajv and the schema contains the live snapshot keys (0.434625ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:31:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:36:1
+✖ Ajv rejects blocks and unknown graph root properties (0.081208ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:39:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:46:1
+✖ the walker rejects a parent-of cycle after Ajv shape validation (0.070833ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:48:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:52:1
+✖ the schema edge enum stays aligned with the onboard walker (0.034167ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:53:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:61:1
+✖ the schema edge kind enum stays aligned with the onboard walker (0.030917ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:62:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:73:1
+✖ Ajv accepts the rich sync edge shape and top-level staleEdges (0.092292ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:145:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:151:1
+✖ Ajv accepts a github-native dependency edge (0.075958ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateGraphDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:72:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:167:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:170:1
+✖ start requires an open tracker issue and a ready result when checked (0.229125ms)
+  AssertionError [ERR_ASSERTION]: Got unwanted exception.
+  Actual message: "Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요."
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:177:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+        at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+        at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+        at assertAction (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:96:21)
+        at file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:177:29
+        at getActual (node:assert:611:5)
+        at strict.doesNotThrow (node:assert:779:32)
+        at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:177:10)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1201:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:831:18) {
+      [cause]: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+          at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+          at packageResolve (node:internal/modules/esm/resolve:764:81)
+          at moduleResolve (node:internal/modules/esm/resolve:855:18)
+          at defaultResolve (node:internal/modules/esm/resolve:988:11)
+          at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+          at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+          at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+          at #resolve (node:internal/modules/esm/loader:679:17)
+          at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+          at node:internal/modules/esm/loader:628:32
+    },
+    expected: undefined,
+    operator: 'doesNotThrow',
+    diff: 'simple'
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:191:1
+✖ create has only git and tracker preconditions (0.099208ms)
+  Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+      at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+      at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+      at validateActionDocument (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:79:21)
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:197:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    code: 'ONTOLOGY_UNAVAILABLE',
+    cause: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+        at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+        at packageResolve (node:internal/modules/esm/resolve:764:81)
+        at moduleResolve (node:internal/modules/esm/resolve:855:18)
+        at defaultResolve (node:internal/modules/esm/resolve:988:11)
+        at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+        at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+        at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+        at #resolve (node:internal/modules/esm/loader:679:17)
+        at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+        at node:internal/modules/esm/loader:628:32 {
+      code: 'ERR_MODULE_NOT_FOUND'
+    }
+  }
+
+test at tools/issue-ontology/ontology.test.mjs:207:1
+✖ end and merge require complete before and after evidence (0.232125ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /schema validation failed/. Input:
+  
+  'Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.'
+  
+      at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:209:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: Ajv를 불러오지 못했습니다. tools/issue-ontology에서 npm ci를 실행하세요.
+        at unavailable (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:20:17)
+        at loadOntology (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:55:23)
+        at assertAction (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs:96:21)
+        at file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:209:23
+        at getActual (node:assert:611:5)
+        at strict.throws (node:assert:759:24)
+        at TestContext.<anonymous> (file:///Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/ontology.test.mjs:209:10)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1201:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:831:18) {
+      [cause]: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ajv' imported from /Users/mineru/Documents/Github/samsara-issue-76/tools/issue-ontology/validate.mjs
+          at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+          at packageResolve (node:internal/modules/esm/resolve:764:81)
+          at moduleResolve (node:internal/modules/esm/resolve:855:18)
+          at defaultResolve (node:internal/modules/esm/resolve:988:11)
+          at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+          at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+          at ModuleLoader.resolveSync (node:internal/modules/esm/loader:746:52)
+          at #resolve (node:internal/modules/esm/loader:679:17)
+          at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+          at node:internal/modules/esm/loader:628:32
+    },
+    expected: /schema validation failed/,
+    operator: 'throws',
+    diff: 'simple'
+  }

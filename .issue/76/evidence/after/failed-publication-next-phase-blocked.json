@@ -1,0 +1,11 @@
+{
+  "issue": 74,
+  "exit": 2,
+  "output": {
+    "ok": false,
+    "code": "PHASE_SEQUENCE",
+    "message": "expected publish-evidence, received comment",
+    "nextPhase": "publish-evidence"
+  },
+  "stderr": "PHASE_SEQUENCE: expected publish-evidence, received comment\n"
+}

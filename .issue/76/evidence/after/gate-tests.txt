@@ -1,0 +1,33 @@
+✔ out-of-order phases are rejected and produce no side effect (177.1345ms)
+✔ forged completion claims never unlock the next phase (1211.217916ms)
+✔ a forged ledger is caught by prior-fact re-verification (1089.170583ms)
+✔ only one of many concurrent workers acquires the same issue lock (1165.408417ms)
+✔ review regression: no phase lock grants arbitrary shell (redirect, interpreter, fake gate path) (2829.106ms)
+✔ before lock: shell cannot modify code; evidence via file tool and brokered profile only (1961.861042ms)
+✔ brokered exec runs only controller-approved trees and quarantines ref mutations (1680.409292ms)
+✔ implement completes only with a passing required profile bound to the current tree (3347.577875ms)
+✔ hook confines code edits to the implement holder inside tracked worktree content (1828.724584ms)
+✔ legacy CLI requires being the live gate run step, not a copied fence (6303.961791ms)
+✔ replayed completion and re-run are idempotent with zero side effects (1117.400167ms)
+✔ a stale session owner is UNKNOWN until reconciled and cannot act afterwards (1677.782333ms)
+✔ effect failure keeps the next phase locked with zero commits (1740.980292ms)
+✔ a killed gate keeps UNKNOWN while its child runs, then confirms the real result (4011.649292ms)
+✔ a killed effect whose child exit is confirmed reconciles to failed and stays retryable (2453.098625ms)
+✔ an UNKNOWN effect with no recorded child needs explicit operator resolution (1420.226375ms)
+✔ hook failures fail closed (1376.850833ms)
+✔ independent issues hold their implement locks in parallel (2147.968833ms)
+✔ adopt only records phases whose facts exist (341.630917ms)
+✔ repositories that ignore .issue entirely still get tree digests and brokered runs (1777.550625ms)
+✔ staging adapter commits exactly the verified tree in an ignored-.issue repository (1586.574292ms)
+✔ status parsing keeps leading spaces, spaced paths and renames (real #74 DIRTY_BASE regression) (456.579833ms)
+✔ owner liveness is locale independent (ko worker vs C controller, legacy localized locks) (2358.274416ms)
+✔ another issue committing and pushing during a brokered run is not a violation; own branch tampering still is (5419.966458ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49511.527833
+exit=0

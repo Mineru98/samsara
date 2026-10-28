@@ -1,0 +1,69 @@
+{
+  "sessionId": "6400ee74-f5f8-498b-b4bb-f40e7bb3c266",
+  "base": "/private/tmp/sam-live-gate-1029/repo",
+  "worktree": "/private/tmp/sam-live-gate-1029/issue-777",
+  "lockedWriteDenied": true,
+  "afterVerifiedBeforeWriteAllowed": true,
+  "contents": "unlocked",
+  "secondExit": 0,
+  "statusAfter": {
+    "ok": true,
+    "issue": 777,
+    "store": "/private/tmp/sam-live-gate-1029/repo/.git/samsara-gate/issue-777",
+    "completedPhases": [
+      "intake",
+      "fetch",
+      "classify",
+      "plan",
+      "worktree",
+      "before"
+    ],
+    "nextPhase": "implement",
+    "condition": "unknown",
+    "lock": {
+      "phase": "implement",
+      "fence": 5,
+      "stage": "active",
+      "owner": {
+        "kind": "session",
+        "session": "6400ee74-f5f8-498b-b4bb-f40e7bb3c266",
+        "pid": 21632,
+        "pidStart": "Thu Oct 29 07:56:43 2026"
+      },
+      "alive": false,
+      "step": null
+    },
+    "quarantine": null,
+    "sessions": [
+      "6400ee74-f5f8-498b-b4bb-f40e7bb3c266"
+    ],
+    "profiles": {},
+    "tree": "e716986c72b983b2a78ad456524313b4bf0b8a09",
+    "worktree": "/private/tmp/sam-live-gate-1029/issue-777",
+    "branch": "fix/777-live"
+  },
+  "nextPhaseAttemptAfterProcessExit": {
+    "exit": 6,
+    "result": {
+      "ok": false,
+      "code": "RECONCILE_REQUIRED",
+      "message": "previous owner of phase implement is gone; result is UNKNOWN \u2014 run gate reconcile",
+      "lock": {
+        "fence": 5,
+        "phase": "implement",
+        "owner": {
+          "kind": "session",
+          "session": "6400ee74-f5f8-498b-b4bb-f40e7bb3c266",
+          "pid": 21632,
+          "pidStart": "Thu Oct 29 07:56:43 2026"
+        },
+        "stage": "active",
+        "acquiredAt": "2026-10-28T22:56:49.089Z",
+        "effect": {
+          "type": "implementation-worker",
+          "approvalId": null
+        }
+      }
+    }
+  }
+}

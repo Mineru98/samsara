@@ -1,0 +1,37 @@
+HEAD=a2d5839b3509a7e7b23f02ed6e248707a4e731cb
+a2d5839b3509a7e7b23f02ed6e248707a4e731cb fix(issue-start): 영속 단계 gate와 PreToolUse hook으로 선행 단계 미완료 시 부수효과 차단
+
+ hooks/hooks.json                               |   17 +
+ skills/issue-start/SKILL.md                    |   18 +
+ skills/issue-start/scripts/issue-gate.mjs      | 1535 ++++++++++++++++++++++++
+ skills/issue-start/scripts/issue-gate.test.mjs |  617 ++++++++++
+ skills/issue-start/scripts/issue-start.mjs     |   10 +
+ 5 files changed, 2197 insertions(+)
+
+$ node skills/issue-start/scripts/issue-gate.mjs status --issue 76
+{
+  "ok": false,
+  "code": "NOT_INITIALIZED",
+  "message": "issue #76 has no gate ledger — run gate init or gate adopt"
+}
+NOT_INITIALIZED: issue #76 has no gate ledger — run gate init or gate adopt
+exit=2
+
+$ cat hooks/hooks.json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/skills/issue-start/scripts/issue-gate.mjs\" hook || exit 2",
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  }
+}
