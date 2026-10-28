@@ -1,0 +1,21 @@
+# usage review @ ff71efb
+5:let Ajv2020 = null;
+8:  ({ default: Ajv2020 } = await import('ajv/dist/2020.js'));
+13:export const ontologyAvailable = Boolean(Ajv2020);
+55:  if (!Ajv2020) throw unavailable('Ajv를 불러오지 못했습니다');
+60:  const ajv = new Ajv2020({ allErrors: true, strict: true });
+--- $data in schemas:
+none
+--- $id/$ref in schemas:
+   1 "$id": "https://samsara.local/schemas/actions/create.schema.json"
+   1 "$id": "https://samsara.local/schemas/actions/end.schema.json"
+   1 "$id": "https://samsara.local/schemas/actions/merge.schema.json"
+   1 "$id": "https://samsara.local/schemas/actions/start.schema.json"
+   1 "$id": "https://samsara.local/schemas/graph-v2.schema.json"
+   1 "$ref": "#/$defs/contextSource"
+   8 "$ref": "#/$defs/contextValue"
+   2 "$ref": "#/$defs/edge"
+   1 "$ref": "#/$defs/edgeProvenance"
+   1 "$ref": "#/$defs/node"
+   1 "$ref": "#/$defs/snapshot"
+--- conclusion: $data option not set (ReDoS path inactive); schemas are repo-local files with fixed $id and local #/$defs refs only; no user-supplied URI reaches fast-uri. Warnings are preventive.
