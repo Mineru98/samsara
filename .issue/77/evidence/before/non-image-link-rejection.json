@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "errors": [
+    "이미지가 일반 링크로 작성되었습니다: https://github.com/Mineru98/samsara/blob/fix/74-macos-symlink-cwd-scope/runtime/internal/app/alias_test.go",
+    "GitHub 페이지 URL은 직접 이미지 링크가 아닙니다: https://github.com/Mineru98/samsara/blob/fix/74-macos-symlink-cwd-scope/runtime/internal/app/alias_test.go"
+  ],
+  "references": [
+    {
+      "syntax": "markdown-link",
+      "alt": "",
+      "originalUrl": "https://github.com/Mineru98/samsara/blob/fix/74-macos-symlink-cwd-scope/runtime/internal/app/alias_test.go",
+      "resolvedUrl": "https://github.com/Mineru98/samsara/blob/fix/74-macos-symlink-cwd-scope/runtime/internal/app/alias_test.go",
+      "source": "comment.md",
+      "sourceUrl": "https://github.com/example/repo/issues/1",
+      "inline": false,
+      "kind": "blob",
+      "start": 0,
+      "end": 116
+    }
+  ],
+  "needsManualUpload": false,
+  "pendingUploads": []
+}

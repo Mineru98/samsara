@@ -1,0 +1,5 @@
+$ /bin/bash scripts/check-shared.sh  (cwd ., tree 3f03c81b19ce3540ecbc38e26beaaa3c5376d37f)
+shared cache-safety block: 6 copies match
+git detection code: 2 copies match (12 declarations)
+
+exit=0
