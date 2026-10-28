@@ -34,6 +34,7 @@ React UI는 별도 후속 프로젝트로 미루지 않는다. 이번 계획 안
 | [03. 공통 계약·데이터 모델](03-contracts-and-data-model.md) | ID, 상태, dependency, SQLite, HTTP, IPC, SSE, 보안·버전 | 모든 개발자 |
 | [04. Git·Worktree·Merge 계획](04-git-worktree-and-merge-plan.md) | 브랜치, 산출물 고정, 승인, 최신 base 검증, 통합 권위, 장애 복구 | Git·CI·런타임 담당 |
 | [05. 테스트·개발 순서](05-testing-and-delivery-plan.md) | M0~M7, 테스트 행렬, 일정 가정, release gate, 파일럿 | 책임자·개발·검증 담당 |
+| [06. 런타임 구현 현황과 남은 작업](06-runtime-remaining-work.md) | `runtime/` 구현 범위, 미구현 항목과 추적 이슈(#64~#72) | 책임자·런타임 개발자 |
 
 처음 읽을 때는 이 문서 → 03 → 담당 분야 01 또는 02 → 04 → 05 순서를 권한다. 구현 이슈를 만들 때는 05의 milestone 아래 01의 R 작업, 02의 UI-W 작업, 04의 G 작업을 연결한다.
 

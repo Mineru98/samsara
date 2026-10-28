@@ -97,6 +97,8 @@ Claude Code 2.1.311, tmux 3.4, git 2.43, SQLite 3.53.3, Linux 환경에서 실�
 
 ## 아직 구현하지 않았거나 의도적으로 막아 둔 범위
 
+전체 목록과 추적 이슈(#64~#72)는 [`docs/architecture/06-runtime-remaining-work.md`](../docs/architecture/06-runtime-remaining-work.md)에 정리했다.
+
 문서의 "확인 전 강제 기능 비활성" 원칙에 따라 다음을 명시적으로 미지원으로 반환한다.
 
 - **herdr**: 설치된 binary의 version과 `herdr api schema --json` hash는 기록한다. 하지만 compatibility manifest에서 protocol 검증(`herdr_protocol_verified`)을 하기 전에는 생성·입력 capability를 `UNSUPPORTED(HERDR_COMPAT_UNVERIFIED)`로 보고한다. 그래서 auto mode는 tmux로 넘어간다. 실제 herdr CLI·socket adapter 구현은 M5 범위다.
