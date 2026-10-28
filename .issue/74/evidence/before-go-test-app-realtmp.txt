@@ -1,0 +1,2 @@
+ok  	github.com/Mineru98/samsara/runtime/internal/app	2.040s
+EXIT=0

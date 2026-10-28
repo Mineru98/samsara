@@ -1,0 +1,23 @@
+$ /opt/homebrew/bin/go test ./...  (cwd runtime, tree 73e5e12544e1f78794b883545ca4f9172665ce4d)
+?   	github.com/Mineru98/samsara/runtime/cmd/samsara	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/app	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	(cached)
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/herdr	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/config	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	(cached)
+?   	github.com/Mineru98/samsara/runtime/internal/domain	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	(cached)
+?   	github.com/Mineru98/samsara/runtime/internal/paths	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/plan	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/procinfo	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/project	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	(cached)
+?   	github.com/Mineru98/samsara/runtime/internal/transport/ipc	[no test files]
+
+exit=0

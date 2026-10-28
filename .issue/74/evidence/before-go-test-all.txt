@@ -1,0 +1,43 @@
+?   	github.com/Mineru98/samsara/runtime/cmd/samsara	[no test files]
+--- FAIL: TestABCPartialBlockingRevokeAndIntegration (0.18s)
+    app_test.go:244: registration must grant leases: &{Managed:true SessionID: AttemptID:att_8953c4623ed061cc74eb6940 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE} &{Managed:true SessionID: AttemptID:att_f87f414c1dc769958d8c1c8e LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestRestartEpochAndQuarantine (0.09s)
+    invariants_test.go:132: no lease: &{Managed:true SessionID: AttemptID:att_38e055d7a145bc1918756f02 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestLeaseExpiryClockAndRenewal (0.10s)
+    invariants_test.go:172: no lease: &{Managed:true SessionID: AttemptID:att_53b81ff184136da5d95f0b25 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestLaunchAckLossDoesNotDuplicateWorker (0.11s)
+    invariants_test.go:236: adopted worker registers: &{Managed:true SessionID: AttemptID:att_8ee0b13a3703481feff3b52f LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestPauseResumePromptAckLoss (0.11s)
+    invariants_test.go:242: no lease: &{Managed:true SessionID: AttemptID:att_bc2763dff11a0b4f37e9b9f5 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestHumanTakeoverBlocksAutomatedInput (0.10s)
+    invariants_test.go:288: no lease: &{Managed:true SessionID: AttemptID:att_ebffb8595ab98b8ede6a8c17 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestDisableDrainKeepsGuard (0.09s)
+    invariants_test.go:306: no lease: &{Managed:true SessionID: AttemptID:att_8d8f00b5956994139368fda5 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestStopAndToolObservationsNeverComplete (0.10s)
+    invariants_test.go:341: no lease: &{Managed:true SessionID: AttemptID:att_74cbf7a528839ba9dfb80736 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestStaleWorkerCannotSubmit (0.12s)
+    invariants_test.go:362: no lease: &{Managed:true SessionID: AttemptID:att_c8b3915fd749c1dfab6feb7f LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestStandaloneManualAttach (0.11s)
+    invariants_test.go:487: attach: <nil> RESOURCE_NOT_FOUND: no registered session user-1 (SessionStart hook must run first)
+FAIL
+FAIL	github.com/Mineru98/samsara/runtime/internal/app	2.044s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.913s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/herdr	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	1.996s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	1.251s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	1.860s
+?   	github.com/Mineru98/samsara/runtime/internal/domain	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	2.406s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	2.546s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	2.933s
+?   	github.com/Mineru98/samsara/runtime/internal/paths	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/plan	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/procinfo	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/project	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	3.365s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	3.979s
+?   	github.com/Mineru98/samsara/runtime/internal/transport/ipc	[no test files]
+FAIL
+EXIT=1

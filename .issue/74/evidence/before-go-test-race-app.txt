@@ -1,0 +1,24 @@
+--- FAIL: TestABCPartialBlockingRevokeAndIntegration (0.37s)
+    app_test.go:244: registration must grant leases: &{Managed:true SessionID: AttemptID:att_e00ac7ed7fc8cea05f6f25a0 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE} &{Managed:true SessionID: AttemptID:att_de0d2f1a6d3d28ebefce0c9b LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestRestartEpochAndQuarantine (0.31s)
+    invariants_test.go:132: no lease: &{Managed:true SessionID: AttemptID:att_4e724c12aa82344ea8679196 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestLeaseExpiryClockAndRenewal (0.28s)
+    invariants_test.go:172: no lease: &{Managed:true SessionID: AttemptID:att_d1dd8c2e3bfec91db35ce68a LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestLaunchAckLossDoesNotDuplicateWorker (0.28s)
+    invariants_test.go:236: adopted worker registers: &{Managed:true SessionID: AttemptID:att_ce8059588751694f07aaf990 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestPauseResumePromptAckLoss (0.26s)
+    invariants_test.go:242: no lease: &{Managed:true SessionID: AttemptID:att_bfd23a608e0c0e899b9ad0ce LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestHumanTakeoverBlocksAutomatedInput (0.25s)
+    invariants_test.go:288: no lease: &{Managed:true SessionID: AttemptID:att_c0be4d1e07572988932be653 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestDisableDrainKeepsGuard (0.25s)
+    invariants_test.go:306: no lease: &{Managed:true SessionID: AttemptID:att_7d72337d55274f851e5a4a44 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestStopAndToolObservationsNeverComplete (0.25s)
+    invariants_test.go:341: no lease: &{Managed:true SessionID: AttemptID:att_75f30f37273023b12cabe051 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestStaleWorkerCannotSubmit (0.25s)
+    invariants_test.go:362: no lease: &{Managed:true SessionID: AttemptID:att_fc4d7e1188409cbb3c097b71 LeaseID: Fence: Context: Reason:CWD_OUT_OF_SCOPE}
+--- FAIL: TestStandaloneManualAttach (0.27s)
+    invariants_test.go:487: attach: <nil> RESOURCE_NOT_FOUND: no registered session user-1 (SessionStart hook must run first)
+FAIL
+FAIL	github.com/Mineru98/samsara/runtime/internal/app	4.262s
+FAIL
+EXIT=1
