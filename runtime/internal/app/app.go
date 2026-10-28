@@ -11,6 +11,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -63,6 +64,10 @@ func New(db *sqlite.DB, layout paths.Layout, backends *backend.Set, log *slog.Lo
 		log = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
 	exe, _ := os.Executable()
+	// Worktree paths are stored and compared against canonical session cwds,
+	// so an aliased parent (macOS /var -> /private/var) is resolved here. The
+	// root itself is not followed: a symlinked root is still refused by Ensure.
+	layout.WorktreeRoot = filepath.Join(resolveExistingPrefix(filepath.Dir(layout.WorktreeRoot)), filepath.Base(layout.WorktreeRoot))
 	return &App{DB: db, Clock: db.Clock, Layout: layout, Backends: backends, Git: gitops.New(), Log: log, SelfExe: exe,
 		Epoch: domain.NewID("epoch"), wake: make(chan struct{}, 1), RequireHookReadiness: true,
 		Claude: func() ClaudeSupport { return ClaudeSupport{} }}

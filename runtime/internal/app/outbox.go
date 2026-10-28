@@ -232,7 +232,7 @@ func (a *App) handleWorktreeCreate(ctx context.Context, p map[string]string) out
 	}
 	exists := false
 	for _, li := range list {
-		if li.Path == w.Path {
+		if a.canonicalWorktreePath(li.Path) == w.Path {
 			if li.Branch != w.BranchRef {
 				return failed("path exists with another branch", failWT(domain.CodeOwnershipConflict))
 			}

@@ -66,7 +66,13 @@ git:
 
 func newEnv(t *testing.T, cfg string) *env {
 	t.Helper()
-	dir := t.TempDir()
+	return newEnvIn(t, cfg, t.TempDir())
+}
+
+// newEnvIn builds the runtime under dir, which may be reached through a
+// symlink alias (as macOS TMPDIR /var -> /private/var is).
+func newEnvIn(t *testing.T, cfg, dir string) *env {
+	t.Helper()
 	repo := filepath.Join(dir, "repo")
 	if err := os.MkdirAll(filepath.Join(repo, ".samsara"), 0o755); err != nil {
 		t.Fatal(err)
