@@ -1,0 +1,31 @@
+✔ out-of-order phases are rejected and produce no side effect (183.347125ms)
+✔ forged completion claims never unlock the next phase (1523.132583ms)
+✔ a forged ledger is caught by prior-fact re-verification (1169.227083ms)
+✔ only one of many concurrent workers acquires the same issue lock (1136.791625ms)
+✔ review regression: no phase lock grants arbitrary shell (redirect, interpreter, fake gate path) (2709.8025ms)
+✔ before lock: shell cannot modify code; evidence via file tool and brokered profile only (1283.182041ms)
+✔ brokered exec runs only controller-approved trees and quarantines ref mutations (1456.297708ms)
+✔ implement completes only with a passing required profile bound to the current tree (2111.378375ms)
+✔ hook confines code edits to the implement holder inside tracked worktree content (1473.163042ms)
+✔ legacy CLI requires being the live gate run step, not a copied fence (4904.106ms)
+✔ replayed completion and re-run are idempotent with zero side effects (1078.897334ms)
+✔ a stale session owner is UNKNOWN until reconciled and cannot act afterwards (1534.380792ms)
+✔ effect failure keeps the next phase locked with zero commits (1577.685625ms)
+✔ a killed gate keeps UNKNOWN while its child runs, then confirms the real result (3965.588625ms)
+✔ a killed effect whose child exit is confirmed reconciles to failed and stays retryable (2445.448833ms)
+✔ an UNKNOWN effect with no recorded child needs explicit operator resolution (1420.234041ms)
+✔ hook failures fail closed (1151.826458ms)
+✔ independent issues hold their implement locks in parallel (1858.027708ms)
+✔ adopt only records phases whose facts exist (315.942333ms)
+✔ repositories that ignore .issue entirely still get tree digests and brokered runs (1613.156792ms)
+✔ staging adapter commits exactly the verified tree in an ignored-.issue repository (1428.848291ms)
+✔ status parsing keeps leading spaces, spaced paths and renames (real #74 DIRTY_BASE regression) (398.889833ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36768.266125
+exit=0
