@@ -1,0 +1,3 @@
+$ /opt/homebrew/bin/go vet ./...  (cwd runtime, tree 73e5e12544e1f78794b883545ca4f9172665ce4d)
+
+exit=0
