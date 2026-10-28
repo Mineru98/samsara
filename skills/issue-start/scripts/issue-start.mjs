@@ -54,6 +54,7 @@ import {
 } from './issue-media.mjs';
 import { runIssueStartPhase } from './issue-start-phase.mjs';
 import { gateAction } from './issue-ontology.mjs';
+import { legacyGateCheck } from './issue-gate.mjs';
 
 function usage(exitCode = 1) {
   console.error(`Usage:
@@ -503,6 +504,8 @@ const NEEDS_NUMBER = new Set([
   'fetch', 'worktree', 'evidence-init', 'evidence-commit', 'evidence-mirror', 'evidence-urls', 'report-check',
 ]);
 const MODES = new Set([...NEEDS_NUMBER, 'guard', 'migrate', 'sync-base', 'status']);
+// 영속 gate 가 걸린 이슈에서는 issue-gate.mjs run 의 자식(fence 일치)만 부수효과를 낼 수 있다
+const GATED_MODES = new Set(['fetch', 'worktree', 'evidence-commit', 'evidence-mirror', 'sync-base']);
 
 function main() {
   const argv = process.argv.slice(2);
@@ -557,6 +560,13 @@ function main() {
   if (NEEDS_NUMBER.has(mode) && !number) {
     console.error('✗ 이슈 번호가 필요하다 (예: 59, #59, 이슈 URL)');
     usage();
+  }
+  if (GATED_MODES.has(mode) && !opts.dryRun) {
+    const gate = legacyGateCheck(number);
+    if (!gate.ok) {
+      console.error(`✗ GATE_REQUIRED: ${gate.reason}`);
+      process.exit(7);
+    }
   }
 
   const root = repoRoot();

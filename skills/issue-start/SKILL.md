@@ -204,6 +204,24 @@ flowchart TD
 재조정 계약과 raw-byte 폐쇄는 `contracts/issue-phase-capability-bundle-v1.json`이다.
 두 계약 또는 폐쇄 검증이 실패하면 active 실행을 시작하지 않는다.
 
+phase API 는 stateless 다. 요청의 state·effectResult 를 그대로 믿으므로 그것만으로는 잠금이 아니다.
+단계 강제가 필요하면 `scripts/issue-gate.mjs` 를 앞에 둔다.
+
+```text
+영속 상태   <git common dir>/samsara-gate/issue-<n>/ (ledger·lock·controller·attempts)
+잠금        이슈당 lock 1개(link 원자 생성, owner pid+시작시각, fence 단조 증가)
+완료        verifier 가 실제 파일·git·tracker 사실을 확인한 뒤에만 phase API 에 receipt 를 넘긴다
+명령 단계   gate run    — proposedEffect argv 를 gate 가 직접 실행(approval-required 는 --approval)
+세션 단계   gate begin/complete — classify·plan·before·implement·after
+실행        gate exec   — controller 가 등록한 profile + 승인한 tree 만. ref 변화는 격리(quarantine)
+UNKNOWN     owner 가 죽으면 reconcile 전까지 모든 단계 거절. 자식이 살아 있으면 계속 잠금
+hook        node <절대경로>/issue-gate.mjs hook || exit 2 (onFailure: block)
+```
+
+hook 은 gated worktree 와 bind 된 worker 세션의 Bash 를 읽기 전용 명령과 신뢰 경로 gate CLI 로 제한하고,
+코드 편집은 implement lock 보유 세션에게만 허용한다. 같은 OS 사용자의 임의 프로세스를 막는 sandbox 는 아니다.
+사용법은 `node scripts/issue-gate.mjs` 의 usage 와 `scripts/issue-gate.test.mjs` 를 따른다.
+
 # 스크립트 경로
 
 아래 중 **존재하는 첫 번째 경로**를 `<skill>` 로 쓴다. 하나도 없으면 각 레퍼런스의 인라인 절차를 그대로 수행한다.
