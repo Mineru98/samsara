@@ -1,0 +1,30 @@
+{
+  "issue": 75,
+  "quarantine": {
+    "reason": "git refs or HEAD changed during brokered execution",
+    "profile": "node-all",
+    "fence": 2,
+    "at": "2026-10-28T23:10:10.087Z"
+  },
+  "lastSuccessfulExec": {
+    "profile": "npm-audit",
+    "digest": "a01b261fd1d66e4b3ce51e144f72853b7411d8bfd51b961e789edcf9b3900d82",
+    "phase": "implement",
+    "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+    "exit": 0,
+    "at": "2026-10-28T23:09:53.831Z"
+  },
+  "ownHead": "ff71efb1c245ceeb6168cc3c03e1432ccb41726d",
+  "otherIssueRefUpdates": [
+    "refs/remotes/origin/fix/76-persistent-phase-gate@{2026-10-29T08:10:01+09:00} 3652e0da2999a3ef8f1f343f90a75bfcdcd2105c update by push",
+    "refs/heads/fix/76-persistent-phase-gate@{2026-10-29T08:10:00+09:00} 3652e0da2999a3ef8f1f343f90a75bfcdcd2105c commit: docs(issue-76): 작업 전후 증거 자료 추가",
+    "worktrees/samsara-issue-76/HEAD@{2026-10-29T08:10:00+09:00} 3652e0da2999a3ef8f1f343f90a75bfcdcd2105c commit: docs(issue-76): 작업 전후 증거 자료 추가",
+    "refs/heads/fix/76-persistent-phase-gate@{2026-10-29T08:09:58+09:00} 9c4c14221d991d7fc6b6614b1f002b16e623b21f commit: fix(issue-start): gate owner 생존 판정을 locale 과 무관하게 비교",
+    "worktrees/samsara-issue-76/HEAD@{2026-10-29T08:09:58+09:00} 9c4c14221d991d7fc6b6614b1f002b16e623b21f commit: fix(issue-start): gate owner 생존 판정을 locale 과 무관하게 비교",
+    "refs/remotes/origin/fix/76-persistent-phase-gate@{2026-10-29T08:07:16+09:00} 4f6dcb3d46a36bd1d4f7d8f5510fea572b5c214d update by push",
+    "refs/heads/fix/76-persistent-phase-gate@{2026-10-29T08:07:14+09:00} 4f6dcb3d46a36bd1d4f7d8f5510fea572b5c214d commit: docs(issue-76): 작업 전후 증거 자료 추가",
+    "worktrees/samsara-issue-76/HEAD@{2026-10-29T08:07:14+09:00} 4f6dcb3d46a36bd1d4f7d8f5510fea572b5c214d commit: docs(issue-76): 작업 전후 증거 자료 추가",
+    "refs/remotes/origin/fix/76-persistent-phase-gate@{2026-10-29T08:04:41+09:00} a2d5839b3509a7e7b23f02ed6e248707a4e731cb update by push",
+    "refs/heads/fix/76-persistent-phase-gate@{2026-10-29T08:04:13+09:00} a2d5839b3509a7e7b23f02ed6e248707a4e731cb commit: fix(issue-start): 영속 단계 gate와 PreToolUse hook으로 선행 단계 미완료 시 부수효과 차단"
+  ]
+}

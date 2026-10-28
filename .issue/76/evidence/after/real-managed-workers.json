@@ -1,0 +1,511 @@
+{
+  "scope": "actual herdr workspace w2T; cc --mode=dev --model=opus; managed CLI/Claude tool boundary",
+  "gateSourceSha256": "8c49d687f3e1f87331612ce26f49460370bd9019c3b8a303f5de049fa346ae12",
+  "workers": [
+    {
+      "issue": 74,
+      "completedPhases": [
+        "issue-start.intake",
+        "issue-start.fetch",
+        "issue-start.classify",
+        "issue-start.plan",
+        "issue-start.worktree",
+        "issue-start.before",
+        "issue-start.implement",
+        "issue-start.commit",
+        "issue-start.after",
+        "issue-start.publish-evidence",
+        "issue-start.comment",
+        "issue-start.sync-base",
+        "issue-start.handback"
+      ],
+      "history": [
+        {
+          "phase": "intake",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:00:13.269Z"
+        },
+        {
+          "phase": "fetch",
+          "fence": 2,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=2;facts=e5f22c514cc22665d7fa69a3142861fae6b83619a4e1ab47bfed1ea66dd42a49",
+          "at": "2026-10-28T23:02:34.205Z"
+        },
+        {
+          "phase": "classify",
+          "fence": 2,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=2;facts=6403fca83eb31834bea0c46a031a40b59c985263d4cfb697298daef8e665b91f",
+          "at": "2026-10-28T23:02:34.315Z"
+        },
+        {
+          "phase": "plan",
+          "fence": 2,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=2;facts=8f8b3f87af1a7dda7fbec6041cc429bf7ec809596d81738f489a20c4cb9ae28a",
+          "at": "2026-10-28T23:02:34.433Z"
+        },
+        {
+          "phase": "worktree",
+          "fence": 2,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=2;facts=f6771789d5c70c73b9503de1dcdcaafa24950ce68f17e68924eb77ce1548504f",
+          "at": "2026-10-28T23:02:34.591Z"
+        },
+        {
+          "phase": "before",
+          "fence": 2,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=2;facts=51e5aa647a6e5c205eef5d65279f3de1cd99a0e6aa73ff2fc83adaf46d0b5406",
+          "at": "2026-10-28T23:02:34.700Z"
+        },
+        {
+          "phase": "implement",
+          "fence": 3,
+          "how": "session",
+          "receipt": "samsara-gate/v1;session;fence=3;facts=fbc9e5b0275a94e050659d6ab1c6c72ab471aa3ea1bc7b703be3abb86e320dd2",
+          "at": "2026-10-28T23:14:30.041Z"
+        },
+        {
+          "phase": "commit",
+          "fence": 4,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=4;facts=b6d0da443c83e2b09f1d6ba786ae0d8fddc6362a023bc3795a96987c7fc5e51d",
+          "at": "2026-10-28T23:14:32.356Z"
+        },
+        {
+          "phase": "after",
+          "fence": 5,
+          "how": "session",
+          "receipt": "samsara-gate/v1;session;fence=5;facts=39585632fcf70607768ea9b36fe95748f68c89ae430744029c380499af2089d9",
+          "at": "2026-10-28T23:14:44.306Z"
+        },
+        {
+          "phase": "publish-evidence",
+          "fence": 11,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=11;facts=9923bf6bb1be3ef562564018f3b6ae30878dcdd0f91c8056e497d4ae718affe3",
+          "at": "2026-10-28T23:23:15.735Z"
+        },
+        {
+          "phase": "comment",
+          "fence": 13,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=13;facts=91abb17a2a8bce7fe5d1b571a18d00347c61941d370a7f39088305728255ab0f",
+          "at": "2026-10-28T23:28:53.776Z"
+        },
+        {
+          "phase": "sync-base",
+          "fence": 14,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=14;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:30:36.351Z"
+        },
+        {
+          "phase": "handback",
+          "fence": 15,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=15;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:30:38.376Z"
+        }
+      ],
+      "execResults": [
+        {
+          "profile": "go-all",
+          "digest": "c437ad10899199f792611cb274b8fd539da4d762a231f2c32bb0c93eac0a6bb4",
+          "phase": "implement",
+          "tree": "73e5e12544e1f78794b883545ca4f9172665ce4d",
+          "exit": 0,
+          "at": "2026-10-28T23:14:12.288Z"
+        },
+        {
+          "profile": "go-race",
+          "digest": "434dfccf8887434095345a091efd0790feadce8c76e9dee58d17ac1b3180467d",
+          "phase": "implement",
+          "tree": "73e5e12544e1f78794b883545ca4f9172665ce4d",
+          "exit": 0,
+          "at": "2026-10-28T23:14:24.909Z"
+        },
+        {
+          "profile": "go-vet",
+          "digest": "f5a7bfb87bb1e74cd2c41e7546b5b5b4363c85e9667945e8e913667546251a47",
+          "phase": "implement",
+          "tree": "73e5e12544e1f78794b883545ca4f9172665ce4d",
+          "exit": 0,
+          "at": "2026-10-28T23:14:27.415Z"
+        },
+        {
+          "profile": "go-all",
+          "digest": "c437ad10899199f792611cb274b8fd539da4d762a231f2c32bb0c93eac0a6bb4",
+          "phase": "after",
+          "tree": "73e5e12544e1f78794b883545ca4f9172665ce4d",
+          "exit": 0,
+          "at": "2026-10-28T23:14:37.031Z"
+        },
+        {
+          "profile": "go-race",
+          "digest": "434dfccf8887434095345a091efd0790feadce8c76e9dee58d17ac1b3180467d",
+          "phase": "after",
+          "tree": "73e5e12544e1f78794b883545ca4f9172665ce4d",
+          "exit": 0,
+          "at": "2026-10-28T23:14:39.435Z"
+        },
+        {
+          "profile": "go-vet",
+          "digest": "f5a7bfb87bb1e74cd2c41e7546b5b5b4363c85e9667945e8e913667546251a47",
+          "phase": "after",
+          "tree": "73e5e12544e1f78794b883545ca4f9172665ce4d",
+          "exit": 0,
+          "at": "2026-10-28T23:14:41.731Z"
+        }
+      ],
+      "implementationCommit": "147030f8eb876d309f01d1de15239401bb242056"
+    },
+    {
+      "issue": 75,
+      "completedPhases": [
+        "issue-start.intake",
+        "issue-start.fetch",
+        "issue-start.classify",
+        "issue-start.plan",
+        "issue-start.worktree",
+        "issue-start.before",
+        "issue-start.implement",
+        "issue-start.commit",
+        "issue-start.after",
+        "issue-start.publish-evidence",
+        "issue-start.comment",
+        "issue-start.sync-base",
+        "issue-start.handback"
+      ],
+      "history": [
+        {
+          "phase": "intake",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:02:34.837Z"
+        },
+        {
+          "phase": "fetch",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=ade3ceca91753626b577a8d87c9bfbcb1bfeef83a7746b17e4639f280922bfff",
+          "at": "2026-10-28T23:02:34.932Z"
+        },
+        {
+          "phase": "classify",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=c21be492a22c135c3afb229e170461e85489e8650ff06e6c2aaf5ed28046e546",
+          "at": "2026-10-28T23:02:35.023Z"
+        },
+        {
+          "phase": "plan",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=730c4545401ec6fbb67a4bd772fde579ede421b78c3538ac2d0ad7ac1bc1a6e7",
+          "at": "2026-10-28T23:02:35.132Z"
+        },
+        {
+          "phase": "worktree",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=f6771789d5c70c73b9503de1dcdcaafa24950ce68f17e68924eb77ce1548504f",
+          "at": "2026-10-28T23:02:35.243Z"
+        },
+        {
+          "phase": "before",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=a7841a475a0a976501fc20664aa6f5cdaf47902263fe4a9ed33f748f7ee1e05c",
+          "at": "2026-10-28T23:02:35.350Z"
+        },
+        {
+          "phase": "quarantine-cleared",
+          "reason": "Reviewed own HEAD unchanged; unrelated issue 76 commit/push overlapped node-all; scoped ref guard regression passed independently",
+          "previous": {
+            "reason": "git refs or HEAD changed during brokered execution",
+            "profile": "node-all",
+            "fence": 2,
+            "at": "2026-10-28T23:10:10.087Z"
+          },
+          "at": "2026-10-28T23:14:04.783Z"
+        },
+        {
+          "phase": "implement",
+          "fence": 4,
+          "how": "session",
+          "receipt": "samsara-gate/v1;session;fence=4;facts=dafcd5a95b5749551d1648bbbf8354a9ea155be018c3bb836e7b2aeac8192b52",
+          "at": "2026-10-28T23:14:24.112Z"
+        },
+        {
+          "phase": "commit",
+          "fence": 5,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=5;facts=6d593ed306c78a3fbd64b8d7a39678647b428205bb0e1db2b37a037e23e67a68",
+          "at": "2026-10-28T23:14:26.633Z"
+        },
+        {
+          "phase": "after",
+          "fence": 6,
+          "how": "session",
+          "receipt": "samsara-gate/v1;session;fence=6;facts=a2f0ada5c6b1d5637085768163817ebd8cd42d21a5cc77408f2e61bfafe6b279",
+          "at": "2026-10-28T23:14:57.231Z"
+        },
+        {
+          "phase": "publish-evidence",
+          "fence": 10,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=10;facts=acff45ce86174b6fd4a4d2d82f8e03453ebe126e586fcb68fce03273d3fae7fe",
+          "at": "2026-10-28T23:27:06.130Z"
+        },
+        {
+          "phase": "comment",
+          "fence": 12,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=12;facts=48823e111ca5e62b19a5c212754107a7697abed80be516d23eb5879b3ca4c08e",
+          "at": "2026-10-28T23:28:56.266Z"
+        },
+        {
+          "phase": "sync-base",
+          "fence": 13,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=13;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:30:38.250Z"
+        },
+        {
+          "phase": "handback",
+          "fence": 14,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=14;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:30:38.501Z"
+        }
+      ],
+      "execResults": [
+        {
+          "profile": "npm-install",
+          "digest": "7f1fbb9b4bf319defe6c671541e73855be72bb12fb1245eeb52f64791753832d",
+          "phase": "implement",
+          "tree": "8e6a9d158c642318ebadacda2ed44745f14a55af",
+          "exit": 0,
+          "at": "2026-10-28T23:05:05.993Z"
+        },
+        {
+          "profile": "fast-uri-update",
+          "digest": "300da8f278a66d6ac1c6cf1cdb2987dd170bf11a7f360f10cce245e67beb6be2",
+          "phase": "implement",
+          "tree": "73e64d85cfd7181ab40ac7da242dbd80da94d465",
+          "exit": 0,
+          "at": "2026-10-28T23:06:29.048Z"
+        },
+        {
+          "profile": "npm-ci",
+          "digest": "26964f098a244a0ba11b7a72924597affdb9f148d3b71b21f133c415f06829f3",
+          "phase": "implement",
+          "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+          "exit": 0,
+          "at": "2026-10-28T23:09:51.398Z"
+        },
+        {
+          "profile": "npm-audit",
+          "digest": "a01b261fd1d66e4b3ce51e144f72853b7411d8bfd51b961e789edcf9b3900d82",
+          "phase": "implement",
+          "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+          "exit": 0,
+          "at": "2026-10-28T23:09:53.831Z"
+        },
+        {
+          "profile": "node-all",
+          "digest": "b87729f334be658a1f90ed7432c46307228c3416708bdfbd523de390c6c4286c",
+          "phase": "implement",
+          "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+          "exit": 0,
+          "at": "2026-10-28T23:14:22.129Z"
+        },
+        {
+          "profile": "npm-ci",
+          "digest": "26964f098a244a0ba11b7a72924597affdb9f148d3b71b21f133c415f06829f3",
+          "phase": "after",
+          "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+          "exit": 0,
+          "at": "2026-10-28T23:14:32.314Z"
+        },
+        {
+          "profile": "npm-audit",
+          "digest": "a01b261fd1d66e4b3ce51e144f72853b7411d8bfd51b961e789edcf9b3900d82",
+          "phase": "after",
+          "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+          "exit": 0,
+          "at": "2026-10-28T23:14:35.111Z"
+        },
+        {
+          "profile": "node-all",
+          "digest": "b87729f334be658a1f90ed7432c46307228c3416708bdfbd523de390c6c4286c",
+          "phase": "after",
+          "tree": "76730f5abd6f1e5aad85a51451c728c130a6498e",
+          "exit": 0,
+          "at": "2026-10-28T23:14:47.739Z"
+        }
+      ],
+      "implementationCommit": "7f568b17f119ccfff34b2ebc138f71f74da2d6f9"
+    },
+    {
+      "issue": 77,
+      "completedPhases": [
+        "issue-start.intake",
+        "issue-start.fetch",
+        "issue-start.classify",
+        "issue-start.plan",
+        "issue-start.worktree",
+        "issue-start.before",
+        "issue-start.implement",
+        "issue-start.commit",
+        "issue-start.after",
+        "issue-start.publish-evidence",
+        "issue-start.comment",
+        "issue-start.sync-base",
+        "issue-start.handback"
+      ],
+      "history": [
+        {
+          "phase": "intake",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:25:48.120Z"
+        },
+        {
+          "phase": "fetch",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=234d7116edff1d911c7d7cd885fdd1fe2104c02a5360a6e0c680dc7932430e90",
+          "at": "2026-10-28T23:25:48.211Z"
+        },
+        {
+          "phase": "classify",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=c21be492a22c135c3afb229e170461e85489e8650ff06e6c2aaf5ed28046e546",
+          "at": "2026-10-28T23:25:48.309Z"
+        },
+        {
+          "phase": "plan",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=3eab9021842b27f4528dcec3f99d66b3ad06b8366d4b0e5c553f191d8c9fe8e2",
+          "at": "2026-10-28T23:25:48.404Z"
+        },
+        {
+          "phase": "worktree",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=1c1bc52ecb943a8334679ce1275736cb6f92fea43a98878a85d25c538e7365bb",
+          "at": "2026-10-28T23:25:48.504Z"
+        },
+        {
+          "phase": "before",
+          "fence": 1,
+          "how": "adopt",
+          "receipt": "samsara-gate/v1;adopt;fence=1;facts=e241733694975bbf98e09748a83908c9d2a93e8a0d5094b6602afee749a62a5a",
+          "at": "2026-10-28T23:25:48.685Z"
+        },
+        {
+          "phase": "implement",
+          "fence": 2,
+          "how": "session",
+          "receipt": "samsara-gate/v1;session;fence=2;facts=5f85ab2baf8b0ac8a584f98bccc343eedc5bd1322d976887dea256ac328e3292",
+          "at": "2026-10-28T23:29:48.124Z"
+        },
+        {
+          "phase": "commit",
+          "fence": 3,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=3;facts=9c8694971e131617933b7ea4dd11954fb5017d3f8b3e4e4791bf04fd80a1e24d",
+          "at": "2026-10-28T23:29:50.691Z"
+        },
+        {
+          "phase": "after",
+          "fence": 4,
+          "how": "session",
+          "receipt": "samsara-gate/v1;session;fence=4;facts=975634bcacadf222662d9deb09c151bee54bdfe90dd68a4eeae46fa04f4d7767",
+          "at": "2026-10-28T23:30:11.005Z"
+        },
+        {
+          "phase": "publish-evidence",
+          "fence": 6,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=6;facts=d4319a2c4b72c33ee581411bfa6c7d38e1720efdf1b738123efceecc39bc8f6b",
+          "at": "2026-10-28T23:33:34.195Z"
+        },
+        {
+          "phase": "comment",
+          "fence": 8,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=8;facts=ff759840f508e2908d6b7ef5d2395410719bce131fcb48001d7b6d4be12e8219",
+          "at": "2026-10-28T23:33:36.309Z"
+        },
+        {
+          "phase": "sync-base",
+          "fence": 9,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=9;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:34:36.644Z"
+        },
+        {
+          "phase": "handback",
+          "fence": 10,
+          "how": "run",
+          "receipt": "samsara-gate/v1;run;fence=10;facts=44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "at": "2026-10-28T23:34:36.769Z"
+        }
+      ],
+      "execResults": [
+        {
+          "profile": "npm-ci",
+          "digest": "df5a44ee14e1eb43e6b42f95c3f6df6d00e6ca154d7cfe6895d3a1a66f0b690d",
+          "phase": "implement",
+          "tree": "3f03c81b19ce3540ecbc38e26beaaa3c5376d37f",
+          "exit": 0,
+          "at": "2026-10-28T23:29:30.239Z"
+        },
+        {
+          "profile": "node-all",
+          "digest": "aa254c9443f202eb5287ddeec85e8ce07db3aa0fe97981b8801d8c39cde7bab6",
+          "phase": "implement",
+          "tree": "3f03c81b19ce3540ecbc38e26beaaa3c5376d37f",
+          "exit": 0,
+          "at": "2026-10-28T23:29:42.912Z"
+        },
+        {
+          "profile": "shared-check",
+          "digest": "209c7399212455e568ca140b2b09b742434689625693266fb88f3b0c8b693d07",
+          "phase": "implement",
+          "tree": "3f03c81b19ce3540ecbc38e26beaaa3c5376d37f",
+          "exit": 0,
+          "at": "2026-10-28T23:29:45.757Z"
+        },
+        {
+          "profile": "node-all",
+          "digest": "aa254c9443f202eb5287ddeec85e8ce07db3aa0fe97981b8801d8c39cde7bab6",
+          "phase": "after",
+          "tree": "3f03c81b19ce3540ecbc38e26beaaa3c5376d37f",
+          "exit": 0,
+          "at": "2026-10-28T23:30:05.276Z"
+        },
+        {
+          "profile": "shared-check",
+          "digest": "209c7399212455e568ca140b2b09b742434689625693266fb88f3b0c8b693d07",
+          "phase": "after",
+          "tree": "3f03c81b19ce3540ecbc38e26beaaa3c5376d37f",
+          "exit": 0,
+          "at": "2026-10-28T23:30:08.492Z"
+        }
+      ],
+      "implementationCommit": "6bf9ee24c2cceaf91e61414bf009ed2bcf1bbbd0"
+    }
+  ]
+}

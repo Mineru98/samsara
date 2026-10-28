@@ -48,4 +48,12 @@ controller 독립 재실행도 a2d5839 기준 185/185(exit 0)이었습니다. �
 - `gate exec` 는 승인된 tree 의 코드를 실행합니다. 그 안의 commit/push 는 사전에 막지 못하고, 로컬 ref 변화만 감지해 격리합니다. 원격 push 는 되돌릴 수 없으므로 예방은 controller 의 tree 검토(`approve-exec`)에 달려 있습니다.
 - Read·MCP 도구는 gate 대상이 아닙니다. 서브에이전트 도구 호출의 session 결합은 실측하지 않았습니다.
 - 기본 브랜치 증거 미러(`evidence-mirror`)·`sync-base` 는 다른 작업과 충돌하므로 오케스트레이터에 위임해 보류했습니다. 그래서 이 리포트의 증거 링크는 작업 브랜치 파일입니다.
-- herdr 다중 worker 실측(#74/#75 가 이 gate 로 진행 중)은 아직 이 리포트에 포함하지 않았습니다.
+- 실제 herdr의 #74/#75/#77 worker가 gate의 13단계 완료까지 수행했습니다. 원본은 `after/real-managed-workers.json` 및 native/병렬 실행 증거 파일에 추가했습니다.
+
+## Controller 실제 결합 검증
+
+실제 herdr `samsara #74`, `samsara #75`, `samsara #77` 탭의 Claude(Opus) 작업이 독립 lock을 사용했고, 각 작업의 필수 검사 PASS→구현 완료→커밋→after→증거 게시→이슈 코멘트→sync-base→handback 순서로 13단계를 완료했습니다. #76은 이 gate 자체를 만드는 bootstrap 작업이므로 그 구현이 처음부터 이 gate로 보호됐다고 주장하지 않습니다.
+
+실제 실패도 다음 단계를 막았습니다. #75의 병렬 ref 오탐 격리 중에는 커밋이 생성되지 않았고, source 검토·원인 수정·controller 격리 해제 뒤 같은 단계에서 재시도했습니다. #74 증거 게시 실패 직후 comment 시도는 exit 2 PHASE_SEQUENCE였으며 후속 게시 효과가 없었습니다.
+
+네 수정 결합 검증: Node **206/206**, npm audit **0건**, macOS 기본 TMPDIR에서 Go 전체·app race·vet·빌드 통과. 별도 alias SAMSARA_HOME CLI smoke의 init/status/doctor --exercise/daemon stop도 모두 exit 0, policy hook 설치 인식과 실제 tmux 생성·종료를 확인했습니다. 자료는 이번 controller의 `.issue/recheck-20261029/`와 위 after 증거에 있습니다.
