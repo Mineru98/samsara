@@ -170,9 +170,27 @@ function logAttempt(dir, entry) {
 
 /* ------------------------------------------------------------ owner·lock */
 
+/** 프로세스 시작 시각. 세션마다 locale 이 달라도 같은 값이 나오도록 C locale 로 고정한다. */
 function pidStart(pid) {
-  const r = run('ps', ['-o', 'lstart=', '-p', String(pid)]);
+  const r = run('ps', ['-o', 'lstart=', '-p', String(pid)], { env: { ...process.env, LC_ALL: 'C', LANG: 'C' } });
   return r.code === 0 && r.out ? r.out : null;
+}
+
+const MONTHS = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+
+/**
+ * ps lstart 문자열을 locale 과 무관한 `Y-M-D-h-m-s` 키로 정규화한다.
+ * C(`Thu Oct 29 08:04:02 2026`)와 숫자 순서가 년부터인 형식(ko: `2026년 10월 29일 목요일 08시 04분 02초`)을 읽는다.
+ * 읽을 수 없으면 null.
+ */
+export function startKey(text) {
+  if (typeof text !== 'string') return null;
+  const t = text.trim().replace(/\s+/g, ' ');
+  const c = t.match(/^[A-Za-z]{3} ([A-Za-z]{3}) (\d{1,2}) (\d{1,2}):(\d{2}):(\d{2}) (\d{4})$/);
+  if (c && MONTHS[c[1]]) return [c[6], MONTHS[c[1]], c[2], c[3], c[4], c[5]].map(Number).join('-');
+  const nums = t.match(/\d+/g);
+  if (nums && nums.length === 6 && nums[0].length === 4) return nums.map(Number).join('-');
+  return null;
 }
 
 /** pid 생존 + 시작 시각 일치. pid 재사용이나 zombie 를 산 owner 로 오인하지 않는다. */
@@ -185,7 +203,10 @@ export function ownerAlive(owner) {
   }
   const stat = run('ps', ['-o', 'stat=', '-p', String(owner.pid)]);
   if (stat.code !== 0 || stat.out.startsWith('Z')) return false;
-  return pidStart(owner.pid) === owner.pidStart;
+  const stored = startKey(owner.pidStart);
+  // 기록된 시작 시각을 해석할 수 없으면 pid 가 살아 있는 한 산 owner 로 본다(산 owner 의 잠금 탈취 방지)
+  if (stored === null) return true;
+  return startKey(pidStart(owner.pid)) === stored;
 }
 
 /** 효과를 실행한 자식 프로세스 그룹에 아직 살아 있는 프로세스가 있는지. */

@@ -615,3 +615,41 @@ test('status parsing keeps leading spaces, spaced paths and renames (real #74 DI
     ['R ', 'renamed app.txt', 'app.txt'],
   ]);
 });
+
+test('owner liveness is locale independent (ko worker vs C controller, legacy localized locks)', async (t) => {
+  const f = fixture(t);
+  throughBefore(f);
+  const ko = { LC_ALL: 'ko_KR.UTF-8', LANG: 'ko_KR.UTF-8' };
+  const c = { LC_ALL: 'C', LANG: 'C' };
+  const { startKey } = await import(GATE);
+  assert.equal(startKey('2026년 10월 29일 목요일 08시 04분 02초'), startKey('Thu Oct 29 08:04:02 2026  '));
+  assert.notEqual(startKey('2026년 10월 29일 목요일 08시 04분 03초'), startKey('Thu Oct 29 08:04:02 2026'));
+  const s = f.session('S-ko');
+  const asWorker = { env: { ...s.env, ...ko } };
+  assert.equal(f.gate(['begin', '--phase', 'implement'], asWorker).code, 0);
+  const koStart = sh('ps', ['-o', 'lstart=', '-p', String(s.pid)], f.base, { env: { ...f.env, ...ko } }).out;
+  assert.match(koStart, /년/, 'the platform renders a localized lstart');
+  const lockPath = path.join(f.store(), 'lock.json');
+  for (const stored of ['as-recorded', 'legacy-ko']) {
+    if (stored === 'legacy-ko') {
+      const lock = f.lock();
+      lock.owner.pidStart = koStart;
+      writeFileSync(lockPath, JSON.stringify(lock));
+    }
+    for (const loc of [c, ko]) {
+      const st = f.gate(['status'], { env: loc });
+      assert.equal(st.json.condition, 'locked', `${stored} under ${loc.LANG}`);
+      const other = f.session(`S-other-${stored}-${loc.LANG}`);
+      const r = f.gate(['begin', '--phase', 'implement'], { env: { ...other.env, ...loc } });
+      assert.equal(r.code, 5, `${stored} under ${loc.LANG}: a live owner is LOCKED, never UNKNOWN`);
+      assert.equal(f.gate(['reconcile'], { env: loc }).code, 5, 'reconcile must not take over a live owner');
+      const hook = sh(process.execPath, [GATE, 'hook'], f.wt, {
+        env: { ...f.env, ...loc },
+        input: JSON.stringify({ session_id: s.id, cwd: f.wt, tool_name: 'Write', tool_input: { file_path: path.join(f.wt, 'app.txt'), content: 'x' } }),
+      });
+      assert.equal(hook.out, '', `${stored} under ${loc.LANG}: the live holder may edit`);
+    }
+  }
+  await s.kill();
+  for (const loc of [c, ko]) assert.equal(f.gate(['status'], { env: loc }).json.condition, 'unknown');
+});
