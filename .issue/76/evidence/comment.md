@@ -2,7 +2,7 @@
 
 pure phase API(`issue-start.mjs phase`)는 stateless 계약 그대로 두었습니다. 그 앞에 영속 단계 gate(`skills/issue-start/scripts/issue-gate.mjs`)와 Claude PreToolUse hook 을 붙였습니다.
 gate 는 git common dir 의 ledger·lock(fence)에서만 상태를 만듭니다. 실제 파일·git·tracker 사실을 확인한 뒤에만 API 에 receipt 를 넘겨 다음 단계를 엽니다. 호출자의 완료 주장을 받는 입력은 없습니다.
-브랜치: `fix/76-persistent-phase-gate` (구현 커밋 `a2d5839`·locale 수정 `9c4c142`, 기준 `ff71efb` dev/0.4.0-alpha)
+브랜치: `fix/76-persistent-phase-gate` (구현 커밋 `a2d5839`·locale 수정 `9c4c142`·ref 범위 수정 `90fdc7e`, 기준 `ff71efb` dev/0.4.0-alpha)
 
 ## 변경 전후
 
@@ -25,7 +25,7 @@ gate 는 git common dir 의 ledger·lock(fence)에서만 상태를 만듭니다.
 ## 변경 파일
 
 - `skills/issue-start/scripts/issue-gate.mjs` — ledger·lock·verifier·실행 broker·reconcile·PreToolUse hook·install-hook (신규)
-- `skills/issue-start/scripts/issue-gate.test.mjs` — 실제 git 저장소·프로세스 기반 회귀 23개 (신규)
+- `skills/issue-start/scripts/issue-gate.test.mjs` — 실제 git 저장소·프로세스 기반 회귀 24개 (신규)
 - `skills/issue-start/scripts/issue-start.mjs` — gated 이슈의 legacy 부수효과 서브커맨드는 현재 gate step 의 직접 자식만 허용
 - `hooks/hooks.json` — 플러그인 PreToolUse hook (`|| exit 2`, `onFailure: block`)
 - `skills/issue-start/SKILL.md` — gate 경계 요약
@@ -35,12 +35,12 @@ gate 는 git common dir 의 ledger·lock(fence)에서만 상태를 만듭니다.
 
 | 명령 | 종료코드 | 결과 |
 | --- | ---: | --- |
-| `node --test --test-concurrency=1 issue-gate.test.mjs` | 0 | **23 / 23 pass** |
+| `node --test --test-concurrency=1 issue-gate.test.mjs` | 0 | **24 / 24 pass** |
 | `node --test $(find . -name '*.test.mjs' -not -path '*/node_modules/*')` (before) | 0 | 163 / 163 pass |
-| 같은 명령 (after) | 0 | **186 / 186 pass** |
+| 같은 명령 (after) | 0 | **187 / 187 pass** |
 | `issue-start.mjs phase --request <forged/replay>` (after) | 0 | 의도대로 무변경(pure API 는 강제 지점이 아님) |
 
-controller 독립 재실행도 a2d5839 기준 185/185(exit 0)이었습니다. 실제 병렬 실행에서 ko/C 로케일 차이로 산 owner 를 UNKNOWN 으로 보는 결함이 발견되었고, locale 독립 비교로 수정했습니다(회귀 추가, 기존 live lock metadata 무변경). 오케스트레이터가 실제 Claude PreToolUse 경로를 실측했습니다(`cc --print`). 결과는 잠긴 Write 거부, before 확인 후 begin implement, 같은 Write 허용입니다. hook missing binary·timeout 은 `onFailure: block` 으로 파일 생성 0 이었습니다. 이 실측은 위 대역(sleep pid 세션) 테스트와 별도 결과입니다.
+controller 독립 재실행도 a2d5839 기준 185/185(exit 0)이었습니다. 실제 병렬 실행에서 ko/C 로케일 차이로 산 owner 를 UNKNOWN 으로 보는 결함이 발견되었고, locale 독립 비교로 수정했습니다(회귀 추가). 또 같은 common dir 을 공유하는 병렬 worktree 에서, broker 검사가 저장소 전체 ref 를 비교해 #76 의 정상 commit/push 를 #75 변조로 오탐 격리한 실제 장애가 있었습니다. 검사 대상을 이슈 소유 ref 로 한정해 수정했습니다(동시 commit/push 회귀 추가, 근거 `after/incident-75-ref-scope.txt`). 오케스트레이터가 실제 Claude PreToolUse 경로를 실측했습니다(`cc --print`). 결과는 잠긴 Write 거부, before 확인 후 begin implement, 같은 Write 허용입니다. hook missing binary·timeout 은 `onFailure: block` 으로 파일 생성 0 이었습니다. 이 실측은 위 대역(sleep pid 세션) 테스트와 별도 결과입니다.
 
 ## 남은 이슈
 

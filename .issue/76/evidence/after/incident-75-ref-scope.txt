@@ -1,0 +1,22 @@
+# 실제 병렬 실행 장애: #75 node-all broker 실행이 #76 의 정상 commit/push 로 QUARANTINED (refSnapshot 범위 = common dir 전체)
+
+## #75 attempts.jsonl (마지막 exec 들과 격리)
+10:{"at":"2026-10-28T23:09:51.399Z","phase":"implement","fence":2,"outcome":"exec","detail":{"profile":"npm-ci","argv":["/Users/mineru/.nvm/versions/node/v24.15.0/bin/npm","ci","--ignore-scripts"],"dir":"tools/issue-ontology","tree":"76730f5abd6f1e5aad85a51451c728c130a6498e","exit":0,"signal":null}}
+11:{"at":"2026-10-28T23:09:53.832Z","phase":"implement","fence":2,"outcome":"exec","detail":{"profile":"npm-audit","argv":["/Users/mineru/.nvm/versions/node/v24.15.0/bin/npm","audit","--json"],"dir":"tools/issue-ontology","tree":"76730f5abd6f1e5aad85a51451c728c130a6498e","exit":0,"signal":null}}
+12:{"at":"2026-10-28T23:10:10.088Z","phase":"implement","fence":2,"outcome":"quarantined","detail":["git refs or HEAD changed during brokered execution"]}
+
+## #75 ledger.quarantine
+{"reason":"git refs or HEAD changed during brokered execution","profile":"node-all","fence":2,"at":"2026-10-28T23:10:10.087Z"}
+
+## #76 reflog (KST, 같은 구간)
+3652e0d fix/76-persistent-phase-gate@{2026-10-29T08:10:00+09:00}: commit: docs(issue-76): 작업 전후 증거 자료 추가
+9c4c142 fix/76-persistent-phase-gate@{2026-10-29T08:09:58+09:00}: commit: fix(issue-start): gate owner 생존 판정을 locale 과 무관하게 비교
+4f6dcb3 fix/76-persistent-phase-gate@{2026-10-29T08:07:14+09:00}: commit: docs(issue-76): 작업 전후 증거 자료 추가
+a2d5839 fix/76-persistent-phase-gate@{2026-10-29T08:04:13+09:00}: commit: fix(issue-start): 영속 단계 gate와 PreToolUse hook으로 선행 단계 미완료 시 부수효과 차단
+3652e0d refs/remotes/origin/fix/76-persistent-phase-gate@{2026-10-29T08:10:01+09:00}: update by push
+4f6dcb3 refs/remotes/origin/fix/76-persistent-phase-gate@{2026-10-29T08:07:16+09:00}: update by push
+
+## 판정
+node-all 실행 구간 23:09:53Z~23:10:10Z 에 #76 커밋 23:09:58Z·23:10:00Z, push 23:10:01Z. #75 는 자기 ref 를 바꾸지 않았다.
+수정: refSnapshot 을 이슈 소유 ref(HEAD, refs/heads/<branch>, refs/remotes/origin/<branch>, evidence/issue-<n>)로 한정, 위반 시 바뀐 ref 를 기록.
+회귀: 'another issue committing and pushing during a brokered run is not a violation; own branch tampering still is'
