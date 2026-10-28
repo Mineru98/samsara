@@ -74,6 +74,12 @@ export function classifyImageUrl(url) {
   return IMAGE_EXT_RE.test(parsed.pathname + parsed.search) ? 'direct-image' : 'direct-unknown';
 }
 
+// 일반 링크·bare URL 은 이미지 확장자가 있거나 user-attachments 자산일 때만 이미지 후보다.
+// blob/raw/release 라도 .go/.md/.json 같은 소스·문서 링크는 이미지가 아니다 (#77).
+function isLinkedImageCandidate(url) {
+  return IMAGE_EXT_RE.test(url) || classifyImageUrl(url) === 'user-attachment';
+}
+
 function makeReference({
   syntax, alt = '', rawUrl, source, sourceUrl, inline, start, end,
 }) {
@@ -143,8 +149,7 @@ export function collectImageReferences(sources) {
       const rawUrl = match[1] ?? match[2];
       const resolvedUrl = resolveUrl(rawUrl, item.sourceUrl);
       if (!resolvedUrl) continue;
-      const kind = classifyImageUrl(resolvedUrl);
-      if (!IMAGE_EXT_RE.test(rawUrl) && !['blob', 'raw', 'release', 'user-attachment'].includes(kind)) continue;
+      if (!isLinkedImageCandidate(resolvedUrl)) continue;
       add(makeReference({
         syntax: 'markdown-link',
         rawUrl,
@@ -160,8 +165,7 @@ export function collectImageReferences(sources) {
       const start = match.index;
       const end = start + match[0].length;
       if (occupied.some(([a, b]) => start >= a && end <= b)) continue;
-      const kind = classifyImageUrl(match[0]);
-      if (!IMAGE_EXT_RE.test(match[0]) && !['blob', 'raw', 'release', 'user-attachment'].includes(kind)) continue;
+      if (!isLinkedImageCandidate(match[0])) continue;
       add(makeReference({
         syntax: 'bare-url',
         rawUrl: match[0],
