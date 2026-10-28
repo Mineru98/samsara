@@ -650,6 +650,68 @@ test('owner liveness is locale independent (ko worker vs C controller, legacy lo
       assert.equal(hook.out, '', `${stored} under ${loc.LANG}: the live holder may edit`);
     }
   }
+  // legacy ko lock 그대로 worker 가 (C 로 기록되는 자기 owner 로) 완료할 수 있어야 한다
+  writeFileSync(path.join(f.wt, 'app.txt'), 'v2\n');
+  const done = f.gate(['complete', '--phase', 'implement'], { env: { ...s.env, ...c } });
+  assert.equal(done.code, 0, done.out);
+  assert.equal(f.gate(['begin', '--phase', 'after'], asWorker).json.code, 'PHASE_SEQUENCE');
+  assert.equal(f.gate(['run', '--phase', 'commit', '--message', 'fix: v2']).code, 0);
+  assert.equal(f.gate(['begin', '--phase', 'after'], asWorker).code, 0);
   await s.kill();
   for (const loc of [c, ko]) assert.equal(f.gate(['status'], { env: loc }).json.condition, 'unknown');
+});
+
+test('another issue committing and pushing during a brokered run is not a violation; own branch tampering still is', async (t) => {
+  const f = fixture(t);
+  const s7 = throughBefore(f);
+  implementAndComplete(f, s7);
+  // 이슈 8: 같은 common dir 을 공유하는 다른 worktree
+  const dir8 = path.join(f.base, '.issue', '8');
+  mkdirSync(dir8, { recursive: true });
+  writeFileSync(path.join(dir8, 'issue.json'), JSON.stringify({ number: 8 }));
+  writeFileSync(path.join(dir8, 'plan.md'), '## 증거\n');
+  const wt8 = path.join(f.tmp, 'repo-issue-8');
+  mustGit(f.base, 'worktree', 'add', '-b', 'fix/8-other', wt8, 'main');
+  mkdirSync(path.join(wt8, '.issue', '8', 'evidence', 'before'), { recursive: true });
+  writeFileSync(path.join(wt8, '.issue', '8', 'evidence', 'before', 'b.txt'), 'b\n');
+  const s8 = f.session('S-8');
+  const g8 = (args, s) => {
+    const r = sh(process.execPath, [GATE, args[0], '--issue', '8', ...args.slice(1)], f.base, { env: { ...f.env, ...(s?.env || {}) } });
+    let json = null; try { json = JSON.parse(r.out); } catch { /* 비 JSON */ }
+    return { ...r, json };
+  };
+  assert.equal(g8(['adopt', '--worktree', wt8, '--branch', 'fix/8-other', '--base', 'main', '--classification', 'backend', '--session', s8.id]).code, 0);
+  const started = path.join(f.tmp, 'slow-started');
+  assert.equal(g8(['profile', '--name', 'slow', '--phases', 'implement', '--', 'sh', '-c', `touch '${started}'; sleep 3; echo slow-ok`]).code, 0);
+  assert.equal(g8(['profile', '--name', 'tamper', '--phases', 'implement', '--', 'git', 'commit', '--allow-empty', '-m', 'smuggled']).code, 0);
+  assert.equal(g8(['begin', '--phase', 'implement'], s8).code, 0);
+  writeFileSync(path.join(wt8, 'app.txt'), 'issue 8\n');
+  let r = g8(['exec', '--profile', 'slow'], s8);
+  assert.equal(r.json.code, 'EXEC_APPROVAL_REQUIRED');
+  const tree8 = r.json.tree;
+  assert.equal(g8(['approve-exec', '--profile', 'slow', '--tree', tree8]).code, 0);
+  assert.equal(g8(['approve-exec', '--profile', 'tamper', '--tree', tree8]).code, 0);
+  // 이슈 8 broker 실행 중에 이슈 7 이 gate 로 commit 하고 원격에 push 한다
+  const exec8 = new Promise((resolve) => {
+    const child = spawn(process.execPath, [GATE, 'exec', '--issue', '8', '--profile', 'slow'], { cwd: f.base, env: { ...f.env, ...s8.env } });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.on('close', (code) => resolve({ code, json: JSON.parse(out) }));
+  });
+  while (!existsSync(started)) await sleep(50);
+  const before7 = mustGit(f.wt, 'rev-parse', 'HEAD');
+  r = f.gate(['run', '--phase', 'commit', '--message', 'fix: issue 7']);
+  assert.equal(r.code, 0, r.out);
+  mustGit(f.wt, 'push', '-u', 'origin', BRANCH);
+  assert.notEqual(mustGit(f.wt, 'rev-parse', 'HEAD'), before7, 'issue 7 really moved its refs during the run');
+  const done = await exec8;
+  assert.equal(done.code, 0, JSON.stringify(done.json));
+  assert.equal(done.json.status, 'executed');
+  const ledger8 = JSON.parse(readFileSync(path.join(f.base, '.git', 'samsara-gate', 'issue-8', 'ledger.json'), 'utf8'));
+  assert.equal(ledger8.quarantine, null, 'parallel issue ref changes must not quarantine issue 8');
+  // 자기 branch 를 움직이는 broker 실행은 여전히 격리된다
+  r = g8(['exec', '--profile', 'tamper'], s8);
+  assert.equal(r.code, 3);
+  assert.equal(r.json.code, 'QUARANTINED');
+  assert.match(r.json.message, /refs\/heads\/fix\/8-other|HEAD/);
 });

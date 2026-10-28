@@ -244,7 +244,13 @@ function processOwner() {
   };
 }
 
-const sameOwner = (a, b) => a.kind === b.kind && a.session === b.session && a.pid === b.pid && a.pidStart === b.pidStart;
+// pidStart 는 기록한 세션의 locale 형식일 수 있으므로 정규화 키로 비교한다(해석 불가면 원문 비교)
+const sameStart = (a, b) => {
+  const ka = startKey(a);
+  const kb = startKey(b);
+  return ka !== null && kb !== null ? ka === kb : a === b;
+};
+const sameOwner = (a, b) => a.kind === b.kind && a.session === b.session && a.pid === b.pid && sameStart(a.pidStart, b.pidStart);
 
 /** 원자적 잠금: 완성된 내용을 tmp 에 쓰고 link 로 만든다(EEXIST 면 실패). 빈 lock 이 보이는 순간이 없다. */
 function acquire(dir, owner, phase) {
@@ -465,11 +471,23 @@ function treeHash(wt, dir) {
   }
 }
 
-/** 로컬 ref 전체 + worktree HEAD. 실행 전후 비교로 몰래 만든 commit·push(추적 ref 갱신)를 잡는다. */
-function refSnapshot(wt) {
-  const refs = git(wt, ['for-each-ref', '--format=%(refname) %(objectname)']).out;
-  return sha256(Buffer.from(`${head(wt)}\n${refs}`));
+/**
+ * 이 이슈가 소유한 ref 만 본다: worktree HEAD, 작업 branch 와 그 원격 추적 ref, evidence/issue-<n>.
+ * worktree 들은 common dir 의 ref 를 공유하므로 전체를 비교하면 병렬로 진행 중인 다른 이슈의
+ * 정상 commit·push 를 이 이슈의 변조로 오탐한다(실제 #75 node-all 격리 사례).
+ */
+function refSnapshot(wt, ledger) {
+  const b = ledger.intended.branch;
+  const n = ledger.issue;
+  const snapshot = { HEAD: head(wt) };
+  for (const ref of [`refs/heads/${b}`, `refs/remotes/origin/${b}`, `refs/heads/evidence/issue-${n}`, `refs/remotes/origin/evidence/issue-${n}`]) {
+    const r = git(wt, ['rev-parse', '--verify', '--quiet', ref]);
+    snapshot[ref] = r.code === 0 ? r.out : null;
+  }
+  return snapshot;
 }
+
+const changedRefs = (a, b) => Object.keys(a).filter((k) => a[k] !== b[k]).map((k) => `${k} ${a[k] ?? 'none'} -> ${b[k] ?? 'none'}`);
 
 function registeredWorktree(base, wt, branch) {
   const r = git(base, ['worktree', 'list', '--porcelain']);
@@ -1067,14 +1085,15 @@ async function cmdExec(opts) {
   if (!approved) {
     throw new GateError('EXEC_APPROVAL_REQUIRED', 3, `tree ${tree} is not approved for profile ${profile.name}; controller runs: issue-gate.mjs approve-exec --issue ${ledger.issue} --profile ${profile.name} --tree ${tree}`, { tree });
   }
-  const refsBefore = refSnapshot(wt);
+  const refsBefore = refSnapshot(wt, ledger);
   const cwd = path.join(wt, profile.dir);
   const r = await spawnTracked(profile.argv, cwd, { ...process.env, SAMSARA_GATE_EXEC: profile.name }, ['ignore', 'pipe', 'pipe'], (pid) => {
     updateLock(dir, lock, { exec: { profile: profile.name, pgid: pid, tree } });
   });
   updateLock(dir, lock, { exec: null });
   const violations = [];
-  if (refSnapshot(wt) !== refsBefore) violations.push('git refs or HEAD changed during brokered execution');
+  const refChanges = changedRefs(refsBefore, refSnapshot(wt, ledger));
+  if (refChanges.length) violations.push(`issue-owned git refs changed during brokered execution: ${refChanges.join(', ')}`);
   if (lock.phase !== 'implement' && treeHash(wt, dir) !== tree) violations.push(`source tree changed during ${lock.phase}`);
   const record = {
     profile: profile.name, argv: profile.argv, dir: profile.dir, tree, exit: r.code, signal: r.signal ?? null,
