@@ -1,0 +1,10 @@
+$ /Users/mineru/.nvm/versions/node/v24.15.0/bin/npm ci --ignore-scripts  (cwd tools/issue-ontology, tree 76730f5abd6f1e5aad85a51451c728c130a6498e)
+
+added 5 packages, and audited 6 packages in 509ms
+
+2 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+exit=0
