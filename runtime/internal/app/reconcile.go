@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/project"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
 )
 
@@ -81,6 +83,22 @@ func (a *App) Recover(ctx context.Context) error {
 		if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET publication_observation='UNKNOWN' WHERE state='PUBLISHING'"); err != nil {
 			return err
 		}
+		// Worktrees recorded under an aliased root (before #74) are moved to
+		// the canonical form so canonical session cwds match them again.
+		ws, err := sqlite.ListWorktreesAll(ctx, tx)
+		if err != nil {
+			return err
+		}
+		for _, w := range ws {
+			c := a.canonicalWorktreePath(w.Path)
+			if c == w.Path {
+				continue
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE worktrees SET path=?, version=version+1, updated_at=? WHERE id=?", c, tx.Now, w.ID); err != nil {
+				return err
+			}
+			tx.Touch(w.ProjectID, sqlite.KindWorktree, w.ID)
+		}
 		return nil
 	})
 	if err != nil {
@@ -92,6 +110,22 @@ func (a *App) Recover(ctx context.Context) error {
 	}
 	a.Wake()
 	return nil
+}
+
+// canonicalWorktreePath resolves the parents of a stored worktree path and
+// returns the result only when it lands inside the canonical worktree root.
+// The worktree directory itself is not followed, and a parent symlink that
+// leads elsewhere leaves the path unchanged, so it stays out of scope.
+func (a *App) canonicalWorktreePath(p string) string {
+	root := a.Layout.WorktreeRoot
+	if project.Within(p, root) {
+		return p
+	}
+	c := filepath.Join(resolveExistingPrefix(filepath.Dir(p)), filepath.Base(p))
+	if c != root && project.Within(c, root) {
+		return c
+	}
+	return p
 }
 
 // Loop runs reconcile passes until ctx ends. Each pass is idempotent.
