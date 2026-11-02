@@ -1,0 +1,8 @@
+# commit: 60d5efc  herdr: herdr 0.9.3  go: go version go1.27.1 linux/amd64
+$ go test ./internal/backend/... ./internal/daemon/...
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.003s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/herdr	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.385s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.004s
