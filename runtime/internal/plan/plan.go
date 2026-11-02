@@ -263,3 +263,167 @@ func Problems2Error(ps []Problem) error {
 	}
 	return (&domain.Error{Code: code, Message: "plan validation failed: " + strings.Join(msgs, "; ")}).WithDetails("problems", ps)
 }
+
+// SemanticDigest is the digest of the plan's execution meaning: titles are
+// display metadata and excluded, so a title-only revision keeps the PLAN
+// approval subject (01 §12.4).
+func (p *Plan) SemanticDigest() string {
+	// Keyed by client_key so reordering the document is not a change.
+	issues := map[string]Issue{}
+	for _, is := range p.Issues {
+		is.Title = ""
+		issues[is.ClientKey] = is
+	}
+	deps := map[string]Dependency{}
+	for _, d := range p.Dependencies {
+		deps[d.PredecessorKey+"\x00"+d.SuccessorKey] = d
+	}
+	return domain.Digest(map[string]any{"spec_version": p.SpecVersion, "project_id": p.ProjectID, "issues": issues, "dependencies": deps})
+}
+
+// Change kinds of a revision.
+const (
+	ChangeMetadataOnly = "METADATA_ONLY"
+	ChangeExecution    = "EXECUTION"
+)
+
+// Revision is the body of plan revise: the full new plan for a PAUSED run.
+type Revision struct {
+	RunID                 string          `json:"run_id"`
+	ExpectedRunGeneration string          `json:"expected_run_generation"`
+	Plan                  json.RawMessage `json:"plan"`
+}
+
+// ParseRevision decodes a revise request strictly and parses its plan.
+func ParseRevision(data []byte) (*Revision, *Plan, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	r := &Revision{}
+	if err := dec.Decode(r); err != nil {
+		return nil, nil, domain.Errf(domain.CodeInvalidRequest, "revision: %v", err)
+	}
+	if dec.Decode(&struct{}{}) != io.EOF {
+		return nil, nil, domain.Errf(domain.CodeInvalidRequest, "revision: trailing data after JSON document")
+	}
+	if r.RunID == "" {
+		return nil, nil, domain.Errf(domain.CodeInvalidRequest, "revision: run_id is required")
+	}
+	if _, err := domain.ParseDec(r.ExpectedRunGeneration); err != nil || r.ExpectedRunGeneration == "" {
+		return nil, nil, domain.Errf(domain.CodeInvalidRequest, "revision: expected_run_generation must be a decimal string")
+	}
+	if len(r.Plan) == 0 {
+		return nil, nil, domain.Errf(domain.CodeInvalidRequest, "revision: plan is required")
+	}
+	p, err := Parse(r.Plan)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r, p, nil
+}
+
+// Delta classifies the difference between the current and the revised plan
+// by client_key. Both plans must be normalized.
+type Delta struct {
+	Added    []string // new issues
+	Removed  []string // issues missing from the revision
+	Changed  []string // issues whose execution fields changed
+	Retitled []string // issues whose title changed
+	// EdgeChanged lists successors whose incoming dependency set changed.
+	EdgeChanged []string
+}
+
+// Kind reports whether the revision changes execution meaning.
+func (d Delta) Kind() string {
+	if len(d.Added)+len(d.Removed)+len(d.Changed)+len(d.EdgeChanged) == 0 {
+		return ChangeMetadataOnly
+	}
+	return ChangeExecution
+}
+
+// Compare computes the revision delta from old to new.
+func Compare(old, new *Plan) Delta {
+	var d Delta
+	oldIssues := map[string]Issue{}
+	for _, is := range old.Issues {
+		oldIssues[is.ClientKey] = is
+	}
+	newKeys := map[string]bool{}
+	for _, is := range new.Issues {
+		newKeys[is.ClientKey] = true
+		o, ok := oldIssues[is.ClientKey]
+		if !ok {
+			d.Added = append(d.Added, is.ClientKey)
+			continue
+		}
+		if o.Title != is.Title {
+			d.Retitled = append(d.Retitled, is.ClientKey)
+		}
+		o.Title, is.Title = "", ""
+		if domain.Digest(o) != domain.Digest(is) {
+			d.Changed = append(d.Changed, is.ClientKey)
+		}
+	}
+	for _, is := range old.Issues {
+		if !newKeys[is.ClientKey] {
+			d.Removed = append(d.Removed, is.ClientKey)
+		}
+	}
+	edges := func(p *Plan) map[string]map[string]string {
+		m := map[string]map[string]string{}
+		for _, e := range p.Dependencies {
+			if m[e.SuccessorKey] == nil {
+				m[e.SuccessorKey] = map[string]string{}
+			}
+			m[e.SuccessorKey][e.PredecessorKey] = domain.Digest(e)
+		}
+		return m
+	}
+	oe, ne := edges(old), edges(new)
+	succ := map[string]bool{}
+	for s := range oe {
+		succ[s] = true
+	}
+	for s := range ne {
+		succ[s] = true
+	}
+	for s := range succ {
+		if domain.Digest(oe[s]) != domain.Digest(ne[s]) && newKeys[s] {
+			d.EdgeChanged = append(d.EdgeChanged, s)
+		}
+	}
+	sort.Strings(d.EdgeChanged)
+	return d
+}
+
+// Affected returns the client keys whose prerequisites changed: changed
+// issues, successors of changed edges and all their descendants in the new
+// plan (invalidation policy PAUSE_DESCENDANTS). Added issues are excluded.
+func Affected(new *Plan, d Delta) []string {
+	adj := map[string][]string{}
+	for _, e := range new.Dependencies {
+		adj[e.PredecessorKey] = append(adj[e.PredecessorKey], e.SuccessorKey)
+	}
+	added := map[string]bool{}
+	for _, k := range d.Added {
+		added[k] = true
+	}
+	seen := map[string]bool{}
+	queue := append(append([]string{}, d.Changed...), d.EdgeChanged...)
+	for len(queue) > 0 {
+		k := queue[0]
+		queue = queue[1:]
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		queue = append(queue, adj[k]...)
+	}
+	var out []string
+	for k := range seen {
+		if !added[k] {
+			out = append(out, k)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
