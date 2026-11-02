@@ -1,0 +1,30 @@
+$ git rev-parse --short HEAD
+52a23b9
+$ locale -a | grep -i ko
+(없음)
+$ node --test --test-name-pattern="locale independent" skills/issue-start/scripts/issue-gate.test.mjs
+✖ owner liveness is locale independent (ko worker vs C controller, legacy localized locks) (1753.759584ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1821.115236
+
+✖ failing tests:
+
+test at skills/issue-start/scripts/issue-gate.test.mjs:619:1
+✖ owner liveness is locale independent (ko worker vs C controller, legacy localized locks) (1753.759584ms)
+  AssertionError [ERR_ASSERTION]: the platform renders a localized lstart
+      at TestContext.<anonymous> (file://<worktree>/skills/issue-start/scripts/issue-gate.test.mjs:631:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'Tue Nov  3 01:16:06 2026',
+    expected: /년/,
+    operator: 'match',
+    diff: 'simple'
+  }
