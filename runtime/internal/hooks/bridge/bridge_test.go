@@ -135,3 +135,42 @@ func TestToolScope(t *testing.T) {
 		t.Fatalf("paths: %v", p)
 	}
 }
+
+// HK-08: Claude 2.1.316 ignores a deny JSON that shares stdout with any other
+// text (doctor --hook-probe records it), so every bridge path must leave
+// stdout empty or exactly one JSON object, with diagnostics on stderr only.
+func TestStdoutIsOnlyHookJSON(t *testing.T) {
+	root := t.TempDir()
+	root, _ = project.Canonical(root)
+	reg := registry(t, root, domain.ActivationEnabled)
+	callers := map[string]*spyCaller{
+		"down":   {err: errors.New("connection refused")},
+		"pass":   {resp: map[string]any{"decision": "PASS", "reason_code": "OK", "managed": true, "context": "ctx"}},
+		"deny":   {resp: map[string]any{"decision": "DENY", "reason_code": "STALE_FENCE", "managed": true, "reason": "LEASE_REVOKED"}},
+		"bogus":  {resp: map[string]any{"decision": "MAYBE"}},
+		"silent": {},
+	}
+	subs := []string{"session-start", "user-prompt-submit", "pre-tool-use", "post-tool-use", "post-tool-use-failure",
+		"notification", "stop", "session-end", "subagent-start", "subagent-stop"}
+	inputs := []string{input(root), "{not json", strings.Repeat("x", MaxInput+2)}
+	for name, spy := range callers {
+		for _, sub := range subs {
+			for _, in := range inputs {
+				for _, env := range []Env{{RegistryPath: reg, Caller: spy, Ticket: "t"}, {RegistryPath: reg, Caller: spy}} {
+					var out, errb bytes.Buffer
+					if code := Run(sub, strings.NewReader(in), &out, &errb, env); code != 0 {
+						t.Fatalf("%s/%s: exit %d", name, sub, code)
+					}
+					if out.Len() == 0 {
+						continue
+					}
+					var v map[string]any
+					dec := json.NewDecoder(bytes.NewReader(out.Bytes()))
+					if err := dec.Decode(&v); err != nil || dec.More() || v["hookSpecificOutput"] == nil {
+						t.Fatalf("HK-08 %s/%s: stdout must be a single hook JSON object: %q", name, sub, out.String())
+					}
+				}
+			}
+		}
+	}
+}
