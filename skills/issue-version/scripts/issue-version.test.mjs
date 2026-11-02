@@ -18,6 +18,7 @@ import {
   parseCommitSubject,
   parseSemver,
   pickLatestTag,
+  releaseNotesPath,
   remoteState,
   renderNotes,
   renderSourceVersion,
@@ -479,6 +480,63 @@ test('되돌린 뒤 같은 버전으로 다시 릴리즈할 수 있다', (t) => 
     spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: root, encoding: 'utf8' }).stdout.trim(),
     'v0.3.3',
   );
+});
+
+// 기본 체크아웃은 작업 브랜치로 두고 main 을 별도 git worktree 로 꺼낸다 (#103 의 재현 흐름).
+// 워크트리의 `.git` 은 디렉터리가 아니라 `gitdir:` 를 담은 파일이다.
+function releaseWorktree(t) {
+  const root = seedRepo({ withTags: true, withOrigin: true });
+  run(root, ['bump', 'patch']);
+  spawnSync('git', ['commit', '-qam', 'chore(release): bump version to v0.3.3'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['push', '-q', 'origin', 'main'], { cwd: root, encoding: 'utf8' });
+  spawnSync('git', ['checkout', '-q', '-b', 'work'], { cwd: root, encoding: 'utf8' });
+  const worktree = `${root}-release`;
+  spawnSync('git', ['worktree', 'add', '-q', worktree, 'main'], { cwd: root, encoding: 'utf8' });
+  t.after(() => {
+    rmSync(worktree, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
+  });
+  return worktree;
+}
+
+test('worktree 에서도 릴리즈 노트 경로가 쓰기 가능한 git 디렉터리 안에 잡힌다', (t) => {
+  const worktree = releaseWorktree(t);
+  assert.match(readFileSync(path.join(worktree, '.git'), 'utf8'), /^gitdir: /);
+  const notesFile = releaseNotesPath(worktree, 'v0.3.3');
+  assert.ok(!notesFile.startsWith(path.join(worktree, '.git') + path.sep), notesFile);
+  writeFileSync(notesFile, 'notes\n');
+  assert.equal(readFileSync(notesFile, 'utf8'), 'notes\n');
+});
+
+test('worktree 에서 release 가 태그와 릴리즈까지 끝까지 간다', (t) => {
+  const worktree = releaseWorktree(t);
+  const released = run(worktree, ['release', 'v0.3.3'], { PATH: `${fakeGh('nothing fails')}:${process.env.PATH}` });
+  assert.equal(released.status, 0, released.stderr);
+  assert.equal(field(released.stdout, 'RELEASE_TAG'), 'v0.3.3');
+  const remoteTags = spawnSync('git', ['ls-remote', '--tags', 'origin', 'v0.3.3'], { cwd: worktree, encoding: 'utf8' });
+  assert.match(remoteTags.stdout, /refs\/tags\/v0\.3\.3/);
+});
+
+test('worktree 에서 릴리즈 생성이 실패해도 원격·로컬 태그를 되돌린다', (t) => {
+  const worktree = releaseWorktree(t);
+  const failed = run(worktree, ['release', 'v0.3.3'], { PATH: `${fakeGh('release create')}:${process.env.PATH}` });
+  assert.equal(failed.status, 3);
+  assert.equal(field(failed.stdout, 'RELEASE_ROLLED_BACK'), '1');
+  assert.equal(spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: worktree, encoding: 'utf8' }).stdout.trim(), '');
+  const remoteTags = spawnSync('git', ['ls-remote', '--tags', 'origin', 'v0.3.3'], { cwd: worktree, encoding: 'utf8' });
+  assert.equal(remoteTags.stdout.trim(), '');
+});
+
+test('릴리즈 노트를 쓰지 못하면 태그를 만들지 않는다', (t) => {
+  const worktree = releaseWorktree(t);
+  // 노트 경로에 디렉터리를 미리 만들어 두면 writeFileSync 가 EISDIR 로 실패한다
+  mkdirSync(releaseNotesPath(worktree, 'v0.3.3'));
+  const failed = run(worktree, ['release', 'v0.3.3'], { PATH: `${fakeGh('nothing fails')}:${process.env.PATH}` });
+  assert.equal(failed.status, 3);
+  assert.match(failed.stderr, /릴리즈 노트 파일을 쓰지 못했다/);
+  assert.equal(spawnSync('git', ['tag', '--list', 'v0.3.3'], { cwd: worktree, encoding: 'utf8' }).stdout.trim(), '');
+  const remoteTags = spawnSync('git', ['ls-remote', '--tags', 'origin', 'v0.3.3'], { cwd: worktree, encoding: 'utf8' });
+  assert.equal(remoteTags.stdout.trim(), '');
 });
 
 test('폴백 치환 개수가 기대와 다르면 파일을 쓰지 않고 던진다', () => {
