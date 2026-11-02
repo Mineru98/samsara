@@ -2,7 +2,7 @@
 /**
  * issue-create.mjs — 착수 전에 이슈를 만드는 보조 스크립트 (저장소·트래커 비종속).
  *
- * 아홉 가지 모드로 나뉜다.
+ * 열 가지 모드로 나뉜다.
  *
  *   1) mode      : 암묵적인 issue-create 개입 여부를 사용자 설정에서 읽는다.
  *   2) gate      : "이슈를 만들 만큼 자리 잡은 프로젝트인가"를 신호로 판정한다.
@@ -13,13 +13,15 @@
  *   7) label     : 기존 이슈에 라벨을 붙인다.
  *   8) ensure-label : 표준 라벨이 없을 때 만든다 (사용자 승인 후에만 호출).
  *   9) status    : 진행 상태 라벨을 상호배타적으로 전환한다.
+ *  10) link      : 이미 있는 이슈끼리 선행·후행을 양방향으로 잇는다 (동시 등록한 형제 연결·재시도).
  *
  * 사용:
  *   node issue-create.mjs mode
  *   node issue-create.mjs gate
  *   node issue-create.mjs search "탭 활성 상태"
  *   node issue-create.mjs labels
- *   node issue-create.mjs create --title "..." --body-file draft.md --label bug
+ *   node issue-create.mjs create --title "..." --body-file draft.md --label bug --after 61
+ *   node issue-create.mjs link 62 --after 61 --before 63
  *   node issue-create.mjs unlabeled --state open
  *   node issue-create.mjs label 59 --label bug
  *   node issue-create.mjs ensure-label enhancement
@@ -30,7 +32,8 @@
  * 요구사항: git, Node 18+, (github 면 gh 로그인 / jira 면 baseUrl·projectKey·토큰)
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, existsSync, realpathSync, rmSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +43,7 @@ import {
 } from './issue-common.mjs';
 import { createTracker, gitHost, setTrackerStatus } from './issue-tracker.mjs';
 import { gateAction } from './issue-ontology.mjs';
+import { applyOwnLinks, linkIssues, validateLinkTargets } from './issue-links.mjs';
 import { stripAttribution } from './issue-media.mjs';
 
 export { parseIssueNumber };
@@ -91,6 +95,7 @@ function usage(exitCode = 1) {
   node issue-create.mjs unlabeled [--state open|all] [--limit <n>] [--repo <o/n>]
   node issue-create.mjs label <issue-number> --label <name> [--label <name>...]
   node issue-create.mjs ensure-label <name> [--color <hex>] [--desc <설명>]
+  node issue-create.mjs link <issue-number> [--after <n>]... [--before <n>]... [--dry-run]
   node issue-create.mjs status <issue-number> <${STATUS_ORDER.map((s) => s.slice(7)).join('|')}>
 
 gate:
@@ -104,6 +109,8 @@ create options:
   --no-label           라벨 없이 만든다. 의도적으로 규칙을 벗어날 때만 쓴다
   --no-status          생성 후 status:open 자동 부착을 생략한다
   --assignee <login>   담당자 (@me 가능)
+  --after <n>          선행 이슈 (여러 번 지정 가능). 본문 '선행 이슈' 에 넣고 상대 본문 '후행 이슈' 에 이 이슈를 넣는다
+  --before <n>         후행 이슈 (여러 번 지정 가능). 본문 '후행 이슈' 에 넣고 상대 본문 '선행 이슈' 에 이 이슈를 넣는다
   --request-file <f>   원본 요청 기록. 생략 시 --body-file 을 복사
   --duplicate-review-file <f>  candidate/targets JSON으로 생성 전 중복을 검토
   --duplicate-decision-id <id> 사람이 GitHub에 남긴 duplicate-of 결정 식별자
@@ -400,6 +407,8 @@ function cmdCreate(root, opts, tracker) {
     console.error(`✗ 본문 파일이 없다: ${bodyPath}`);
     process.exit(1);
   }
+  const links = linkTargetsOrExit(null, opts);
+  const hasLinks = links.after.length + links.before.length > 0;
 
   // 지시문만 두면 런타임 지시를 따라 푸터가 다시 붙는다. 등록 직전에 걷어낸다 (#106).
   const sanitized = stripAttribution(readFileSync(bodyPath, 'utf8'));
@@ -416,6 +425,10 @@ function cmdCreate(root, opts, tracker) {
     for (const label of opts.labels) args.push('--label', label);
     if (opts.assignee) args.push('--assignee', opts.assignee);
     console.log(`(dry-run) gh ${args.map((arg) => (/\s/.test(arg) ? JSON.stringify(arg) : arg)).join(' ')}`);
+    if (hasLinks) {
+      console.log(`(dry-run) 본문 '선행 이슈' ← ${fmtList(links.after)} / '후행 이슈' ← ${fmtList(links.before)}`);
+      console.log('(dry-run) 등록 뒤 상대 이슈 본문에 반대 방향 링크를 넣는다');
+    }
     console.log('\n아무것도 생성하지 않았다.');
     return;
   }
@@ -429,12 +442,32 @@ function cmdCreate(root, opts, tracker) {
     process.exit(2);
   }
 
+  // 선행·후행은 등록 전에 전부 조회한다. 없는 번호가 있으면 만들지 않는다.
+  let createBody = bodyPath;
+  let linkTmp = null;
+  if (hasLinks) {
+    const views = {};
+    const missing = [];
+    for (const n of [...links.after, ...links.before]) {
+      views[n] = tracker.issueView(n);
+      if (!views[n]) missing.push(n);
+    }
+    if (missing.length) {
+      console.error(`✗ 연결할 이슈를 조회하지 못했다: ${fmtList(missing)} — 이슈를 만들지 않았다.`);
+      process.exit(2);
+    }
+    linkTmp = mkdtempSync(path.join(os.tmpdir(), 'issue-create-links-'));
+    createBody = path.join(linkTmp, 'body.md');
+    writeFileSync(createBody, applyOwnLinks(readFileSync(bodyPath, 'utf8'), links, views));
+  }
+
   const res = tracker.issueCreate({
     title: opts.title,
-    bodyFile: bodyPath,
+    bodyFile: createBody,
     labels: opts.labels,
     assignee: opts.assignee,
   });
+  if (linkTmp) rmSync(linkTmp, { recursive: true, force: true });
   if (!res.ok) {
     console.error(`✗ 이슈 생성 실패: ${res.err}`);
     process.exit(1);
@@ -458,12 +491,63 @@ function cmdCreate(root, opts, tracker) {
     if (!status.ok) console.warn(`  ! status:open 전환을 건너뜁니다: ${status.err ?? '알 수 없는 오류'}`);
   }
 
+  // 상대 이슈 본문에 반대 방향 링크. 실패해도 만든 이슈는 되돌리지 않고 재시도 명령을 알린다.
+  const linked = hasLinks ? linkIssues(tracker, number, links, { includeSelf: false }) : null;
+
   console.log(`✓ 이슈 생성 완료 — ${display} ${opts.title}`);
   console.log(`  요청 기록: ${path.relative(root, path.join(dir, 'request.md'))}`);
+  if (linked) reportLinks(number, links, linked);
   console.log('');
   console.log(`ISSUE_NUMBER=${number}`);
   console.log(`ISSUE_URL=${url}`);
   console.log(`NEXT=/issue-start #${number}`);
+}
+
+/* ------------------------------------------------------------------- link */
+
+const fmtList = (list) => (list.length ? list.map((n) => `#${n}`).join(', ') : '(없음)');
+
+function linkTargetsOrExit(self, opts) {
+  try {
+    return validateLinkTargets(self, { after: opts.after, before: opts.before });
+  } catch (error) {
+    console.error(`✗ ${error.message}`);
+    process.exit(2);
+  }
+}
+
+function reportLinks(number, links, result) {
+  if (result.error) console.error(`✗ ${result.error}`);
+  for (const e of result.edits) {
+    const mark = !e.ok ? '✗' : e.changed ? '✓' : '·';
+    const what = !e.ok ? `실패: ${e.err}` : e.changed ? (e.dryRun ? '바뀔 예정' : '본문 갱신') : '이미 연결됨';
+    console.log(`  ${mark} #${e.issue} ${what}`);
+  }
+  console.log(`LINK_AFTER=${links.after.join(',')}`);
+  console.log(`LINK_BEFORE=${links.before.join(',')}`);
+  const failed = result.error ? [number] : result.edits.filter((e) => !e.ok).map((e) => e.issue);
+  if (failed.length) {
+    const args = [...links.after.map((n) => `--after ${n}`), ...links.before.map((n) => `--before ${n}`)].join(' ');
+    console.log(`LINK_FAILED=${failed.join(',')}`);
+    console.log(`LINK_RETRY=node issue-create.mjs link ${number} ${args}`);
+  }
+}
+
+/** 이미 있는 이슈끼리 잇는다. 동시 등록한 형제를 전부 만든 뒤 부르거나, 실패한 연결을 다시 걸 때 쓴다. */
+function cmdLink(number, opts, tracker) {
+  if (!number) {
+    console.error('✗ 이슈 번호가 필요하다 (예: link 62 --after 61)');
+    process.exit(2);
+  }
+  const links = linkTargetsOrExit(number, opts);
+  if (!links.after.length && !links.before.length) {
+    console.error('✗ --after 또는 --before 가 하나 이상 필요하다.');
+    process.exit(2);
+  }
+  const result = linkIssues(tracker, number, links, { dryRun: opts.dryRun });
+  console.log(`${opts.dryRun ? '(dry-run) ' : ''}#${number} 선행 ${fmtList(links.after)} / 후행 ${fmtList(links.before)}`);
+  reportLinks(number, links, result);
+  if (!result.ok) process.exit(1);
 }
 
 /* ------------------------------------------------------------------- main */
@@ -473,12 +557,12 @@ function main() {
   if (!argv.length || argv.includes('-h') || argv.includes('--help')) usage(argv.length ? 0 : 1);
 
   const mode = argv[0];
-  if (!['mode', 'gate', 'search', 'labels', 'create', 'unlabeled', 'label', 'ensure-label', 'status'].includes(mode)) {
+  if (!['mode', 'gate', 'search', 'labels', 'create', 'unlabeled', 'label', 'ensure-label', 'status', 'link'].includes(mode)) {
     console.error(`✗ 알 수 없는 모드: ${mode}`);
     usage();
   }
 
-  const opts = { dryRun: false, labels: [], removeLabels: [] };
+  const opts = { dryRun: false, labels: [], removeLabels: [], after: [], before: [] };
   const positionals = [];
   for (let i = 1; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -494,6 +578,8 @@ function main() {
     else if (arg === '--label') opts.labels.push(argv[++i]);
     else if (arg === '--remove-label') opts.removeLabels.push(argv[++i]);
     else if (arg === '--assignee') opts.assignee = argv[++i];
+    else if (arg === '--after') opts.after.push(argv[++i]);
+    else if (arg === '--before') opts.before.push(argv[++i]);
     else if (arg === '--limit') opts.limit = argv[++i];
     else if (arg === '--state') opts.state = argv[++i];
     else if (arg === '--color') opts.color = argv[++i];
@@ -532,6 +618,7 @@ function main() {
   else if (mode === 'unlabeled') cmdUnlabeled(opts, tracker);
   else if (mode === 'label') cmdLabel(parseIssueNumber(positional), opts, tracker);
   else if (mode === 'ensure-label') cmdEnsureLabel(positional, opts, tracker);
+  else if (mode === 'link') cmdLink(parseIssueNumber(positional), opts, tracker);
   else if (mode === 'status') {
     const result = setTrackerStatus(tracker, positional, positionals[1], { dryRun: opts.dryRun });
     if (!result.status) { console.error(`✗ 상태 전환 실패: ${result.err}`); process.exit(2); }

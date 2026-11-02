@@ -378,12 +378,40 @@ provider.type = jira     ~/.issue/settings.json 의 provider.jira + tokenEnv 환
 
 PR 은 트래커와 무관하게 GitHub 에 올라간다. Jira 를 쓰더라도 `gh` 로그인은 여전히 필요하다.
 
+### 선행 이슈 확인 — 필수
+
+이슈 번호 경로면 **매번** 선행 이슈 상태를 확인한다. 건너뛰지 않는다.
+
+```bash
+node <skill>/scripts/issue-start.mjs prereq {issue_number}
+```
+
+본문의 `## 선행 이슈` 를 하나씩 조회해 실제 상태(닫힘 또는 `status:close`)로 판정한다. 본문 체크박스만 믿지 않는다.
+
+```text
+exit 0   선행이 없거나 전부 끝남 → 1단계로
+exit 3   PREREQ_PENDING= 의 선행이 아직 안 끝남 (조회 실패 포함) → 아래 질문
+exit 4   트래커 인증·이슈 조회 실패 → 문제 보고 형식으로 알린다
+```
+
+exit 3 이면 진행하지 않고 AskUserQuestion 으로 확인을 받는다.
+
+```text
+질문   issue-start 1단계(인자 분기 및 전제 확인)입니다. 선행 이슈 #12 (OPEN · status:in-process) 가 아직 끝나지 않았습니다. 어떻게 할까요?
+
+1. 착수 중단 (권장)          선행 이슈가 끝난 뒤 다시 착수합니다
+2. 선행 이슈부터 착수         /issue-start #12 로 바꿔 진행합니다
+3. 그대로 착수               선행 미완료를 알고 진행합니다. 마무리 보고에 이 사실을 남깁니다
+```
+
+섹션이 없는 이슈는 `PREREQ_TOTAL=0` 으로 바로 통과한다.
+
 ## 1단계 — 체크리스트 생성
 
 TodoWrite 로 아래 13개를 만든다. **단계가 끝날 때마다 즉시 완료로 갱신한다.**
 
 ```text
-1.  인자 분기 및 전제 확인
+1.  인자 분기 및 전제 확인 (선행 이슈 prereq 포함)
 2.  이슈 수집 (본문·코멘트·이미지)
 3.  작업 성격 판정
 4.  코드베이스 대조 분석 + plan.md

@@ -175,3 +175,35 @@ for name in $base_names; do
 done
 
 echo "base branch code: 6 copies match ($(echo $base_names | wc -w | tr -d ' ') declarations)"
+
+# -----------------------------------------------------------------------------
+# 선행·후행 연결 모듈 (이슈 #98)
+#
+# 본문 형식 계약을 만드는 쪽(issue-create)과 읽는 쪽(issue-start 착수 확인,
+# issue-merge close 후행 체크)이 같은 파서를 써야 한다. 세 사본은 통째로 같아야 한다.
+# -----------------------------------------------------------------------------
+
+links_files='
+skills/issue-create/scripts/issue-links.mjs
+skills/issue-start/scripts/issue-links.mjs
+skills/issue-merge/scripts/issue-links.mjs
+'
+
+links_ref=''
+links_count=0
+for rel in $links_files; do
+  file="$root/$rel"
+  if [ ! -f "$file" ]; then
+    echo "missing issue-links copy: $rel" >&2
+    exit 1
+  fi
+  if [ -z "$links_ref" ]; then
+    links_ref="$rel"
+  elif ! cmp -s "$root/$links_ref" "$file"; then
+    echo "issue-links drift: $rel differs from $links_ref" >&2
+    exit 1
+  fi
+  links_count=$((links_count + 1))
+done
+
+echo "issue-links: $links_count copies match"
