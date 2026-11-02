@@ -12,3 +12,13 @@ export function cmpDec(a: string, b: string): number {
 export function isDec(v: unknown): v is string {
   return typeof v === "string" && /^\d+$/.test(v);
 }
+
+/** a + 1 for a non-negative decimal string, digit by digit (EVT-09). */
+export function incDec(a: string): string {
+  const d = a.replace(/^0+(?=\d)/, "").split("");
+  let i = d.length - 1;
+  while (i >= 0 && d[i] === "9") d[i--] = "0";
+  if (i < 0) return "1" + d.join("");
+  d[i] = String(Number(d[i]) + 1);
+  return d.join("");
+}
