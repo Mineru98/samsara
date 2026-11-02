@@ -287,6 +287,9 @@ func (s *Server) routes() {
 		go s.Stop()
 		return map[string]string{"status": "STOPPING"}, nil
 	}))
+	m.HandleFunc("/ipc/v1/metrics", handle(func(r *http.Request, _ struct{}) (any, error) {
+		return a.MetricsSnapshot(r.Context())
+	}))
 	m.HandleFunc("/ipc/v1/backup", handle(func(r *http.Request, req struct {
 		Dest string `json:"dest"`
 	}) (any, error) {

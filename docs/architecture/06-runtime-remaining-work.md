@@ -18,21 +18,21 @@
 | M4 읽기 전용 React UI | 미구현 | [#69](https://github.com/Mineru98/samsara/issues/69) |
 | M5 실제 backend·Git·GitHub 조회 | 부분 | tmux, 로컬 Git 후보, GitHub 이력 조회([#66](https://github.com/Mineru98/samsara/issues/66))는 구현. herdr [#64](https://github.com/Mineru98/samsara/issues/64) |
 | M6 승인·중단·재개·통합 제어 | 부분 | API·CLI 제어와 `samsara_local` 통합은 구현. `github_queue` [#65](https://github.com/Mineru98/samsara/issues/65), 제어 UI [#69](https://github.com/Mineru98/samsara/issues/69) |
-| M7 배포·백업·성능·파일럿 | 미구현 | [#72](https://github.com/Mineru98/samsara/issues/72) |
+| M7 배포·백업·성능·파일럿 | 부분 | release binary·install·upgrade·restore·metrics·진단 export는 구현([#72](https://github.com/Mineru98/samsara/issues/72)). 성능 측정·파일럿은 미구현 |
 
 ## 2. 남은 작업과 추적 이슈
 
 | # | 남은 작업 | 설계 근거 | 현재 런타임 동작 | 이슈 |
 |---|---|---|---|---|
 | 1 | herdr 어댑터 실제 구현과 protocol 검증 | 01 §5·§7, 05 §9 | version·schema hash만 기록하고, 모든 capability를 `UNSUPPORTED(HERDR_COMPAT_UNVERIFIED)`로 보고 → auto mode는 tmux 선택 | [#64](https://github.com/Mineru98/samsara/issues/64) |
-| 2 | GitHub native merge queue(`github_queue`) | 04 §10, 03 §3.4 | 후보는 `WAITING(GITHUB_QUEUE_NOT_VERIFIED)`, enqueue는 `UNSUPPORTED_CAPABILITY` | [#65](https://github.com/Mineru98/samsara/issues/65) |
+| 2 | GitHub native merge queue(`github_queue`) | 04 §10, 03 §3.4 | branch rules probe·enqueue·polling·group별 MERGE 승인/policy check 상태기계 구현(fake provider 테스트). check 게시용 GitHub App 자격증명이 없어 실제 환경은 `WAITING(POLICY_PUBLISHER_UNAVAILABLE 등)`·`UNSUPPORTED_CAPABILITY` 유지. 실제 시험 저장소 e2e 미검증 | [#65](https://github.com/Mineru98/samsara/issues/65) |
 | 3 | GitHub 이슈·PR·commit 이력 동기화, refresh | 01 §17, 04 §15, 02 §12 | `gh` 읽기 전용 증분 동기화(issue·PR·commit·check·review), freshness `LIVE`/`STALE`, refresh 즉시 재조회, `github.close_issues` opt-in 닫기. GitHub Enterprise·PR↔로컬 이슈 자동 연결은 미지원 | [#66](https://github.com/Mineru98/samsara/issues/66) |
 | 4 | 실행 중 계획 수정(pause + revise) | 01 §12.4, 03 §4.6 | 실행 중 apply는 409, run 취소 후 재적용만 가능 | [#67](https://github.com/Mineru98/samsara/issues/67) |
 | 5 | Hook 실패 차단 실측(HK-04~HK-09) | 01 §10.5, 05 §8 | `samsara doctor --hook-probe`로 실제 Claude 실측(HK-01·03·04·05·06·07·16), 통과한 버전만 manifest `policy_hook_failure_block_verified=true`. managed 실행 허용은 아직 버전 숫자 기준 | [#68](https://github.com/Mineru98/samsara/issues/68) |
 | 6 | React 대시보드(읽기 전용 → 제어) | 02 전체 | API·SSE만 있고, `/`는 안내 페이지 | [#69](https://github.com/Mineru98/samsara/issues/69) |
 | 7 | Worktree 정리 수명주기, 충돌 해결 흐름, 큐 우선순위 | 04 §6.3·§8.3·§12 | `RETAINED`까지만 관리, `CONFLICT`는 표시와 취소만 가능 | [#70](https://github.com/Mineru98/samsara/issues/70) |
 | 8 | OpenAPI·JSON Schema·TS 타입·계약 fixture | 03 §12.2 | wire 타입은 Go struct로만 존재 | [#71](https://github.com/Mineru98/samsara/issues/71) |
-| 9 | 배포·업그레이드·복원·metrics·진단 export | 01 §14·§18, 05 §16~§17 | 소스 빌드와 온라인 백업만 지원, retention 7일 고정 | [#72](https://github.com/Mineru98/samsara/issues/72) |
+| 9 | 배포·업그레이드·복원·metrics·진단 export | 01 §14·§18, 05 §16~§17 | `release.sh`·`install`·`upgrade`·`restore`·`metrics`·`doctor --export`, `observation.event_retention_days` 반영. lease renewal failure·backend observation age·scheduler latency metric은 미구현 | [#72](https://github.com/Mineru98/samsara/issues/72) |
 
 ## 3. 이슈로 만들지 않은 범위
 

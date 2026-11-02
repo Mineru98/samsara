@@ -78,10 +78,18 @@ type Observation struct {
 // issue close write (03 §4.5). Credentials come from the user's own `gh`
 // login; nothing here holds a token.
 type GitHub struct {
-	Sync                string `yaml:"sync" json:"sync"`
-	Repository          string `yaml:"repository" json:"repository"`
-	SyncIntervalSeconds int    `yaml:"sync_interval_seconds" json:"sync_interval_seconds"`
-	CloseIssues         bool   `yaml:"close_issues" json:"close_issues"`
+	Sync                string     `yaml:"sync" json:"sync"`
+	Repository          string     `yaml:"repository" json:"repository"`
+	SyncIntervalSeconds int        `yaml:"sync_interval_seconds" json:"sync_interval_seconds"`
+	CloseIssues         bool       `yaml:"close_issues" json:"close_issues"`
+	MergeQueue          MergeQueue `yaml:"merge_queue" json:"merge_queue"`
+}
+
+// MergeQueue configures the github_queue authority (04 §10). PolicyAppID is
+// the GitHub App that must be the source of the required
+// samsara/integration-policy check; 0 leaves native integration unsupported.
+type MergeQueue struct {
+	PolicyAppID int64 `yaml:"policy_app_id" json:"policy_app_id"`
 }
 
 var githubRepoRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
@@ -203,6 +211,9 @@ func (c *Config) Validate() error {
 	}
 	if c.GitHub.Repository != "" && !githubRepoRe.MatchString(c.GitHub.Repository) {
 		add("github.repository must be owner/name")
+	}
+	if c.GitHub.MergeQueue.PolicyAppID < 0 {
+		add("github.merge_queue.policy_app_id must be >= 0")
 	}
 	if c.GitHub.SyncIntervalSeconds < 60 {
 		add("github.sync_interval_seconds must be >= 60")

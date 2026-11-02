@@ -283,6 +283,7 @@ issue-merge.mjs inventory  출력의 worktrees[].display / excluded[].display
 | 보류 | `[#N](url) — <사유>` (없으면 `없음`) |
 | 통합 테스트 | 통과/실패 요약 (예: `4/4 통과`, `#21 회귀 — <내용>`) |
 | close 됨 | `[#N](url)` 나열 + `(status:close)` |
+| close 확인 | `close-check` 의 `summary` (`확인 n건 / 보정 m건 / 보류 k건`) + 보정·보류 이슈와 보류 사유 |
 | 정리 | `워크트리 <n>개 제거 · base-tree 제거` |
 | 남은 것 | 다음에 해야 할 것 (없으면 `없음`) |
 | 다음 | 사용자가 고른 행동 |

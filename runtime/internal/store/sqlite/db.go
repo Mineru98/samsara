@@ -19,8 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/metrics"
 	_ "modernc.org/sqlite"
 )
 
@@ -31,7 +33,7 @@ var migrationFS embed.FS
 const MinSQLiteVersion = "3.51.3"
 
 // SchemaVersion is the highest migration this binary knows.
-const SchemaVersion = 3
+const SchemaVersion = 5
 
 // Q is satisfied by *sql.Tx and *sql.DB.
 type Q interface {
@@ -52,6 +54,10 @@ type DB struct {
 	wmu    sync.Mutex
 	Clock  domain.Clock
 	notify Notifier
+
+	// WriteLatency, when set, records writer lock wait plus transaction
+	// time of every Write (01 §18.1 SQLite writer latency).
+	WriteLatency *metrics.Summary
 
 	HostID             string
 	DatabaseGeneration string
@@ -246,6 +252,10 @@ func (db *DB) Read(ctx context.Context, fn func(q Q) error) error {
 // Write runs fn in the single writer transaction and flushes the accumulated
 // project events before commit.
 func (db *DB) Write(ctx context.Context, fn func(tx *Tx) error) error {
+	if db.WriteLatency != nil {
+		start := time.Now()
+		defer func() { db.WriteLatency.Observe(time.Since(start)) }()
+	}
 	db.wmu.Lock()
 	defer db.wmu.Unlock()
 	sqlTx, err := db.w.BeginTx(ctx, nil)
@@ -279,6 +289,140 @@ func (db *DB) Backup(ctx context.Context, dest string) error {
 		return fmt.Errorf("backup destination %s already exists", dest)
 	}
 	_, err := db.w.ExecContext(ctx, "VACUUM INTO ?", dest)
+	return err
+}
+
+// CheckIntegrity runs integrity_check and foreign_key_check on the writer
+// connection and returns every reported problem (empty when sound).
+func (db *DB) CheckIntegrity(ctx context.Context) ([]string, error) {
+	db.wmu.Lock()
+	defer db.wmu.Unlock()
+	return checkIntegrity(ctx, db.w)
+}
+
+func checkIntegrity(ctx context.Context, q Q) ([]string, error) {
+	var problems []string
+	rows, err := q.QueryContext(ctx, "PRAGMA integrity_check")
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if line != "ok" {
+			problems = append(problems, "integrity: "+line)
+		}
+	}
+	rows.Close()
+	rows, err = q.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var table, parent string
+		var rowid sql.NullInt64
+		var fkid int
+		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			return nil, err
+		}
+		problems = append(problems, fmt.Sprintf("foreign key: %s rowid %d -> %s", table, rowid.Int64, parent))
+	}
+	return problems, rows.Err()
+}
+
+// FileInfo describes a database file without migrating it.
+type FileInfo struct {
+	Path               string   `json:"path"`
+	SchemaVersion      int      `json:"schema_version"`
+	DatabaseGeneration string   `json:"database_generation"`
+	Problems           []string `json:"problems,omitempty"`
+}
+
+// openRaw opens path without applying pragmas that write or migrations.
+func openRaw(path string, readOnly bool) (*sql.DB, error) {
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+	q := url.Values{}
+	q.Add("_pragma", "busy_timeout(5000)")
+	if readOnly {
+		q.Add("_pragma", "query_only(1)")
+	}
+	d, err := sql.Open("sqlite", "file:"+path+"?"+q.Encode())
+	if err != nil {
+		return nil, err
+	}
+	d.SetMaxOpenConns(1)
+	return d, nil
+}
+
+// Inspect reads the schema version, the generation and the integrity of a
+// database file. Migrations this binary does not know, or whose checksum
+// differs, are reported as problems: such a file must not be opened.
+func Inspect(ctx context.Context, path string) (*FileInfo, error) {
+	d, err := openRaw(path, true)
+	if err != nil {
+		return nil, err
+	}
+	defer d.Close()
+	fi := &FileInfo{Path: path}
+	problems, err := checkIntegrity(ctx, d)
+	if err != nil {
+		return nil, fmt.Errorf("%s is not a readable samsara database: %w", path, err)
+	}
+	fi.Problems = problems
+	known := map[int]string{}
+	migs, err := loadMigrations()
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range migs {
+		known[m.version] = m.checksum
+	}
+	rows, err := d.QueryContext(ctx, "SELECT version, checksum FROM schema_migrations ORDER BY version")
+	if err != nil {
+		return nil, fmt.Errorf("%s has no schema_migrations: %w", path, err)
+	}
+	for rows.Next() {
+		var v int
+		var c string
+		if err := rows.Scan(&v, &c); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		fi.SchemaVersion = v
+		if k, ok := known[v]; !ok {
+			fi.Problems = append(fi.Problems, fmt.Sprintf("schema %d is newer than this binary (%d)", v, SchemaVersion))
+		} else if k != c {
+			fi.Problems = append(fi.Problems, fmt.Sprintf("migration %d checksum mismatch", v))
+		}
+	}
+	rows.Close()
+	if err := d.QueryRowContext(ctx, "SELECT database_generation FROM runtime_metadata WHERE id=1").Scan(&fi.DatabaseGeneration); err != nil {
+		return nil, fmt.Errorf("%s has no runtime_metadata: %w", path, err)
+	}
+	return fi, nil
+}
+
+// BackupFile writes a consistent copy of a database that no daemon has open,
+// without migrating it (used before an upgrade migrates the original).
+func BackupFile(ctx context.Context, src, dest string) error {
+	if _, err := os.Stat(dest); err == nil {
+		return fmt.Errorf("backup destination %s already exists", dest)
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o700); err != nil {
+		return err
+	}
+	d, err := openRaw(src, false)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	_, err = d.ExecContext(ctx, "VACUUM INTO ?", dest)
 	return err
 }
 

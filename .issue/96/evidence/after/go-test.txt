@@ -1,0 +1,14 @@
+ok  	github.com/Mineru98/samsara/runtime/api	0.190s
+ok  	github.com/Mineru98/samsara/runtime/internal/app	11.746s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.015s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/herdr	1.131s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.475s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	0.007s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.018s
+ok  	github.com/Mineru98/samsara/runtime/internal/github	0.015s
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.345s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.007s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.767s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.104s
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	0.311s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.350s

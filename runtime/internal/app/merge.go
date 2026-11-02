@@ -95,10 +95,14 @@ func (a *App) EnqueueCandidate(ctx context.Context, cmd Cmd, candidateID string)
 	if err != nil {
 		return nil, err
 	}
+	native, err := a.prepareNativeEnqueue(ctx, candidateID)
+	if err != nil {
+		return nil, err
+	}
 	return a.candidateCommand(ctx, cmd, "merge.enqueue", candidateID, func(tx *sqlite.Tx, c *sqlite.Candidate, t *sqlite.Target) error {
 		switch t.Authority {
 		case domain.AuthorityGitHubQueue:
-			return domain.Errf(domain.CodeUnsupportedCapability, "github_queue integration requires a verified provider policy check; not available in this build")
+			return a.enqueueNativeTx(ctx, tx, c, t, native)
 		case domain.AuthorityManual:
 			return domain.Errf(domain.CodeUnsupportedCapability, "target uses manual integration: merge outside Samsara; the runtime records evidence once the target contains the source")
 		}
@@ -378,7 +382,8 @@ func (a *App) targetLock(id string) *sync.Mutex {
 
 // MergeTick advances integration per target. Local targets process one
 // candidate at a time from validation to publication (04 §9.1). Manual
-// targets only observe external integration.
+// targets only observe external integration. GitHub queue targets are
+// probed and their delivered pull requests polled (04 §10.8).
 func (a *App) MergeTick(ctx context.Context) error {
 	if !a.Ready() {
 		return nil
@@ -417,6 +422,8 @@ func (a *App) MergeTick(ctx context.Context) error {
 			err = a.observeManualTarget(ctx, t)
 		case domain.AuthoritySamsaraLocal:
 			err = a.advanceLocalTarget(ctx, t)
+		case domain.AuthorityGitHubQueue:
+			err = a.observeGitHubQueueTarget(ctx, t)
 		}
 		if err != nil {
 			a.Log.Warn("merge tick", "target", t.ID, "err", err)
@@ -873,12 +880,13 @@ func (a *App) maybeCompleteIssue(ctx context.Context, tx *sqlite.Tx, runID, issu
 }
 
 // reconcilePublishing resolves PUBLISHING candidates whose outcome is
-// unknown (crash or lost response) by reading the target.
+// unknown (crash or lost response) by reading the target. Native queue
+// candidates are resolved by polling the provider, never the local ref.
 func (a *App) reconcilePublishing(ctx context.Context) error {
 	var cands []*sqlite.Candidate
 	if err := a.DB.Read(ctx, func(q sqlite.Q) error {
 		var err error
-		cands, err = sqlite.CandidatesWhere(ctx, q, "state='PUBLISHING' AND publication_observation='UNKNOWN'")
+		cands, err = sqlite.CandidatesWhere(ctx, q, "state='PUBLISHING' AND publication_observation='UNKNOWN' AND native_queue_state='NONE'")
 		return err
 	}); err != nil {
 		return err

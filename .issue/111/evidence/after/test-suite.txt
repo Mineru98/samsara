@@ -1,0 +1,19 @@
+# after: pnpm -C web typecheck && pnpm -C web test && pnpm -C web build
+$ tsc --noEmit
+ ✓ src/realtime/specs.test.ts > applyCatalogEvent > the next catalog_version is applied 3ms
+ ✓ src/realtime/specs.test.ts > applyCatalogEvent > a skipped catalog_version is a gap, not an apply 1ms
+ ✓ src/realtime/specs.test.ts > applyCatalogEvent > the gap check carries across decimal digits without number conversion 0ms
+ ✓ src/realtime/specs.test.ts > applyCatalogEvent > replayed or older catalog_version stays a duplicate 0ms
+ ✓ src/realtime/specs.test.ts > catalog stream (02 §15.2) > a catalog_version gap reloads the catalog snapshot 12ms
+ ✓ src/realtime/shared.test.ts > SharedStream (02 §15.5) > three tabs of one project share a single SSE connection 12ms
+ ✓ src/realtime/shared.test.ts > SharedStream (02 §15.5) > a follower's resync runs on the leader and reaches every tab 11ms
+ ✓ src/realtime/shared.test.ts > SharedStream (02 §15.5) > closing the leader tab hands the stream to the next tab 12ms
+ ✓ src/realtime/shared.test.ts > SharedStream (02 §15.5) > errors keep their contract fields across tabs 5ms
+ ✓ src/realtime/shared.test.ts > SharedStream (02 §15.5) > without Web Locks each tab streams on its own 6ms
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+## full suite
+ Test Files  7 passed (7)
+      Tests  38 passed (38)
+## build
+✓ built in 926ms

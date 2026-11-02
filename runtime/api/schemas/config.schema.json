@@ -195,6 +195,16 @@
             },
             "close_issues": {
               "type": "boolean"
+            },
+            "merge_queue": {
+              "type": "object",
+              "properties": {
+                "policy_app_id": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

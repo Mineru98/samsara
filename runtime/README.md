@@ -5,11 +5,12 @@
 
 - 언어/런타임: Go 1.25+ (`go.mod`), SQLite는 `modernc.org/sqlite` v1.55.0에 포함된 엔진 **3.53.3**을 사용한다. 기준은 3.51.3 이상이고, 시작할 때 `sqlite_version()`으로 확인한다.
 - 단일 바이너리 `samsara`가 CLI, daemon, Hook Bridge, worker launcher 역할을 모두 맡는다.
-- React 대시보드(02 문서)는 이 모듈에 포함되지 않는다. 대시보드가 쓸 HTTP·SSE API는 이 모듈에 구현돼 있다.
+- React 대시보드(02 문서) 소스는 저장소 루트 `web/`에 있다. `pnpm -C web build`가 `internal/webui/static/`에 번들을 만들고, 런타임이 이를 embed해 같은 loopback origin에서 서빙한다. 번들 없이 빌드하면 `/`는 안내 페이지를 보여준다.
 
 ## 빌드와 테스트
 
 ```bash
+pnpm -C web install && pnpm -C web build   # 대시보드 번들(선택). 없으면 / 는 안내 페이지
 cd runtime
 go build -o bin/samsara ./cmd/samsara
 go test ./...            # 단위·불변식·실제 git/tmux 통합 테스트
@@ -17,6 +18,26 @@ go test -race ./internal/app/
 ```
 
 테스트에는 실제 `git`이 필요하다. `tmux` 어댑터 테스트는 tmux가 없으면 건너뛴다.
+
+## 배포·업그레이드·복원 (05 §17)
+
+```bash
+runtime/scripts/release.sh                 # dist/samsara_<VERSION>_<os>_<arch>.tar.gz + SHA256SUMS (linux/darwin × amd64/arm64)
+runtime/scripts/drill.sh                   # release tarball만으로 설치 smoke → 업그레이드 → restore 롤백 → export 점검
+```
+
+- 버전은 저장소 `VERSION`을 `-ldflags "-X main.version=..."`으로 주입한다. SQLite는 pure-Go driver라 `CGO_ENABLED=0`으로 교차 빌드한다.
+- `samsara install`: 실행한 binary를 `<data>/samsara/install/versions/<버전>/samsara`로 복사하고 `install/bin/samsara` 링크를 그쪽으로 바꾼다. 다른 버전은 지우지 않는다. hook은 링크가 아니라 버전 경로를 가리키고, install·upgrade 때 설치 디렉터리의 버전을 가리키던 hook(등록 프로젝트·관리 worktree)은 새로 설치한 버전으로 옮긴다. 이전 binary는 이미 hook을 읽은 세션을 위해 디스크에 남는다. 개발 빌드처럼 설치 디렉터리 밖 binary를 가리키는 hook은 건드리지 않는다.
+- 플러그인·스크립트는 `scripts/samsara-bin.sh`로 binary 경로를 찾는다(`$SAMSARA_BIN` → install 링크 → `${CLAUDE_PLUGIN_ROOT}/runtime/dist/<os>_<arch>/samsara`(release.sh가 tarball과 함께 풀어 둔다) → PATH).
+- `samsara upgrade [--start] [--prune-old]`는 **새 binary로** 실행한다. 실행 중인 start lock 획득(그 사이 hook이 구 binary로 daemon을 띄우지 못함) → daemon 정지 → daemon lock 획득(구·신 프로세스 동시 쓰기 차단) → 미적용 DB 백업(`state/backups/pre-upgrade-*.db`) → migration → `integrity_check`·`foreign_key_check` → 설치 → 새 daemon 시작·버전 확인. 실패하면 이후 단계를 하지 않고 복원할 백업 경로를 알려 준다. 더 새로운 binary가 만든 DB는 건드리지 않는다.
+- `--prune-old`는 살아 있는 관리 세션이 있거나 등록 프로젝트·관리 worktree의 hook이 실행하는 버전을 남긴다(ACT-12).
+- `samsara restore --from <backup>`은 daemon이 멈춘 상태에서만 동작한다. 백업을 검증(무결성, schema ≤ binary, checksum)하고 현재 DB를 `pre-restore-*.db`로 남긴다. 복사본에서 migration·복원 처리·무결성 확인을 모두 끝낸 뒤 rename 한 번으로 교체하므로, 중간에 끊겨도 현재 DB는 그대로다. 복원된 DB는 `database_generation`을 새로 받아 이전 UI cursor가 `reset_required`가 된다(EVT-11). 진행 중이던 outbox intent는 UNKNOWN이 되고(재전송 금지), PUBLISHING 후보는 실제 target을 다시 읽는다(DB-13). 외부를 먼저 확인하는 intent(worktree 생성, worker launch, git publish 등)는 reconcile이 다시 큐에 넣고, prompt·interrupt처럼 재전송이 위험한 intent는 사람이 판단할 때까지 UNKNOWN으로 남는다. 다음 daemon 시작이 backend·Git·GitHub를 reconcile한 뒤 새 작업을 받는다.
+
+## 관측 (01 §18)
+
+- `samsara metrics`: hook decision latency(p50/p95/p99), decision·deny reason별 count, SQLite writer latency, SSE 연결·재연결·`reset_required` 사유별 count(메모리, 현재 epoch 기준)와 DB gauge(active attempts, UNKNOWN sessions, quarantined attempts, outbox pending·lag, ambiguous operations, merge queue depth, event retention).
+- `samsara doctor --export <새 파일>`: doctor 결과, manifest, registry, 프로젝트 config, runtime·metrics, `daemon.log` 마지막 200줄을 0600 JSON으로 쓴다. token·secret·password·credential·authorization·cookie·api key·prompt·transcript·tool input/response·payload·bootstrap 이름의 필드는 `[REDACTED]`, GitHub·Anthropic·Slack·AWS 자격증명과 Bearer 값은 본문에서 지운다.
+- 이벤트 replay 보존 기간은 `observation.event_retention_days`(기본 7)다. 이벤트 cursor 경계가 전역이라 활성 프로젝트 중 가장 긴 값을 쓴다(각 프로젝트는 설정한 기간 이상 보존된다).
 
 ## 빠른 시작
 
@@ -111,7 +132,7 @@ Claude Code 2.1.311, tmux 3.4, git 2.43, SQLite 3.53.3, Linux 환경에서 실�
 문서의 "확인 전 강제 기능 비활성" 원칙에 따라 다음을 명시적으로 미지원으로 반환한다.
 
 - **herdr**: 설치된 binary의 version과 `herdr api schema --json` hash는 기록한다. 하지만 compatibility manifest에서 protocol 검증(`herdr_protocol_verified`)을 하기 전에는 생성·입력 capability를 `UNSUPPORTED(HERDR_COMPAT_UNVERIFIED)`로 보고한다. 그래서 auto mode는 tmux로 넘어간다. 실제 herdr CLI·socket adapter 구현은 M5 범위다.
-- **GitHub native merge queue(`github_queue`)**: provider 정책 검사 연동을 검증하기 전이므로 enqueue 요청에 `UNSUPPORTED_CAPABILITY`를 반환한다. `manual` authority는 사용자가 외부에서 반영하면 target에 source가 포함된 것을 관찰해 증거를 기록한다.
+- **GitHub native merge queue(`github_queue`)**: daemon이 target branch rules를 조회해(04 §10.2) Merge Queue·ALLGREEN·build/merge 크기 1·`github.merge_queue.policy_app_id`로 고정된 필수 `samsara/integration-policy` check·check 게시자(GitHub App 자격증명)를 모두 확인한 경우에만 enqueue를 받는다. 하나라도 빠지면 후보는 `WAITING(<사유>)`(예: `MERGE_QUEUE_DISABLED`, `POLICY_PUBLISHER_UNAVAILABLE`)에 머물고 enqueue는 `UNSUPPORTED_CAPABILITY`다. 이 빌드에는 App 자격증명 게시자가 없으므로 실제 환경에서는 미지원 상태가 유지된다. 지원 target에서는 head가 승인된 source인 열린 PR을 GraphQL `enqueuePullRequest`(expectedHeadOid)로 넣고(`WAITING → PUBLISHING`), polling으로 `native_queue_state`를 추적한다. GitHub가 만든 group(entry·head·base)마다 revision을 올려 이전 MERGE 승인을 무효화하고 policy check를 in_progress로 재설정하며, 그 group에 대한 MERGE 승인이 같은 transaction에서 확인될 때만 success를 게시한다. PR이 merge되면 provider 증거로 `MERGED`를 기록한다. 실제 org 시험 저장소·App으로 한 end-to-end 검증은 아직 없다. `manual` authority는 사용자가 외부에서 반영하면 target에 source가 포함된 것을 관찰해 증거를 기록한다.
 - **GitHub 이력 동기화**: 사용자의 `gh` 로그인으로 issue·PR·commit·check·review를 읽기 전용 조회해 `external_links`에 출처(`source`)·동기화 시각(`synced_at`)과 함께 기록한다. 토큰은 런타임이 읽지도 저장하지도 않는다. cursor(`since`) 증분 조회, rate limit은 reset 시각까지 대기, 그 밖의 장애는 지수 backoff다. 장애·rate limit은 `github-history`의 `sync` 상태(`AUTH_REQUIRED`·`REPO_NOT_FOUND`·`RATE_LIMITED`·`PROVIDER_ERROR`)로만 나타나고 로컬 업무 상태는 바꾸지 않는다. `POST /v1/projects/{id}/refresh`는 다음 동기화를 즉시 실행한다(rate limit 창은 유지). GitHub Enterprise 원격과 PR↔로컬 이슈 자동 연결은 지원하지 않는다.
 - **실행 중 계획 수정(pause+revise)**: 미구현이다. 실행 중 apply는 409를 반환하고, 새 계획은 기존 run을 취소한 뒤 적용한다.
 - **Hook 실패 차단의 실측**: `claude --version` ≥ 2.1.295일 때만 managed execution을 허용한다. `samsara doctor --hook-probe`는 임시 디렉터리에서 실제 Claude(haiku)에 HK-01·03·04·05·06·07·16을 주입하고, `touch marker` 실행 여부로 차단을 판정한다. 결과는 `<state>/hook-failure-probe.json`에 남고, `--write-manifest`를 함께 주면 통과한 Claude 버전만 manifest의 `policy_hook_failure_block_verified=true`로 기록한다. probe 없이 Claude 버전이 바뀌면 이 값은 false로 돌아간다. doctor의 `claude_fail_closed`는 버전 조건과 실측을 모두 통과했을 때만 true다. managed execution 허용 조건은 아직 버전 숫자만 본다. 참고로 Claude는 문법이 깨진 hook stdout(exit 0)을 plain text로 보고 native permission에 맡긴다(HK-07s, 정보 항목). bridge는 JSON을 한 번에 쓰고 실패하면 exit 2로 끝나므로 이 경로를 만들지 않는다.

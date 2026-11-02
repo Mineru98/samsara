@@ -1,0 +1,6 @@
+=== RUN   TestReviseLinksResolutionToNextAttempt
+--- PASS: TestReviseLinksResolutionToNextAttempt (0.34s)
+=== RUN   TestReviseKeepsResolutionWorkInWorktree
+--- PASS: TestReviseKeepsResolutionWorkInWorktree (0.21s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.576s

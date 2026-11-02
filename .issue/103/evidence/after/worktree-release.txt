@@ -1,0 +1,28 @@
+# 수정 후 — 같은 재현 (main 을 별도 git worktree 로 두고 release 실행)
+# commit f439def + 작업 트리 변경
+
+## 1) fake gh 모두 성공
+$ cat .git
+gitdir: <tmp>/main/.git/worktrees/release
+$ node issue-version.mjs release v0.3.3   (gh 실패 대상: none none)
+✓ 릴리즈 발행 — v0.3.3
+RELEASE_TAG=v0.3.3
+RELEASE_URL=https://github.com/o/r/releases/tag/v0.3.3
+PREVIOUS_TAG=
+exit=0
+$ git ls-remote --tags origin v0.3.3
+23f0c8a	refs/tags/v0.3.3
+$ git tag --list v0.3.3
+v0.3.3
+
+## 2) gh release create 실패 → 롤백 확인
+$ cat .git
+gitdir: <tmp>/main/.git/worktrees/release
+$ node issue-version.mjs release v0.3.3   (gh 실패 대상: release create)
+✗ 릴리즈를 만들지 못했다: gh: forced failure
+  태그 v0.3.3 를 원격·로컬에서 되돌렸다. 원인을 고친 뒤 다시 부르면 된다.
+RELEASE_ROLLED_BACK=1
+RELEASE_TAG=v0.3.3
+exit=3
+$ git ls-remote --tags origin v0.3.3
+$ git tag --list v0.3.3

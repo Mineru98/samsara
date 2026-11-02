@@ -1,0 +1,15 @@
+# 수정 전 — main 을 별도 git worktree 로 두고 release 실행 (fake gh, 모두 성공)
+# commit f439def
+$ cat .git
+gitdir: <tmp>/main/.git/worktrees/release
+$ node issue-version.mjs release v0.3.3   (gh 실패 대상: none none)
+node:fs:2482
+    return binding.writeFileUtf8(
+                   ^
+Error: ENOTDIR: not a directory, open '<tmp>/release/.git/issue-version-notes-v0.3.3.md'
+}
+exit=1
+$ git ls-remote --tags origin v0.3.3
+4e39e61	refs/tags/v0.3.3
+$ git tag --list v0.3.3
+v0.3.3

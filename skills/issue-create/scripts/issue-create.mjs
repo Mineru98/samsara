@@ -44,6 +44,7 @@ import {
 import { createTracker, gitHost, setTrackerStatus } from './issue-tracker.mjs';
 import { gateAction } from './issue-ontology.mjs';
 import { applyOwnLinks, linkIssues, validateLinkTargets } from './issue-links.mjs';
+import { stripAttribution } from './issue-media.mjs';
 
 export { parseIssueNumber };
 
@@ -408,6 +409,16 @@ function cmdCreate(root, opts, tracker) {
   }
   const links = linkTargetsOrExit(null, opts);
   const hasLinks = links.after.length + links.before.length > 0;
+
+  // 지시문만 두면 런타임 지시를 따라 푸터가 다시 붙는다. 등록 직전에 걷어낸다 (#106).
+  const sanitized = stripAttribution(readFileSync(bodyPath, 'utf8'));
+  if (sanitized.removed.length) {
+    const verb = opts.dryRun ? '제거 예정' : '제거';
+    console.log(`  본문에서 Claude Code attribution 푸터·세션 링크 ${sanitized.removed.length}줄 ${verb}:`);
+    for (const item of sanitized.removed) console.log(`    ${item.line}행: ${item.text}`);
+    console.log(`ATTRIBUTION_REMOVED=${sanitized.removed.length}`);
+    if (!opts.dryRun) writeFileSync(bodyPath, sanitized.text);
+  }
 
   if (opts.dryRun) {
     const args = ['issue', 'create', '--title', opts.title, '--body-file', bodyPath];

@@ -1,0 +1,29 @@
+# doctor --export 결과 점검 (drill 의 격리 홈, 심어 둔 비밀값 2종)
+$ grep -c 'ghp_DRILL' diag.json
+0
+$ grep -c 'refactor billing' diag.json
+0
+$ grep -c '\[REDACTED\]' diag.json
+9
+# diag.json 최상위 키
+daemon_log_tail
+doctor
+generated_at
+manifest
+metrics
+project_configs
+redacted_values
+redaction_policy
+registry
+runtime
+schema
+# diag.json daemon_log_tail 마지막 2줄 (심어 둔 줄)
+[
+ {
+  "err": "[REDACTED]",
+  "level": "WARN",
+  "msg": "gh failed",
+  "prompt": "[REDACTED]"
+ },
+ "Authorization: Bearer [REDACTED]"
+]
