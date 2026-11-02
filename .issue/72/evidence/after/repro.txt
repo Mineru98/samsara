@@ -1,0 +1,64 @@
+# #72 after — commit 7973b90, SAMSARA_HOME=<isolated tmp>
+
+$ samsara version
+{
+  "go": "go1.27.1",
+  "os": "linux/amd64",
+  "version": "0.3.4"
+}
+(exit 0)
+
+$ samsara restore --from x.db
+{
+  "error": "stat /home/mineru/workspace/samsara-issue-72/runtime/x.db: no such file or directory",
+  "restore": {
+    "from": "/home/mineru/workspace/samsara-issue-72/runtime/x.db",
+    "backup_schema": 0,
+    "database_generation": "",
+(exit 1)
+
+$ samsara upgrade
+{
+  "upgrade": {
+    "to_version": "0.3.4",
+    "daemon_was_running": false,
+    "schema_before": 0,
+    "schema_after": 3,
+(exit 0)
+
+$ samsara install
+{
+  "hooks_retargeted": [],
+  "install": {
+    "version": "0.3.4",
+    "binary": "<home>/install/versions/0.3.4/samsara",
+    "link": "<home>/install/bin/samsara"
+(exit 0)
+
+$ samsara metrics
+{
+  "collected_at": "2026-11-02T18:27:07Z",
+  "gauges": {
+    "active_attempts": 0,
+    "ambiguous_operations": 0,
+    "event_retention_days": 7,
+(exit 0)
+
+$ samsara doctor --export diag.json
+{
+  "claude": {
+    "version": "2.1.316",
+    "block_on_failure": true,
+    "failure_injection_verified": false
+  },
+(exit 0)
+
+$ ls runtime/scripts
+drill.sh
+release.sh
+
+$ grep -n 'cutoff :=' internal/app/reconcile.go
+322:		cutoff := tx.Now - int64(days)*24*3600*1000
+
+$ grep -rn 'RotateDatabaseGeneration(' (호출처)
+./internal/app/restore.go:42:	return db.RotateDatabaseGeneration(ctx)
