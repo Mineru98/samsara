@@ -271,9 +271,6 @@ func (a *App) revisePlanTx(ctx context.Context, tx *sqlite.Tx, cmd Cmd, rev *pla
 	if err != nil {
 		return nil, err
 	}
-	if err := checkIfMatch(cmd, r.Version); err != nil {
-		return nil, err
-	}
 	if p.ProjectID != r.ProjectID {
 		return nil, domain.Errf(domain.CodeInvalidRequest, "plan project_id does not match the run's project")
 	}
@@ -290,6 +287,11 @@ func (a *App) revisePlanTx(ctx context.Context, tx *sqlite.Tx, cmd Cmd, rev *pla
 	if exp, _ := domain.ParseDec(rev.ExpectedRunGeneration); exp != r.Generation {
 		return nil, domain.Errf(domain.CodeVersionMismatch, "run generation changed").
 			WithDetails("expected_run_generation", rev.ExpectedRunGeneration, "current_run_generation", domain.Dec(r.Generation))
+	}
+	// After the generation check, so a revision built on an older generation
+	// is refused as such even when its If-Match is stale too.
+	if err := checkIfMatch(cmd, r.Version); err != nil {
+		return nil, err
 	}
 	if exp, _ := domain.ParseDec(p.ExpectedGraphVersion); exp != pr.GraphVersion {
 		return nil, domain.Errf(domain.CodeVersionMismatch, "graph version changed").

@@ -1596,6 +1596,59 @@
         "plan"
       ]
     },
+    "RunReviseRequest": {
+      "description": "Body of POST /v1/runs/{id}/revise: PlanReviseRequest with run_id taken from the path.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "plan": {
+          "$ref": "plan.schema.json#/$defs/Plan"
+        }
+      },
+      "required": [
+        "expected_run_generation",
+        "plan"
+      ]
+    },
+    "RunPlan": {
+      "description": "GET /v1/runs/{id}/plan: the run's current plan with expected_graph_version set to the project graph version at read time.",
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/RunState"
+        },
+        "run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "plan_digest": {
+          "type": "string"
+        },
+        "plan": {
+          "$ref": "plan.schema.json#/$defs/Plan"
+        }
+      },
+      "required": [
+        "run_id",
+        "version",
+        "state",
+        "run_generation",
+        "graph_version",
+        "plan_digest",
+        "plan"
+      ]
+    },
     "PlanReviseResult": {
       "type": "object",
       "properties": {

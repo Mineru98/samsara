@@ -19,6 +19,7 @@ import (
 
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/plan"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
 	"github.com/Mineru98/samsara/runtime/internal/webui"
 )
@@ -297,6 +298,10 @@ func (s *Server) routes() {
 		v, err := a.RunSnapshot(r.Context(), r.PathValue("id"))
 		respond(w, r, v, err)
 	}))
+	m.HandleFunc("GET /v1/runs/{id}/plan", s.auth(func(w http.ResponseWriter, r *http.Request, p app.Principal) {
+		v, err := a.RunPlan(r.Context(), r.PathValue("id"))
+		respond(w, r, v, err)
+	}))
 	m.HandleFunc("GET /v1/attempts/{id}", s.get(sqlite.KindAttempt))
 	m.HandleFunc("GET /v1/sessions/{id}", s.get(sqlite.KindSession))
 	m.HandleFunc("GET /v1/worktrees/{id}", s.get(sqlite.KindWorktree))
@@ -335,6 +340,26 @@ func (s *Server) routes() {
 	}))
 	m.HandleFunc("POST /v1/merge-candidates/{id}/cancel", command(func(r *http.Request, c app.Cmd) (any, error) {
 		return a.CancelCandidate(r.Context(), c, r.PathValue("id"))
+	}))
+	m.HandleFunc("POST /v1/runs/{id}/start", command(func(r *http.Request, c app.Cmd) (any, error) {
+		return a.StartRun(r.Context(), c, r.PathValue("id"))
+	}))
+	m.HandleFunc("POST /v1/runs/{id}/revise", command(func(r *http.Request, c app.Cmd) (any, error) {
+		var body struct {
+			ExpectedRunGeneration string          `json:"expected_run_generation"`
+			Plan                  json.RawMessage `json:"plan"`
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&body); err != nil {
+			return nil, domain.Errf(domain.CodeInvalidRequest, "bad body: %v", err)
+		}
+		// The run comes from the path; the body is the CLI revision minus run_id.
+		raw, err := json.Marshal(plan.Revision{RunID: r.PathValue("id"), ExpectedRunGeneration: body.ExpectedRunGeneration, Plan: body.Plan})
+		if err != nil {
+			return nil, err
+		}
+		return a.RevisePlan(r.Context(), c, raw)
 	}))
 	m.HandleFunc("POST /v1/runs/{id}/pause", command(func(r *http.Request, c app.Cmd) (any, error) {
 		return a.PauseRun(r.Context(), c, r.PathValue("id"))

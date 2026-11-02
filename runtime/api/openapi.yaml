@@ -472,6 +472,22 @@ paths:
         default: *id001
       security:
       - bearer: []
+  /v1/runs/{id}/plan:
+    get:
+      operationId: getRunPlan
+      summary: Current plan of a run as the starting point of a revise
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/RunPlan
+        default: *id001
+      security:
+      - bearer: []
   /v1/approvals/{id}/decisions:
     post:
       operationId: decideApproval
@@ -527,6 +543,48 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas/ipc.schema.json#/$defs/CommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}/start:
+    post:
+      operationId: startRun
+      summary: PLANNED to ACTIVE; a pending PLAN approval is 409 APPROVAL_REQUIRED with details.approval_id
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/RunCommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}/revise:
+    post:
+      operationId: reviseRunPlan
+      summary: Revise the plan of a PAUSED, quiescent run; a stale expected_run_generation is VERSION_MISMATCH
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/ipc.schema.json#/$defs/RunReviseRequest
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/PlanReviseResult
         default: *id001
       security:
       - bearer: []

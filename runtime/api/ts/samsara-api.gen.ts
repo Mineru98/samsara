@@ -561,6 +561,8 @@ export interface RefreshProjectResult {
 
 export interface RunView {
   alias_mapping: Record<string, string> | null;
+  /** Run commands the state allows (START_RUN, PAUSE_RUN, RESUME_RUN, REVISE_PLAN); the command re-checks policy. Absent from older runtimes. */
+  available_actions?: Action[];
   created_at: Timestamp;
   ended_at?: Timestamp;
   graph_version: Decimal;
@@ -1153,8 +1155,25 @@ export interface RunCommandResult {
   version: Decimal;
 }
 
+/** GET /v1/runs/{id}/plan: the run's current plan with expected_graph_version set to the project graph version at read time. */
+export interface RunPlan {
+  graph_version: Decimal;
+  plan: Plan;
+  plan_digest: string;
+  run_generation: Decimal;
+  run_id: string;
+  state: Open<RunState>;
+  version: Decimal;
+}
+
 export interface RunRef {
   run_id: string;
+}
+
+/** Body of POST /v1/runs/{id}/revise: PlanReviseRequest with run_id taken from the path. */
+export interface RunReviseRequest {
+  expected_run_generation: Decimal;
+  plan: Plan;
 }
 
 export interface SessionRef {
