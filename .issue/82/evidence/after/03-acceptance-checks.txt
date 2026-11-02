@@ -1,0 +1,27 @@
+## 완료 기준 정적 확인
+### skills/issue-start/references/evidence-capture.md
+dirty 3지선다 잔존: 0
+dirty 건너뜀 보고 행 잔존: 0
+자동 치워두고 받기 보고 행: 1
+conflict 질문 유지: 1
+other-branch 질문 유지: 1
+reset --hard 규칙 유지: 1
+브랜치 전환 규칙 유지: 1
+### skills/issue-end/references/report-and-pr.md
+dirty 3지선다 잔존: 0
+dirty 건너뜀 보고 행 잔존: 0
+자동 치워두고 받기 보고 행: 1
+conflict 질문 유지: 1
+other-branch 질문 유지: 1
+reset --hard 규칙 유지: 1
+브랜치 전환 규칙 유지: 1
+### skills/issue-end/SKILL.md
+'확인 없이 치워두' 잔존: 0
+reset --hard·브랜치 전환 규칙: 1
+## 스크립트 무변경
+*.mjs diff lines: 0
+ skills/issue-end/SKILL.md                         |  9 ++--
+ skills/issue-end/references/report-and-pr.md      | 65 +++++++++++++++--------
+ skills/issue-start/SKILL.md                       |  7 ++-
+ skills/issue-start/references/evidence-capture.md | 65 +++++++++++++++--------
+ 4 files changed, 99 insertions(+), 47 deletions(-)
