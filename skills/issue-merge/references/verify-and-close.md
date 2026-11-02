@@ -196,6 +196,39 @@ gh issue reopen <번호> --comment "통합 후 재검증 실패로 재오픈합�
 
 그리고 그 회차 보고에 "자동 close 를 사전에 막지 못했다"를 기록한다. 다음 회차에는 0절에서 걸러야 한다.
 
+### close 확인과 보정 — 정리·완료 브리핑 전에 반드시
+
+`close` 가 라벨을 바꾸는 것만으로는 회차 끝 상태를 보장하지 못한다. 아래 경우는 확인 없이 지나간다.
+
+- 다른 단계(issue-start·issue-end)의 상태 전환이 실패했는데 흐름을 막지 않고 경고만 남긴 경우
+- `--no-status` 로 라벨 전환을 건너뛴 경우
+- PR 자동 close 키워드로 GitHub 이 먼저 닫아 라벨이 `status:review` 로 남은 경우
+- 회차가 중간에 끊겨 close 단계까지 가지 못한 경우
+
+그래서 통합 테스트와 close 다음, 6절 정리 전에 **이번 회차에 merge 된 PR 의 연결 이슈를 모두** 다시 조회한다.
+통합 테스트 실패로 close 를 보류한 이슈는 `--hold` 로 넘긴다.
+
+```bash
+# 먼저 조회만 — 보정이 필요한 이슈가 있으면 needsFix 에 나오고 exit 1
+node <skill>/scripts/issue-merge.mjs close-check 16 21 53 --hold 64
+
+# 보정 — status:close 교체 → (열려 있으면) close → 결과 코멘트
+node <skill>/scripts/issue-merge.mjs close-check 16 21 53 --hold 64 \
+  --comment-dir .issue/merge/16-21-53-64/verify --fix
+```
+
+| 조회 결과 | 처리 |
+| --- | --- |
+| `status:close` + CLOSED | 확인(`confirmed`). 아무것도 바꾸지 않는다 |
+| 라벨이 `status:close` 가 아님 | `status:close` 로 교체한다. `status:*` 는 상호배타라 다른 상태 라벨은 함께 뗀다 |
+| 열려 있음 | close 한 뒤 `<comment-dir>/<번호>-result.md` 가 있으면 통합 재검증 결과 코멘트를 남긴다. close 가 실패하면 코멘트도 남기지 않아 재실행해도 겹치지 않는다 |
+| `--hold` 대상 | 보류(`held`). 위치 인자에 없어도 대상에 포함된다. 상태가 어긋나 있어도 바꾸지 않고 보고에 보류 사유를 적는다. 이미 닫혀 있으면 `warning` 이 붙는다 — 위 "이미 자동으로 닫혀 있다면" 표대로 재오픈한다 |
+
+- 결과 코멘트 파일은 5절 close 에 쓴 것(`verify/<번호>-result.md`)을 그대로 쓴다. 없으면 코멘트 없이 close 만 한다.
+- `failed` 가 하나라도 있으면 exit 1 이다. 항목의 `actions` 가 실패 전까지 끝낸 동작이다. 사유(`err`)를 문제 보고 형식으로 알리고, 다시 돌리거나 손으로 맞출지 `ask.md` 질문 블록으로 묻는다.
+- 출력의 `summary`(`확인 n건 / 보정 m건 / 보류 k건`)를 완료 브리핑 표의 `close 확인` 행에 그대로 쓴다(`ask.md` 6절).
+- 보정이 1건이라도 나왔으면 원인(경고로 끝난 전환, `--no-status`, 자동 close, 중단)을 회차 보고의 `남은 것` 에 한 줄 남긴다.
+
 ## 6. 정리
 
 통합이 끝난 워크트리를 제거한다. 이슈가 닫힌 것만 대상이다.

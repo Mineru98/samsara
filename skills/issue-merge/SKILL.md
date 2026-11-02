@@ -51,6 +51,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
     <rule>해소 서브에이전트가 `escalate` 한 파일은 자동으로 합치지 않는다. 그 PR 을 보류한다.</rule>
     <rule>같은 PR 에 대한 해소 재시도는 최대 2회. 그 뒤에는 보류로 넘긴다.</rule>
     <rule>이슈 close 는 통합 테스트 뒤에 한다. 순서를 바꾸지 않는다.</rule>
+    <rule>close 단계 뒤, 완료 브리핑 전에 이번 회차에 merge 된 PR 의 연결 이슈를 `close-check` 로 다시 조회한다. `status:close` + CLOSED 가 아니면 보정하고, 통합 테스트 실패로 보류한 이슈는 `--hold` 로 빼고 사유를 보고한다.</rule>
     <rule>merge 전에 PR 본문의 `Closes/Fixes/Resolves #N` 을 제거한다. 두면 merge 순간 자동 close 되어 위 순서가 깨진다. 제거 실패 시 merge 하지 않는다.</rule>
     <rule>CI 가 실패한 PR 은 merge 하지 않는다.</rule>
     <rule>`evidence/issue-*` 브랜치는 삭제하지 않는다. 증거 URL 이 의존한다.</rule>
@@ -119,7 +120,8 @@ flowchart TD
     K --> L[통합 테스트: 각 이슈 증거 기준 재현]
     L -- 실패 --> L1[원인 보고 · 후속 이슈 제안] --> M
     L -- 통과 --> M[통과분 이슈 close]
-    M --> N[워크트리 정리 · base-tree 제거]
+    M --> M1[close-check: status:close · CLOSED 확인·보정]
+    M1 --> N[워크트리 정리 · base-tree 제거]
     N --> O[보고 + 다음 행동 4지선다]
 ```
 
@@ -228,6 +230,19 @@ node <skill>/scripts/issue-merge.mjs preflight --branch <브랜치> --onto <comm
 
 `close` 는 이슈를 닫기 직전에 진행 상태 라벨을 `status:close` 로 교체한다(자동). 별도 호출이 필요 없다.
 
+close 를 마친 뒤, 정리와 완료 브리핑 전에 **이번 회차에 merge 된 PR 의 연결 이슈를 전부** 다시 조회한다.
+다른 단계의 상태 전환이 경고로만 끝났거나, `--no-status` 를 썼거나, PR 자동 close 로 `status:review` 가 남았거나,
+회차가 중간에 끊긴 경우를 여기서 잡는다.
+
+```bash
+node <skill>/scripts/issue-merge.mjs close-check 16 21 53 --hold 64 \
+  --comment-dir .issue/merge/16-21-53-64/verify --fix
+```
+
+`status:close` 가 아니면 교체하고, 열려 있으면 close 한 뒤 `<comment-dir>/<번호>-result.md`(통합 재검증 결과)를 코멘트로 남긴다.
+통합 테스트 실패로 close 를 보류한 이슈는 `--hold` 로 넘겨 손대지 않는다. 출력의 `summary` 를 완료 브리핑의 `close 확인` 행에 그대로 쓴다.
+세부는 `references/verify-and-close.md` 5절의 "close 확인과 보정".
+
 ## 8단계
 
 **4지선다를 묻기 직전에, 방금 끝낸 통합의 전모를 `references/ask.md` 6절의 완료 브리핑 표로 먼저 렌더링한다.**
@@ -245,6 +260,7 @@ node <skill>/scripts/issue-merge.mjs preflight --branch <브랜치> --onto <comm
 | 보류 | [#64](url) — <사유> |
 | 통합 테스트 | <통과/실패 요약> |
 | close 됨 | [#16](url) [#21](url) [#53](url) (status:close) |
+| close 확인 | 확인 2건 / 보정 1건 / 보류 1건 — 보정 [#21](url) · 보류 [#64](url) 통합 테스트 실패 |
 | 정리 | 워크트리 <n>개 제거 · base-tree 제거 |
 | 남은 것 | <다음에 해야 할 것> |
 | 다음 | <사용자가 고른 행동> |
