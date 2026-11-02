@@ -1,0 +1,27 @@
+# after (feat/111-catalog-gap-shared-sse) — same project page opened in N tabs
+# measured_at 2026-11-02T19:11:44.578Z  tabs=3  (headless chromium, one browser profile)
+tab1: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab2: open /events requests = 0  []  status="런타임 실시간 연결"
+tab3: open /events requests = 0  []  status="런타임 실시간 연결"
+browser total open /events requests = 2
+server ESTABLISHED tcp on :46705 (ss) = 4
+
+# measured_at 2026-11-02T19:11:55.482Z  tabs=4  (headless chromium, one browser profile)
+tab1: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab2: open /events requests = 0  []  status="런타임 실시간 연결"
+tab3: open /events requests = 0  []  status="런타임 실시간 연결"
+tab4: open /events requests = 0  []  status="런타임 실시간 연결"
+browser total open /events requests = 2
+server ESTABLISHED tcp on :46705 (ss) = 4
+
+# leader handover
+# measured_at 2026-11-02T19:12:04.628Z  tabs=3  (headless chromium, one browser profile)
+tab1: open /events requests = 2  ["/v1/catalog/events","/v1/projects/prj_fe39d08aca61b842119cabec/events"]  status="런타임 실시간 연결"
+tab2: open /events requests = 0  []  status="런타임 실시간 연결"
+tab3: open /events requests = 0  []  status="런타임 실시간 연결"
+browser total open /events requests = 2
+server ESTABLISHED tcp on :46705 (ss) = 4
+## after closing tab1 (leader)
+tab2: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab3: open /events requests = 0  []  status="런타임 실시간 연결"
+browser total open /events requests = 2
