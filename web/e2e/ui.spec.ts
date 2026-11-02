@@ -279,7 +279,7 @@ test("UI-T12 승인 내용 revision 변경: 이전 내용 승인은 거부되고
   fake.replay(ABC.project, fake.project(ABC.project).events.findIndex((x) => x.ev === ev));
   await expect(card()).toContainText(`digest ${DIGEST_2.slice(0, 12)}`);
   await card().locator("summary").click();
-  await expect(card().locator("pre.subject")).toContainText("0000000000000000000000000000000000000a02");
+  await expect(card().locator("details pre.subject")).toContainText("0000000000000000000000000000000000000a02");
   await card().getByRole("button", { name: "승인" }).click();
   await expect(card()).toContainText("RESULT · 승인됨");
   const decisions = fake.commands().filter((r) => r.path.includes("/decisions"));
@@ -566,7 +566,7 @@ test("UI-T24 명령이 202 접수 후 오래 진행: 접수를 완료로 표시�
 
   const run = find(fake.project(ABC.project).snap.entities, "runs", ABC.run);
   const op = find(fake.project(ABC.project).snap.entities, "operations", "op_pause");
-  fake.change(ABC.project, { upserts: { runs: [{ ...run, state: "PAUSED", version: String(BigInt(run.version) + 1n) }], operations: [{ ...op, state: "SUCCEEDED", updated_at: new Date().toISOString() }] } });
+  fake.change(ABC.project, { upserts: { runs: [{ ...run, state: "PAUSED", available_actions: [{ action: "RESUME_RUN", enabled: true }, { action: "REVISE_PLAN", enabled: true }], version: String(BigInt(run.version) + 1n) }], operations: [{ ...op, state: "SUCCEEDED", updated_at: new Date().toISOString() }] } });
   await expect(select).toContainText("일시 정지");
   await expect(page.getByRole("button", { name: "재개 요청" })).toBeVisible();
   await expectVersion(page, fake, ABC.project);

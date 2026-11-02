@@ -19,7 +19,10 @@ export function find(e: Entities, kind: string, id: string): Json {
 
 /** F-ABC as the runtime wrote it: A, C running; B blocked on A's result. */
 export function abc(): Json {
-  return fixtureSnapshot("abc-partial-block");
+  const s = fixtureSnapshot("abc-partial-block");
+  // The fixture predates RunView.available_actions; the runtime offers PAUSE_RUN on an ACTIVE run.
+  s.entities.runs[0].available_actions = [{ action: "PAUSE_RUN", enabled: true }];
+  return s;
 }
 
 export function resultApproval(issueId: string, over: Json = {}): Json {
