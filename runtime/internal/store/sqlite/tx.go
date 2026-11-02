@@ -80,10 +80,15 @@ func (t *Tx) Touch(projectID, kind, id string) {
 		c.upserts[kind] = map[string]bool{}
 	}
 	c.upserts[kind][id] = true
-	if kind == KindProject {
+	if kind == KindProject || summaryKinds[kind] {
 		c.catalog = true
 	}
 }
+
+// summaryKinds feed the ProjectSummary counters (running, blocked,
+// approval_pending, integration_pending, latest run), so a change to any of
+// them must reach catalog subscribers too, not only project row changes.
+var summaryKinds = map[string]bool{KindIssue: true, KindRun: true, KindAttempt: true, KindApproval: true, KindCandidate: true}
 
 // Delete marks an entity as removed from the live projection.
 func (t *Tx) Delete(projectID, kind, id string) {
@@ -92,6 +97,9 @@ func (t *Tx) Delete(projectID, kind, id string) {
 		c.deletes[kind] = map[string]bool{}
 	}
 	c.deletes[kind][id] = true
+	if summaryKinds[kind] {
+		c.catalog = true
+	}
 }
 
 // Event names the domain event for a project. The first descriptor set in a
