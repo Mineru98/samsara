@@ -1,0 +1,20 @@
+$ git rev-parse --short HEAD
+551dff3
+
+# 한글 로캘을 실제로 쓰는 환경 재현: ko_KR.UTF-8 을 localedef 로 만들어 LOCPATH 로 지정 (시스템 설치 없음)
+$ localedef -i ko_KR -f UTF-8 $LOCPATH/ko_KR.UTF-8
+$ LOCPATH=$LOCPATH LC_ALL=ko_KR.UTF-8 LANG=ko_KR.UTF-8 ps -o lstart= -p $$
+화 11월  3 03:10:00 2026
+$ ps --version
+ps from procps-ng 4.0.4
+
+$ LOCPATH=$LOCPATH node --test --test-name-pattern="locale independent" skills/issue-start/scripts/issue-gate.test.mjs
+﹣ owner liveness is locale independent (ko worker vs C controller, legacy localized locks)  # ko_KR.UTF-8 locale unavailable: ps lstart rendered "화 11월  3 03:10:00 2026"
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 1922.877135

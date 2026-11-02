@@ -1,0 +1,48 @@
+# 한글 로캘 사용 환경 (localedef 로 만든 ko_KR.UTF-8 을 LOCPATH 로 지정)
+$ LOCPATH=$LOCPATH LC_ALL=ko_KR.UTF-8 LANG=ko_KR.UTF-8 ps -o lstart= -p $$
+화 11월  3 03:13:54 2026
+
+$ LOCPATH=$LOCPATH node --test --test-name-pattern="locale independent" skills/issue-start/scripts/issue-gate.test.mjs
+✔ owner liveness is locale independent (ko worker vs C controller, legacy localized locks)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8864.205747
+
+# 한글 로캘 미사용 환경 (LOCPATH 없음, locale -a 에 ko 없음)
+$ node --test --test-name-pattern="locale independent" skills/issue-start/scripts/issue-gate.test.mjs
+﹣ owner liveness is locale independent (ko worker vs C controller, legacy localized locks) # ko_KR.UTF-8 locale unavailable: ps lstart rendered "Tue Nov  3 03:14:03 2026"
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 3230.124252
+
+# 전체 파일 — 한글 로캘 사용
+$ LOCPATH=$LOCPATH node --test skills/issue-start/scripts/issue-gate.test.mjs
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 123317.100978
+
+# 전체 파일 — 한글 로캘 미사용
+$ node --test skills/issue-start/scripts/issue-gate.test.mjs
+ℹ tests 24
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 117731.168576
