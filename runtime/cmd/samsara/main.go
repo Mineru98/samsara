@@ -883,6 +883,9 @@ func (c *cli) doctor(args []string) int {
 		if err != nil {
 			pr["hook_settings_error"] = err.Error()
 		}
+		if async, _ := hooks.AsyncPolicyHook(id.Root); async {
+			problems = append(problems, "hooks: Samsara PreToolUse hook is async; Claude does not wait for async hooks, so it cannot gate managed tools (HK-09)")
+		}
 		reg, _ := project.LoadRegistry(c.layout.RegistryPath())
 		sc := reg.Classify(id.Root, "")
 		if sc.Entry != nil {

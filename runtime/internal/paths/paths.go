@@ -27,7 +27,7 @@ func Resolve() (Layout, error) {
 		if err != nil {
 			return Layout{}, err
 		}
-		return Layout{StateDir: filepath.Join(abs, "state"), RuntimeDir: filepath.Join(abs, "run"), WorktreeRoot: filepath.Join(abs, "worktrees")}, nil
+		return ForHome(abs), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -48,6 +48,11 @@ func Resolve() (Layout, error) {
 		l.RuntimeDir = filepath.Join(x, "samsara")
 	}
 	return l, nil
+}
+
+// ForHome is the layout for an absolute SAMSARA_HOME.
+func ForHome(abs string) Layout {
+	return Layout{StateDir: filepath.Join(abs, "state"), RuntimeDir: filepath.Join(abs, "run"), WorktreeRoot: filepath.Join(abs, "worktrees")}
 }
 
 // DBPath is the SQLite file.

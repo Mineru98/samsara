@@ -357,6 +357,54 @@ func TestStopAndToolObservationsNeverComplete(t *testing.T) {
 	}
 }
 
+// HK-14: Claude cannot be made to drop, repeat or reorder Stop/SessionEnd in
+// a real session, so the probe defers to this fake-layer check: any order and
+// multiplicity leaves completion and liveness to the runtime's own evidence.
+func TestStopSessionEndOrderNeverDecides(t *testing.T) {
+	e := newEnv(t, baseConfig)
+	issue, wt := startSingle(t, e)
+	stop := func() {
+		if err := e.app.ObserveSession(e.ctx, app.ObserveRequest{HookIdentity: app.HookIdentity{ClaudeSessionID: "claude-X", Event: "Stop"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	end := func() {
+		if err := e.app.FinishSession(e.ctx, app.FinishRequest{HookIdentity: app.HookIdentity{ClaudeSessionID: "claude-X", Event: "SessionEnd"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, step := range []func(){end, end, stop, stop, end} { // SessionEnd before Stop, both duplicated
+		step()
+		e.reconcile(1)
+		if att := e.attempt(issue); att.State != domain.AttemptRunning {
+			t.Fatalf("HK-14: hook order must not finish the attempt, got %s", att.State)
+		}
+		if v := e.issueView(issue); v.Lifecycle != domain.IssueOpen {
+			t.Fatalf("HK-14: hook order must not complete the issue, got %s", v.Lifecycle)
+		}
+	}
+	// A late PreToolUse after the out-of-order end events is still decided by
+	// the lease, not by a session that the hooks claimed had ended.
+	if d := e.check("claude-X", wt); d.Decision != domain.DecisionPass {
+		t.Fatalf("HK-14: SessionEnd alone must not revoke a live lease: %+v", d)
+	}
+}
+
+// HK-10 control: the probe cannot launch a ticketed worker, so it only shows
+// that a failed SessionStart leaves the next managed PreToolUse unregistered.
+// Here the same worktree passes for the registered worker and is denied for a
+// session whose SessionStart never reached the runtime.
+func TestMissingSessionStartIsDenied(t *testing.T) {
+	e := newEnv(t, baseConfig)
+	_, wt := startSingle(t, e)
+	if d := e.check("claude-X", wt); d.Decision != domain.DecisionPass {
+		t.Fatalf("registered worker must pass: %+v", d)
+	}
+	if d := e.check("claude-unregistered", wt); d.ReasonCode != domain.ReasonSessionNotRegistered {
+		t.Fatalf("HK-10: a session without SessionStart registration must be denied: %+v", d)
+	}
+}
+
 func TestStaleWorkerCannotSubmit(t *testing.T) {
 	e := newEnv(t, baseConfig)
 	issue, wt := startSingle(t, e)

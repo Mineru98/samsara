@@ -66,3 +66,29 @@ func TestVersionGate(t *testing.T) {
 		t.Fatal("old version accepted")
 	}
 }
+
+func TestAsyncPolicyHookIsNotAGate(t *testing.T) {
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "bin", "samsara")
+	_ = os.MkdirAll(filepath.Dir(exe), 0o755)
+	_ = os.WriteFile(exe, []byte("#!/bin/sh\n"), 0o755)
+	if err := Install(dir, exe); err != nil {
+		t.Fatal(err)
+	}
+	if async, err := AsyncPolicyHook(dir); err != nil || async {
+		t.Fatalf("Install must never write an async gate: %v %v", async, err)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, SettingsRel))
+	var m map[string]any
+	_ = json.Unmarshal(b, &m)
+	groups := m["hooks"].(map[string]any)["PreToolUse"].([]any)
+	groups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["async"] = true
+	b, _ = json.Marshal(m)
+	_ = os.WriteFile(filepath.Join(dir, SettingsRel), b, 0o644)
+	if ok, _ := PolicyHookInstalled(dir); ok {
+		t.Fatal("HK-09: an async PreToolUse hook must not count as the policy gate")
+	}
+	if async, err := AsyncPolicyHook(dir); err != nil || !async {
+		t.Fatalf("HK-09: doctor must see the async entry: %v %v", async, err)
+	}
+}

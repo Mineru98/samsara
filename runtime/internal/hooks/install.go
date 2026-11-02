@@ -159,6 +159,29 @@ func PolicyHookInstalled(dir string) (bool, error) {
 	return false, nil
 }
 
+// AsyncPolicyHook reports whether dir's settings mark a Samsara PreToolUse
+// entry async. Claude does not wait for async hooks, so such an entry can
+// never gate a tool (HK-09).
+func AsyncPolicyHook(dir string) (bool, error) {
+	m, err := readSettings(filepath.Join(dir, SettingsRel))
+	if err != nil {
+		return false, err
+	}
+	hooksMap, _ := m["hooks"].(map[string]any)
+	groups, _ := hooksMap["PreToolUse"].([]any)
+	for _, g := range groups {
+		gm, _ := g.(map[string]any)
+		hs, _ := gm["hooks"].([]any)
+		for _, h := range hs {
+			hm, _ := h.(map[string]any)
+			if async, _ := hm["async"].(bool); async && isOurs(hm) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 var versionRe = regexp.MustCompile(`(\d+)\.(\d+)\.(\d+)`)
 
 // ParseVersion extracts major.minor.patch from `claude --version` output.
