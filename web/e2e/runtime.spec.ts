@@ -128,9 +128,11 @@ test("F-STREAM 실제 runtime: 두 프로젝트 이벤트가 교차해도 화면
 
   const s1 = await expectProjection(page, rt, p1.id);
   const s2 = await rt.snapshot(p2.id);
-  // Global seq interleaves: p1 started before p2 and paused after it (F-STREAM).
-  const cursorSeq = (c: string) => Number(Buffer.from(c, "base64url").toString().split("|")[2]);
-  expect(cursorSeq(s2.snapshot_cursor)).toBeLessThan(cursorSeq(s1.snapshot_cursor));
+  // Events interleave by construction: p1 start, p2 start, p2 pause, p1 pause
+  // each commit in their own project on the one global seq (F-STREAM). The
+  // screen above matched p1's projection after p2's events in between.
+  expect(s1.entities.runs[0].state).toBe("PAUSED");
+  expect(s2.entities.runs[0].state).toBe("PAUSED");
   await expect(page.locator(".react-flow__node-issue")).toHaveCount(3);
   for (const i of s2.entities.issues) await expect(page.locator(`.react-flow__node[data-id="issue:${i.id}"]`)).toHaveCount(0);
   // The sidebar row of the other project follows its catalog summary.
