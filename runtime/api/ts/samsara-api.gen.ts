@@ -315,6 +315,7 @@ export interface AttemptView {
   session_id?: string;
   state: Open<AttemptState>;
   state_reason?: string;
+  superseded_by?: string;
   updated_at: Timestamp;
   version: Decimal;
   worktree_id?: string;
