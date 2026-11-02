@@ -167,6 +167,23 @@ node <skill>/scripts/issue-merge.mjs close --issue 53 --comment-file .issue/merg
 `close` 는 닫기 **직전에** 진행 상태를 `status:close` 로 옮긴다. 출력 JSON 의 `status` / `statusChanged` 로 확인한다.
 닫힌 뒤에 붙이면 실패 여지가 늘어나므로 순서를 바꾸지 않는다. 라벨 전환을 건너뛰려면 `--no-status`.
 
+### 후행 이슈 체크 — close 에 묶여 자동 실행
+
+`close` 는 이슈를 닫은 **직후** 그 이슈 본문의 `## 후행 이슈` 를 돌며, 후행 이슈마다 `## 선행 이슈` 의
+`- [ ] #<닫은 이슈>` 를 `- [x]` 로 바꾼다. 후행 쪽에 항목이 없으면(한쪽만 이어진 경우) `- [x]` 로 넣어 양방향을 복구한다.
+이미 체크돼 있으면 쓰지 않는다. 후행 섹션이 없는 이슈는 아무것도 하지 않는다.
+
+```json
+{ "closed": true, "issue": 53, "successors": [{ "issue": 64, "changed": true, "ok": true }], "successorsOk": true }
+```
+
+갱신에 실패해도 이미 닫은 이슈는 되돌리지 않는다. `successorsOk: false` 와 exit 5 로 알리고, `retry` 명령을 그대로 다시 돌린다.
+
+```bash
+node <skill>/scripts/issue-merge.mjs mark-successors --issue 53            # 멱등 재시도
+node <skill>/scripts/issue-merge.mjs mark-successors --issue 53 --dry-run  # 바뀔 이슈만 확인
+```
+
 close 코멘트에는 통합 재검증 결과를 넣는다.
 
 ```markdown

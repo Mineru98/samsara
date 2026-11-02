@@ -62,7 +62,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
   <non-goals>
     <item>기능 구현과 증거 생성 — `issue-start` / `issue-end` 의 몫</item>
     <item>배포</item>
-    <item>이슈 본문 수정</item>
+    <item>이슈 본문 수정 — 단, `close` 가 후행 이슈의 `## 선행 이슈` 체크를 `[x]` 로 바꾸는 것만은 스크립트가 한다</item>
   </non-goals>
 
   <reporting>
@@ -227,6 +227,8 @@ node <skill>/scripts/issue-merge.mjs preflight --branch <브랜치> --onto <comm
 `references/verify-and-close.md` 를 따른다.
 
 `close` 는 이슈를 닫기 직전에 진행 상태 라벨을 `status:close` 로 교체한다(자동). 별도 호출이 필요 없다.
+닫은 뒤에는 본문 `## 후행 이슈` 의 각 이슈에서 `- [ ] #<닫은 이슈>` 를 `- [x]` 로 바꾼다(자동, 멱등).
+출력 JSON 의 `successorsOk` 가 false 면(exit 5) `retry` 의 `mark-successors` 를 다시 돌린다. 손으로 본문을 고치지 않는다.
 
 ## 8단계
 

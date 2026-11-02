@@ -28,6 +28,35 @@ node <skill>/scripts/issue-create.mjs create \
 `--no-label` 이라는 탈출구가 있지만, 규칙을 의도적으로 벗어날 때만 쓰고 그 사유를 보고에 남긴다. 모델이 라벨을 고르기 귀찮아서 쓰는 용도가 아니다.
 등록 직후 `unlabeled` 로 기존 이슈의 라벨도 점검한다.
 
+## 선행 · 후행 연결
+
+이미 있는 이슈와 순서가 있으면 등록할 때 함께 건다. 둘 다 **여러 번** 줄 수 있다.
+
+```bash
+node <skill>/scripts/issue-create.mjs create \
+  --title "대시보드 카드 정렬 고정" --body-file /tmp/issue-draft.md --label enhancement \
+  --after 61 --after 58 \
+  --before 70
+```
+
+```text
+--after <N>    N 이 먼저 끝나야 한다   새 본문 '선행 이슈' 에 - [ ] #N,  #N 본문 '후행 이슈' 에 - #새번호
+--before <N>   새 이슈가 먼저 끝나야 한다  새 본문 '후행 이슈' 에 - #N,  #N 본문 '선행 이슈' 에 - [ ] #새번호
+```
+
+- 선행이 **이미 닫혀 있어도** 똑같이 잇는다. 닫힌 선행은 `- [x] #N` 으로 기록된다.
+- 연결할 번호를 등록 **전에** 전부 조회한다. 없는 번호가 하나라도 있으면 exit 2 로 빠지고 이슈를 만들지 않는다.
+- 자기 자신이나, 같은 번호를 `--after` 와 `--before` 에 함께 주면 exit 2.
+- 상대 이슈 본문 갱신이 실패해도 만든 이슈는 되돌리지 않는다. 출력의 `LINK_FAILED=` 와 `LINK_RETRY=` 명령으로 다시 건다.
+- `--dry-run` 은 연결 계획만 보여주고 아무것도 조회·수정하지 않는다.
+
+이미 있는 이슈끼리 이을 때는 `link` 를 쓴다. 멱등이라 여러 번 돌려도 본문이 겹치지 않는다.
+
+```bash
+node <skill>/scripts/issue-create.mjs link 62 --after 61 --before 63
+node <skill>/scripts/issue-create.mjs link 62 --after 61 --dry-run   # 바뀔 이슈만 확인
+```
+
 ## 여러 건 등록
 
 `create` 는 이슈 하나만 만든다. **항목마다 따로 호출한다.**
@@ -55,6 +84,23 @@ node <skill>/scripts/issue-create.mjs create \
 `--request-file` 에 넣을 내용은 `issue-draft.md` 의 "원본 요청 기록" 규약을 따른다. 원본 요청과
 이슈 범위에 더해 fan-out/fan-in 관계 근거도 함께 남긴다.
 항목이 하나뿐이면 이 절은 무시하고 위의 단건 절차를 그대로 쓴다.
+
+### 형제 이슈끼리 순서가 있을 때
+
+분할안에서 형제 사이 순서(예: API 먼저, 화면 나중)를 확정했으면 **전부 등록한 뒤** 잇는다.
+등록 순서상 아직 번호가 없는 형제를 `--after/--before` 로 가리킬 수 없기 때문이다.
+
+1. 형제 이슈를 위처럼 연결 옵션 없이 모두 `create` 한다. 이미 있는 바깥 이슈와의 연결만 `--after/--before` 로 준다.
+2. 받은 번호로 형제 사이 순서를 `link` 로 건다. 한 쌍은 한쪽에서만 걸면 양방향이 된다.
+
+```bash
+# #61 API → #62 화면 → #63 문서 순서
+node <skill>/scripts/issue-create.mjs link 62 --after 61 --before 63
+```
+
+3. 실패한 `link` 는 같은 명령을 다시 돌린다. 이미 이어진 항목은 건드리지 않는다.
+
+분할 판정에서 근거를 남긴 순서만 잇는다. 근거 없는 순서를 만들어 넣지 않는다.
 
 ## 산출물
 
