@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -196,6 +197,16 @@ func (g *Git) RemoveWorktree(ctx context.Context, repo, path string) error {
 	return err
 }
 
+// StatusWithIgnored is Status plus ignored files ("!" entries): `git
+// worktree remove` deletes ignored files, so cleanup must see them.
+func (g *Git) StatusWithIgnored(ctx context.Context, dir string) ([]StatusEntry, error) {
+	out, err := g.must(ctx, dir, "status", "--porcelain=v2", "-z", "--untracked-files=all", "--ignored=matching")
+	if err != nil {
+		return nil, err
+	}
+	return ParseStatusV2(out), nil
+}
+
 // StatusEntry is a porcelain v2 record (only the kind and path).
 type StatusEntry struct {
 	Kind string // "1" ordinary, "2" rename, "u" unmerged, "?" untracked, "!" ignored
@@ -249,27 +260,111 @@ type MergeResult struct {
 	Tree     string
 	Conflict bool
 	Detail   string
+	Files    []ConflictFile
+}
+
+// Conflict kinds (04 §12.1).
+const (
+	ConflictText      = "TEXT"
+	ConflictBinary    = "BINARY"
+	ConflictRename    = "RENAME"
+	ConflictDirectory = "DIRECTORY"
+	ConflictOther     = "OTHER"
+)
+
+// ConflictFile is one Git-confirmed conflicted path and its classification.
+type ConflictFile struct {
+	Path  string   `json:"path"`
+	Kind  string   `json:"kind"`
+	Types []string `json:"types"`
 }
 
 // MergeTree computes the merge of base and source without touching any
 // index or working tree. Exit 0 = clean, 1 = conflict, other = error
 // (04 §9.3). Only single invocations are used.
 func (g *Git) MergeTree(ctx context.Context, repo, base, source string) (MergeResult, error) {
-	r, err := g.Run(ctx, repo, nil, "merge-tree", "--write-tree", "--no-messages", base, source)
+	r, err := g.Run(ctx, repo, nil, "merge-tree", "--write-tree", "-z", "--name-only", base, source)
 	if err != nil {
 		return MergeResult{}, err
 	}
 	switch r.ExitCode {
 	case 0:
-		tree := strings.TrimSpace(strings.SplitN(r.Stdout, "\n", 2)[0])
+		tree := strings.SplitN(r.Stdout, "\x00", 2)[0]
 		if !ValidOID(tree) {
 			return MergeResult{}, fmt.Errorf("merge-tree returned no tree OID")
 		}
 		return MergeResult{Tree: tree}, nil
 	case 1:
-		return MergeResult{Conflict: true, Detail: strings.TrimSpace(r.Stdout)}, nil
+		files := ParseMergeTreeConflicts(r.Stdout)
+		var d []string
+		for _, f := range files {
+			d = append(d, f.Kind+" "+f.Path)
+		}
+		return MergeResult{Conflict: true, Detail: strings.Join(d, "\n"), Files: files}, nil
 	}
 	return MergeResult{}, fmt.Errorf("merge-tree exit %d: %s", r.ExitCode, strings.TrimSpace(r.Stderr))
+}
+
+// ParseMergeTreeConflicts parses `merge-tree --write-tree -z --name-only`
+// output of a conflicted merge: tree OID, conflicted paths, an empty field,
+// then informational messages `<n> <path>... <type> <message>`. The conflict
+// type strings are stable (git-merge-tree(1)); each conflicted path takes the
+// most specific kind among the messages naming it.
+func ParseMergeTreeConflicts(out string) []ConflictFile {
+	f := strings.Split(out, "\x00")
+	i := 1
+	var order []string
+	byPath := map[string]*ConflictFile{}
+	for ; i < len(f) && f[i] != ""; i++ {
+		order = append(order, f[i])
+		byPath[f[i]] = &ConflictFile{Path: f[i], Types: []string{}}
+	}
+	for i++; i < len(f); {
+		n, err := strconv.Atoi(f[i])
+		if err != nil || i+n+2 >= len(f) {
+			break
+		}
+		paths, typ := f[i+1:i+1+n], f[i+1+n]
+		i += n + 3
+		if !strings.HasPrefix(typ, "CONFLICT") {
+			continue
+		}
+		for _, p := range paths {
+			c := byPath[p]
+			if c == nil {
+				continue // a path named by a message but not left conflicted
+			}
+			c.Types = append(c.Types, typ)
+			if k := conflictKind(typ); kindRank[k] > kindRank[c.Kind] {
+				c.Kind = k
+			}
+		}
+	}
+	res := make([]ConflictFile, 0, len(order))
+	for _, p := range order {
+		c := byPath[p]
+		if c.Kind == "" {
+			c.Kind = ConflictOther
+		}
+		res = append(res, *c)
+	}
+	return res
+}
+
+var kindRank = map[string]int{"": 0, ConflictText: 1, ConflictOther: 2, ConflictRename: 3, ConflictDirectory: 4, ConflictBinary: 5}
+
+func conflictKind(typ string) string {
+	switch {
+	case strings.Contains(typ, "binary"):
+		return ConflictBinary
+	case strings.Contains(typ, "file/directory"), strings.Contains(typ, "dir rename"), strings.Contains(typ, "directory"):
+		return ConflictDirectory
+	case strings.Contains(typ, "rename"):
+		return ConflictRename
+	case strings.Contains(typ, "contents"), strings.Contains(typ, "add/add"):
+		return ConflictText
+	}
+	return ConflictOther
 }
 
 // CommitTree creates a merge commit of tree with parents, with a fixed
@@ -344,6 +439,39 @@ func (g *Git) RefCheckedOut(ctx context.Context, repo, ref string) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+// RefsContaining lists full refs whose history contains oid.
+func (g *Git) RefsContaining(ctx context.Context, repo, oid string) ([]string, error) {
+	if !ValidOID(oid) {
+		return nil, fmt.Errorf("oid must be a full OID")
+	}
+	out, err := g.must(ctx, repo, "for-each-ref", "--format=%(refname)", "--contains", oid)
+	if err != nil {
+		return nil, err
+	}
+	var refs []string
+	for _, l := range strings.Split(out, "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			refs = append(refs, l)
+		}
+	}
+	return refs, nil
+}
+
+// DeleteRefCAS deletes ref only while it still holds oldOID. Never forces.
+func (g *Git) DeleteRefCAS(ctx context.Context, repo, ref, oldOID, reason string) error {
+	r, err := g.Run(ctx, repo, nil, "update-ref", "-m", reason, "-d", ref, oldOID)
+	if err != nil {
+		return err
+	}
+	if r.ExitCode != 0 {
+		if strings.Contains(r.Stderr, "but expected") || strings.Contains(r.Stderr, "is at") || strings.Contains(r.Stderr, "cannot lock ref") {
+			return ErrCASFailed
+		}
+		return fmt.Errorf("update-ref -d: %s", strings.TrimSpace(r.Stderr))
+	}
+	return nil
 }
 
 // ChangedFiles lists files changed between base and head.

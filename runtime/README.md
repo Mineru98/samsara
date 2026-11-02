@@ -28,8 +28,12 @@ samsara profile add --name unit -- go test ./...   # 검증 명령은 trust 등�
 samsara plan validate --file plan.json             # 변경 없음
 samsara plan apply --file plan.json                # PLANNED run 접수(worker 생성 없음)
 samsara run start <run_id>                         # PLAN 승인 확인 후 ACTIVE → scheduler가 실행
+samsara plan revise --run <run_id> --expected-run-generation N --file plan.json   # PAUSED run의 계획 수정(run pause → revise → run resume)
 samsara approval list / samsara approval decide <id> --approve
 samsara merge queue / samsara merge enqueue <candidate_id>
+samsara merge resolve <candidate_id>               # CONFLICT 후보를 해결할 새 attempt(보존된 worktree 재사용)
+samsara merge prioritize <candidate_id> --before <id> --reason <text>   # 의존 순서를 거스르면 거부
+samsara worktree cleanup --dry-run [--delete-branch] [<worktree_id>...]  # 정리 자격 판정, --force 없음
 samsara ui --open                                  # 일회용 코드로 loopback 대시보드 API 인증
 ```
 

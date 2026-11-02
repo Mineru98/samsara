@@ -203,7 +203,26 @@ type CandidateView struct {
 	ApprovalGate           *ApprovalGate    `json:"approval_gate"`
 	BlockingReasons        []BlockingReason `json:"blocking_reasons"`
 	EvidenceID             string           `json:"evidence_id,omitempty"`
+	// Starvation signals (04 §8.3): waiting time and re-validation count.
+	WaitingSince      string `json:"waiting_since"`
+	RevalidationCount string `json:"revalidation_count"`
+	StarvationRisk    bool   `json:"starvation_risk"`
+	// Git-confirmed conflict (04 §12.1), distinct from predicted overlap.
+	Conflict            *ConflictView `json:"conflict,omitempty"`
+	ResolutionAttemptID string        `json:"resolution_attempt_id,omitempty"`
+	SupersededBy        string        `json:"superseded_by,omitempty"`
 }
+
+// ConflictView classifies a conflict computed by git merge-tree.
+type ConflictView struct {
+	Source string            `json:"source"`
+	Kinds  []string          `json:"kinds"`
+	Files  []json.RawMessage `json:"files"`
+}
+
+// StarvationRevalidations is the re-validation count from which a waiting
+// candidate is flagged for ordering or user review (04 §12.3).
+const StarvationRevalidations = 3
 
 type ApprovalGate struct {
 	Required      bool     `json:"required"`
@@ -646,7 +665,25 @@ func CandidateProjection(ctx context.Context, q Q, id string) (*CandidateView, e
 		SourceSHA: c.SourceSHA, BaseSHA: c.BaseSHA, CandidateSHA: c.CandidateSHA, Revision: domain.Dec(c.Revision),
 		State: c.State, StateReason: c.StateReason, NativeQueueState: c.NativeQueueState,
 		PublicationObservation: c.PublicationObservation, Enqueued: c.Enqueued, QueuePosition: domain.Dec(c.QueuePosition),
-		BlockingReasons: []BlockingReason{}}
+		BlockingReasons: []BlockingReason{}, WaitingSince: domain.RFC3339(c.CreatedAt), RevalidationCount: domain.Dec(c.Revision - 1),
+		StarvationRisk:      c.Revision-1 >= StarvationRevalidations && c.State != domain.CandidateMerged && c.State != domain.CandidateCancelled,
+		ResolutionAttemptID: c.ResolutionAttemptID, SupersededBy: c.SupersededBy}
+	if c.State == domain.CandidateConflict {
+		cv := &ConflictView{Source: "git_merge_tree", Kinds: []string{}, Files: []json.RawMessage{}}
+		var files []struct {
+			Kind string `json:"kind"`
+		}
+		_ = json.Unmarshal([]byte(c.ConflictFiles), &cv.Files)
+		_ = json.Unmarshal([]byte(c.ConflictFiles), &files)
+		seen := map[string]bool{}
+		for _, f := range files {
+			if !seen[f.Kind] {
+				seen[f.Kind] = true
+				cv.Kinds = append(cv.Kinds, f.Kind)
+			}
+		}
+		v.Conflict = cv
+	}
 	apps, err := ApprovalsWhere(ctx, q, "kind='MERGE' AND merge_candidate_id=? AND candidate_revision=?", c.ID, c.Revision)
 	if err != nil {
 		return nil, err

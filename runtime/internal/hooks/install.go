@@ -67,6 +67,40 @@ func readSettings(path string) (map[string]any, error) {
 	return m, nil
 }
 
+// OnlyOurs reports whether dir/.claude/settings.local.json holds nothing but
+// Samsara hook entries, so it is the runtime's own file and not user data.
+func OnlyOurs(dir string) (bool, error) {
+	m, err := readSettings(filepath.Join(dir, SettingsRel))
+	if err != nil {
+		return false, err
+	}
+	for k := range m {
+		if k != "hooks" {
+			return false, nil
+		}
+	}
+	hooksMap, ok := m["hooks"].(map[string]any)
+	if !ok && m["hooks"] != nil {
+		return false, nil
+	}
+	for _, v := range hooksMap {
+		groups, _ := v.([]any)
+		for _, g := range groups {
+			gm, ok := g.(map[string]any)
+			if !ok {
+				return false, nil
+			}
+			hs, _ := gm["hooks"].([]any)
+			for _, h := range hs {
+				if hm, ok := h.(map[string]any); !ok || !isOurs(hm) {
+					return false, nil
+				}
+			}
+		}
+	}
+	return true, nil
+}
+
 // Install adds managed hook entries for exe (an absolute path) into
 // dir/.claude/settings.local.json, replacing older Samsara entries only.
 func Install(dir, exe string) error {

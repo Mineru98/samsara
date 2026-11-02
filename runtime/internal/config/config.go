@@ -64,6 +64,9 @@ type Git struct {
 	IntegrationAuthority      string `yaml:"integration_authority" json:"integration_authority"`
 	MergeConcurrencyPerTarget int    `yaml:"merge_concurrency_per_target" json:"merge_concurrency_per_target"`
 	BranchPrefix              string `yaml:"branch_prefix" json:"branch_prefix"`
+	// WorktreeRetentionHours keeps a finished managed worktree before a
+	// policy cleanup may remove it (04 §6.3). An explicit request skips it.
+	WorktreeRetentionHours int `yaml:"worktree_retention_hours" json:"worktree_retention_hours"`
 }
 
 type Observation struct {
@@ -92,7 +95,7 @@ func Default() *Config {
 		Execution: Execution{MaxWorkers: 5, MaxWorkersPerIssue: 1, ManagedWorktreeRequired: true, UnknownWorkerPolicy: "quarantine",
 			WorkerCommand: []string{"claude"}, LeaseTTLSeconds: 30, HeartbeatSeconds: 5},
 		Approval:    Approval{ImplementationStart: "manual", Result: "manual", Integration: "manual"},
-		Git:         Git{TargetRef: "refs/heads/main", IntegrationAuthority: domain.AuthorityManual, MergeConcurrencyPerTarget: 1, BranchPrefix: "samsara"},
+		Git:         Git{TargetRef: "refs/heads/main", IntegrationAuthority: domain.AuthorityManual, MergeConcurrencyPerTarget: 1, BranchPrefix: "samsara", WorktreeRetentionHours: 168},
 		Observation: Observation{CollectTerminalOutput: false, EventRetentionDays: 7},
 		GitHub:      GitHub{Sync: "auto", SyncIntervalSeconds: 300},
 	}
@@ -188,6 +191,9 @@ func (c *Config) Validate() error {
 	}
 	if err := ValidateRefComponent(c.Git.BranchPrefix); err != nil {
 		add("git.branch_prefix: %v", err)
+	}
+	if c.Git.WorktreeRetentionHours < 0 {
+		add("git.worktree_retention_hours must be >= 0")
 	}
 	if c.Observation.EventRetentionDays < 1 {
 		add("observation.event_retention_days must be >= 1")

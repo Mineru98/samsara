@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,8 +37,19 @@ func (a *App) createCandidate(ctx context.Context, tx *sqlite.Tx, outputID strin
 	if err != nil || len(ex) > 0 {
 		return err
 	}
+	// A resolved submission supersedes the issue's conflicted candidates
+	// and keeps the earliest queue slot so it does not lose its turn
+	// (04 §8.1, §12.2). Their approvals are never inherited.
+	conflicted, err := sqlite.CandidatesWhere(ctx, tx, "issue_id=? AND target_id=? AND state='CONFLICT'", out.IssueID, t.ID)
+	if err != nil {
+		return err
+	}
 	var pos int64
-	_ = tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(queue_position),0)+1 FROM merge_candidates WHERE target_id=?", t.ID).Scan(&pos)
+	if len(conflicted) > 0 {
+		pos = conflicted[0].QueuePosition
+	} else {
+		_ = tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(queue_position),0)+1 FROM merge_candidates WHERE target_id=?", t.ID).Scan(&pos)
+	}
 	id := domain.NewID("mc")
 	reason := ""
 	switch t.Authority {
@@ -52,6 +64,21 @@ func (a *App) createCandidate(ctx context.Context, tx *sqlite.Tx, outputID strin
 		VALUES(?,?,?,?,?,?,?,?,'WAITING',?,?,?,?)`, id, out.ProjectID, out.IssueID, out.RunID, out.AttemptID, out.ID, t.ID, out.SourceSHA, reason, pos, tx.Now, tx.Now); err != nil {
 		return err
 	}
+	for _, old := range conflicted {
+		if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET state='CANCELLED', state_reason='SUPERSEDED', superseded_by=?, version=version+1, updated_at=? WHERE id=? AND state='CONFLICT'", id, tx.Now, old.ID); err != nil {
+			return err
+		}
+		aps, err := sqlite.ApprovalsWhere(ctx, tx, "merge_candidate_id=? AND state IN ('PENDING','APPROVED')", old.ID)
+		if err != nil {
+			return err
+		}
+		for _, ap := range aps {
+			if err := a.invalidateApproval(ctx, tx, ap, "CANDIDATE_SUPERSEDED"); err != nil {
+				return err
+			}
+		}
+		tx.Touch(out.ProjectID, sqlite.KindCandidate, old.ID)
+	}
 	tx.Touch(out.ProjectID, sqlite.KindCandidate, id)
 	tx.Touch(out.ProjectID, sqlite.KindIssue, out.IssueID)
 	tx.Event(out.ProjectID, "merge_candidate.created", "merge_candidate", id, 1)
@@ -60,7 +87,14 @@ func (a *App) createCandidate(ctx context.Context, tx *sqlite.Tx, outputID strin
 
 // EnqueueCandidate explicitly requests integration by the target authority.
 // Automatic integration stays off by default (ADR 17).
+// A CONFLICT candidate is re-queued only after its target moved: the same
+// source/base pair conflicts deterministically and is never recomputed
+// (04 §12.3); a changed base is re-validated as a new revision.
 func (a *App) EnqueueCandidate(ctx context.Context, cmd Cmd, candidateID string) (*CommandResult, error) {
+	observed, err := a.conflictTargetOID(ctx, candidateID)
+	if err != nil {
+		return nil, err
+	}
 	return a.candidateCommand(ctx, cmd, "merge.enqueue", candidateID, func(tx *sqlite.Tx, c *sqlite.Candidate, t *sqlite.Target) error {
 		switch t.Authority {
 		case domain.AuthorityGitHubQueue:
@@ -68,15 +102,204 @@ func (a *App) EnqueueCandidate(ctx context.Context, cmd Cmd, candidateID string)
 		case domain.AuthorityManual:
 			return domain.Errf(domain.CodeUnsupportedCapability, "target uses manual integration: merge outside Samsara; the runtime records evidence once the target contains the source")
 		}
-		if c.State != domain.CandidateWaiting && c.State != domain.CandidateStaleBase && c.State != domain.CandidateFailed {
+		state, reason := c.State, "QUEUED"
+		switch c.State {
+		case domain.CandidateWaiting, domain.CandidateStaleBase:
+		case domain.CandidateFailed:
+			state = domain.CandidateWaiting
+		case domain.CandidateConflict:
+			if c.ResolutionAttemptID != "" {
+				ra, err := sqlite.GetAttempt(ctx, tx, c.ResolutionAttemptID)
+				if err != nil {
+					return err
+				}
+				if !domain.AttemptTerminal(ra.State) {
+					return domain.Errf(domain.CodeConflict, "resolution attempt %s is %s; its new submission replaces this candidate", ra.ID, ra.State)
+				}
+			}
+			if observed == "" || observed == c.BaseSHA {
+				return domain.Errf(domain.CodeConflict, "same source and base conflict deterministically; resolve with `samsara merge resolve %s` or wait for the target to move", c.ID)
+			}
+			state, reason = domain.CandidateStaleBase, "BASE_CHANGED_AFTER_CONFLICT"
+		default:
 			return domain.Errf(domain.CodeConflict, "candidate is %s", c.State)
 		}
-		state := c.State
-		if c.State == domain.CandidateFailed {
-			state = domain.CandidateWaiting
-		}
-		_, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET enqueued=1, state=?, state_reason='QUEUED', version=version+1, updated_at=? WHERE id=?", state, tx.Now, c.ID)
+		_, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET enqueued=1, state=?, state_reason=?, version=version+1, updated_at=? WHERE id=?", state, reason, tx.Now, c.ID)
 		return err
+	})
+}
+
+// conflictTargetOID reads the current target of a CONFLICT candidate before
+// any write transaction is opened (no git process under a DB transaction).
+func (a *App) conflictTargetOID(ctx context.Context, candidateID string) (string, error) {
+	var c *sqlite.Candidate
+	var t *sqlite.Target
+	var repo *sqlite.Repository
+	if err := a.DB.Read(ctx, func(q sqlite.Q) error {
+		var err error
+		if c, err = sqlite.GetCandidate(ctx, q, candidateID); err != nil || c.State != domain.CandidateConflict {
+			return err
+		}
+		if t, err = sqlite.GetTarget(ctx, q, c.TargetID); err != nil {
+			return err
+		}
+		repo, err = sqlite.GetRepository(ctx, q, t.RepositoryID)
+		return err
+	}); err != nil || repo == nil {
+		return "", err
+	}
+	oid, err := a.Git.ResolveRef(ctx, repoDir(repo), t.TargetRef)
+	if err != nil {
+		return "", domain.Errf(domain.CodeConflict, "cannot read target %s: %v", t.TargetRef, err)
+	}
+	return oid, nil
+}
+
+// ResolveConflict queues a new attempt of the candidate's issue to resolve a
+// Git-confirmed conflict (04 §12.2). The source and target stay untouched;
+// the worker merges the target into the retained branch and submits a new
+// output, whose new candidate supersedes this one and is reviewed, verified
+// and validated on the latest base again. Only a retained worktree without
+// a live session is reused, so two workers never share it.
+func (a *App) ResolveConflict(ctx context.Context, cmd Cmd, candidateID string) (*CommandResult, error) {
+	return a.candidateCommand(ctx, cmd, "merge.resolve", candidateID, func(tx *sqlite.Tx, c *sqlite.Candidate, t *sqlite.Target) error {
+		if c.State != domain.CandidateConflict {
+			return domain.Errf(domain.CodeConflict, "candidate is %s; only CONFLICT candidates are resolved", c.State)
+		}
+		r, err := sqlite.GetRun(ctx, tx, c.RunID)
+		if err != nil {
+			return err
+		}
+		if r.State != domain.RunActive && r.State != domain.RunPaused {
+			return domain.Errf(domain.CodeConflict, "run is %s", r.State)
+		}
+		prev, err := sqlite.LatestAttempt(ctx, tx, c.RunID, c.IssueID)
+		if err != nil {
+			return err
+		}
+		if prev != nil && (domain.AttemptLive(prev.State) || prev.State == domain.AttemptImplemented || prev.State == domain.AttemptVerifying) {
+			return domain.Errf(domain.CodeConflict, "issue already has attempt %s in %s", prev.ID, prev.State)
+		}
+		src, err := sqlite.GetAttempt(ctx, tx, c.AttemptID)
+		if err != nil {
+			return err
+		}
+		if src.WorktreeID == "" {
+			return domain.Errf(domain.CodeConflict, "candidate attempt has no worktree")
+		}
+		w, err := sqlite.GetWorktree(ctx, tx, src.WorktreeID)
+		if err != nil {
+			return err
+		}
+		var live int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM session_assignments sa JOIN sessions s ON s.id=sa.session_id JOIN execution_attempts e ON e.id=sa.attempt_id
+			WHERE e.worktree_id=? AND s.liveness<>'EXITED'`, w.ID).Scan(&live); err != nil {
+			return err
+		}
+		if w.State != domain.WorktreeRetained || live > 0 {
+			return domain.Errf(domain.CodeConflict, "worktree %s is not reusable (state %s, live or unknown sessions %d)", w.ID, w.State, live)
+		}
+		created := tx.Now
+		if prev != nil && prev.CreatedAt >= created {
+			created = prev.CreatedAt + 1
+		}
+		attID := domain.NewID("att")
+		if _, err := tx.ExecContext(ctx, `INSERT INTO execution_attempts(id,project_id,run_id,issue_id,run_generation,worktree_id,state,state_reason,created_at,updated_at)
+			VALUES(?,?,?,?,?,?,'PENDING','QUEUED',?,?)`, attID, c.ProjectID, r.ID, c.IssueID, r.Generation, w.ID, created, tx.Now); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET resolution_attempt_id=?, state_reason='RESOLUTION_REQUESTED', version=version+1, updated_at=? WHERE id=?", attID, tx.Now, c.ID); err != nil {
+			return err
+		}
+		tx.Touch(c.ProjectID, sqlite.KindAttempt, attID)
+		return tx.Audit(ctx, c.ProjectID, cmd.Principal.ID, "merge.resolve_attempt", "attempt", attID, "", "", map[string]string{"candidate_id": c.ID, "worktree_id": w.ID, "conflict_base": c.BaseSHA})
+	})
+}
+
+// PrioritizeRequest moves a candidate before another one of the same target
+// (or to the front when Before is empty). A reason is required (04 §8.3).
+type PrioritizeRequest struct {
+	Before string `json:"before,omitempty"`
+	Reason string `json:"reason"`
+}
+
+// PrioritizeCandidate reorders a target queue. Candidates being validated or
+// published are never moved, and an order that puts a successor ahead of the
+// predecessor it depends on is refused.
+func (a *App) PrioritizeCandidate(ctx context.Context, cmd Cmd, candidateID string, req PrioritizeRequest) (*CommandResult, error) {
+	if strings.TrimSpace(req.Reason) == "" {
+		return nil, domain.Errf(domain.CodeInvalidRequest, "a reason is required to change queue order")
+	}
+	return a.candidateCommand(ctx, cmd, "merge.prioritize", candidateID, func(tx *sqlite.Tx, c *sqlite.Candidate, t *sqlite.Target) error {
+		movable := func(st string) bool {
+			switch st {
+			case domain.CandidateWaiting, domain.CandidateStaleBase, domain.CandidateConflict, domain.CandidateFailed, domain.CandidateReady:
+				return true
+			}
+			return false
+		}
+		if !movable(c.State) {
+			return domain.Errf(domain.CodeConflict, "candidate is %s; in-progress or finished candidates keep their order", c.State)
+		}
+		queue, err := sqlite.CandidatesWhere(ctx, tx, "target_id=? AND state NOT IN ('MERGED','CANCELLED','VALIDATING','PUBLISHING')", t.ID)
+		if err != nil {
+			return err
+		}
+		var slots []int64
+		var rest []*sqlite.Candidate
+		var before *sqlite.Candidate
+		for _, q := range queue {
+			slots = append(slots, q.QueuePosition)
+			if q.ID != c.ID {
+				rest = append(rest, q)
+			}
+			if q.ID == req.Before {
+				before = q
+			}
+		}
+		if req.Before != "" && (before == nil || before.ID == c.ID) {
+			return domain.Errf(domain.CodeInvalidRequest, "before %q is not another waiting candidate of target %s", req.Before, t.TargetRef)
+		}
+		order := []*sqlite.Candidate{}
+		if before == nil {
+			order = append(order, c)
+		}
+		for _, q := range rest {
+			if before != nil && q.ID == before.ID {
+				order = append(order, c)
+			}
+			order = append(order, q)
+		}
+		// Only pairs involving the moved candidate are judged, so an
+		// existing order elsewhere never blocks an unrelated move.
+		for i, q := range order {
+			edges, err := sqlite.EdgesInto(ctx, tx, q.RunID, q.IssueID)
+			if err != nil {
+				return err
+			}
+			for _, e := range edges {
+				for j := i + 1; j < len(order); j++ {
+					if p := order[j]; p.IssueID == e.Predecessor && (p.ID == c.ID || q.ID == c.ID) {
+						return domain.Errf(domain.CodeConflict, "order would put %s ahead of its predecessor's candidate %s (dependency %s)", q.ID, p.ID, e.ID)
+					}
+				}
+			}
+		}
+		prev := map[string]int64{}
+		for _, q := range queue {
+			prev[q.ID] = q.QueuePosition
+		}
+		for i, q := range order {
+			if prev[q.ID] == slots[i] {
+				continue
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET queue_position=?, version=version+1, updated_at=? WHERE id=?", slots[i], tx.Now, q.ID); err != nil {
+				return err
+			}
+			tx.Touch(c.ProjectID, sqlite.KindCandidate, q.ID)
+		}
+		return tx.Audit(ctx, c.ProjectID, cmd.Principal.ID, "merge.prioritize_detail", "merge_candidate", c.ID, "", "USER_REPRIORITIZED",
+			map[string]any{"before": req.Before, "from_position": c.QueuePosition, "reason": req.Reason, "changed_by": cmd.Principal.ID})
 	})
 }
 
@@ -318,7 +541,11 @@ func (a *App) advanceLocalTarget(ctx context.Context, t *sqlite.Target) error {
 			return err
 		}
 		if approvalRequired {
-			ap, err := a.requestApproval(ctx, tx, mergeSpec(p, c, t))
+			r, err := sqlite.GetRun(ctx, tx, c.RunID)
+			if err != nil {
+				return err
+			}
+			ap, err := a.requestApproval(ctx, tx, mergeSpec(p, r, c, t))
 			if err != nil {
 				return err
 			}
@@ -353,8 +580,8 @@ func (a *App) advanceLocalTarget(ctx context.Context, t *sqlite.Target) error {
 	})
 }
 
-func mergeSpec(p *sqlite.Project, c *sqlite.Candidate, t *sqlite.Target) approvalSpec {
-	return approvalSpec{Kind: domain.ApprovalMerge, ProjectID: p.ID, RunID: c.RunID, IssueID: c.IssueID, OutputID: c.OutputID,
+func mergeSpec(p *sqlite.Project, r *sqlite.Run, c *sqlite.Candidate, t *sqlite.Target) approvalSpec {
+	return approvalSpec{Kind: domain.ApprovalMerge, ProjectID: p.ID, RunID: c.RunID, RunGeneration: r.Generation, IssueID: c.IssueID, OutputID: c.OutputID,
 		CandidateID: c.ID, CandidateRev: c.Revision, PolicyVersion: p.PolicyVersion,
 		Subject: map[string]any{"candidate_sha": c.CandidateSHA, "base_sha": c.BaseSHA, "source_sha": c.SourceSHA, "target_ref": t.TargetRef, "target_policy": t.PolicyVersion}}
 }
@@ -399,8 +626,8 @@ func (a *App) handleMergeValidate(ctx context.Context, p map[string]string) outc
 			if err != nil || cur.State != domain.CandidateValidating || cur.Revision != c.Revision {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET state=?, state_reason=?, base_sha=COALESCE(?,base_sha), candidate_sha=COALESCE(?,candidate_sha), candidate_tree=COALESCE(?,candidate_tree), version=version+1, updated_at=? WHERE id=?",
-				state, reason, nz(upd["base"]), nz(upd["sha"]), nz(upd["tree"]), tx.Now, c.ID); err != nil {
+			if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET state=?, state_reason=?, base_sha=COALESCE(?,base_sha), candidate_sha=COALESCE(?,candidate_sha), candidate_tree=COALESCE(?,candidate_tree), conflict_files=COALESCE(?,conflict_files), version=version+1, updated_at=? WHERE id=?",
+				state, reason, nz(upd["base"]), nz(upd["sha"]), nz(upd["tree"]), nz(upd["conflict"]), tx.Now, c.ID); err != nil {
 				return err
 			}
 			tx.Touch(c.ProjectID, sqlite.KindCandidate, c.ID)
@@ -428,7 +655,8 @@ func (a *App) handleMergeValidate(ctx context.Context, p map[string]string) outc
 		return failed(err.Error(), setState(domain.CandidateFailed, "MERGE_TREE_ERROR", map[string]string{"base": base}))
 	}
 	if mr.Conflict {
-		return done(map[string]string{"conflict": mr.Detail}, setState(domain.CandidateConflict, "MERGE_CONFLICT", map[string]string{"base": base}))
+		files, _ := json.Marshal(mr.Files)
+		return done(map[string]string{"conflict": mr.Detail}, setState(domain.CandidateConflict, "MERGE_CONFLICT", map[string]string{"base": base, "conflict": string(files)}))
 	}
 	sha, err := a.Git.CommitTree(ctx, dir, mr.Tree, fmt.Sprintf("samsara: integrate %s (%s)\n\nmerge-candidate: %s rev %d", issue.ClientKey, issue.Title, c.ID, c.Revision), a.Clock.Now(), base, c.SourceSHA)
 	if err != nil {
