@@ -29,7 +29,7 @@ HK-07s 는 판정에서 뺀 정보 항목입니다. Claude 는 파싱할 수 없
 | `--hook-probe --write-manifest` (2.1.316) | 검증 경로 없음, 항상 `false` | `claude_code_version=2.1.316`, `verified=true`, `claude_fail_closed=true` |
 | manifest 를 2.1.300+`true` 로 바꾼 뒤 probe 없이 `--write-manifest` | 2.1.316 이 `failure_injection_verified: true` 로 **잘못 표시** | `verified=false`, `claude_fail_closed=false` |
 
-원본: [before/doctor.txt](BEFORE_TXT) · [after/doctor.txt](AFTER_TXT) · [after/hook-failure-probe.json](AFTER_JSON)
+원본: [before/doctor.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/68/evidence/before/doctor.txt) · [after/doctor.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/68/evidence/after/doctor.txt) · [after/hook-failure-probe.json](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/68/evidence/after/hook-failure-probe.json)
 
 ## 변경 파일
 
