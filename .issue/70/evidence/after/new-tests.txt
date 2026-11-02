@@ -1,0 +1,31 @@
+$ go test -count=1 -v -run 'TestCleanup|TestConflict|TestPrioritize|TestMergeTreeConflict|TestRefsContaining' ./internal/app ./internal/gitops
+=== RUN   TestCleanupCleanWorktreeKeepsUnmergedBranch
+--- PASS: TestCleanupCleanWorktreeKeepsUnmergedBranch (0.14s)
+=== RUN   TestCleanupPreservesDirtyUntrackedRenameBinary
+=== RUN   TestCleanupPreservesDirtyUntrackedRenameBinary/rename
+=== RUN   TestCleanupPreservesDirtyUntrackedRenameBinary/binary
+=== RUN   TestCleanupPreservesDirtyUntrackedRenameBinary/ignored
+=== RUN   TestCleanupPreservesDirtyUntrackedRenameBinary/dirty
+=== RUN   TestCleanupPreservesDirtyUntrackedRenameBinary/untracked
+--- PASS: TestCleanupPreservesDirtyUntrackedRenameBinary (0.44s)
+    --- PASS: TestCleanupPreservesDirtyUntrackedRenameBinary/rename (0.09s)
+    --- PASS: TestCleanupPreservesDirtyUntrackedRenameBinary/binary (0.09s)
+    --- PASS: TestCleanupPreservesDirtyUntrackedRenameBinary/ignored (0.09s)
+    --- PASS: TestCleanupPreservesDirtyUntrackedRenameBinary/dirty (0.09s)
+    --- PASS: TestCleanupPreservesDirtyUntrackedRenameBinary/untracked (0.09s)
+=== RUN   TestCleanupBranchAfterSquashAndMerge
+--- PASS: TestCleanupBranchAfterSquashAndMerge (0.20s)
+=== RUN   TestCleanupRequiresConfirmedExitAndRetention
+--- PASS: TestCleanupRequiresConfirmedExitAndRetention (0.09s)
+=== RUN   TestConflictResolutionRevalidatesOnLatestBase
+--- PASS: TestConflictResolutionRevalidatesOnLatestBase (0.30s)
+=== RUN   TestPrioritizeRespectsDependencies
+--- PASS: TestPrioritizeRespectsDependencies (0.19s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.369s
+=== RUN   TestMergeTreeConflictClassification
+--- PASS: TestMergeTreeConflictClassification (0.05s)
+=== RUN   TestRefsContainingAndDeleteRefCAS
+--- PASS: TestRefsContainingAndDeleteRefCAS (0.02s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.073s

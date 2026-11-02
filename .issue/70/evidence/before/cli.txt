@@ -1,0 +1,12 @@
+$ samsara worktree
+usage: samsara worktree list | inspect <id>
+(exit 2)
+$ samsara worktree cleanup --dry-run
+(exit 2)
+$ samsara merge
+usage: samsara merge queue | inspect|enqueue|cancel <candidate_id>
+(exit 2)
+$ samsara merge resolve mc_x
+(exit 2)
+$ samsara merge prioritize mc_x
+(exit 2)
