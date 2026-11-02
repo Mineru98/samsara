@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -243,4 +244,36 @@ func VersionAtLeast(v, min string) bool {
 		}
 	}
 	return true
+}
+
+// CommandPaths returns the executables of the Samsara hook entries in
+// dir's settings (empty when there are none). An upgrade must keep every
+// one of them while it is in use (ACT-12).
+func CommandPaths(dir string) ([]string, error) {
+	m, err := readSettings(filepath.Join(dir, SettingsRel))
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	var out []string
+	hooksMap, _ := m["hooks"].(map[string]any)
+	for _, groups := range hooksMap {
+		gs, _ := groups.([]any)
+		for _, g := range gs {
+			gm, _ := g.(map[string]any)
+			hs, _ := gm["hooks"].([]any)
+			for _, h := range hs {
+				hm, _ := h.(map[string]any)
+				if hm == nil || !isOurs(hm) {
+					continue
+				}
+				if cmd, _ := hm["command"].(string); cmd != "" && !seen[cmd] {
+					seen[cmd] = true
+					out = append(out, cmd)
+				}
+			}
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }

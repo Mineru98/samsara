@@ -19,6 +19,26 @@ go test -race ./internal/app/
 
 테스트에는 실제 `git`이 필요하다. `tmux` 어댑터 테스트는 tmux가 없으면 건너뛴다.
 
+## 배포·업그레이드·복원 (05 §17)
+
+```bash
+runtime/scripts/release.sh                 # dist/samsara_<VERSION>_<os>_<arch>.tar.gz + SHA256SUMS (linux/darwin × amd64/arm64)
+runtime/scripts/drill.sh                   # release tarball만으로 설치 smoke → 업그레이드 → restore 롤백 → export 점검
+```
+
+- 버전은 저장소 `VERSION`을 `-ldflags "-X main.version=..."`으로 주입한다. SQLite는 pure-Go driver라 `CGO_ENABLED=0`으로 교차 빌드한다.
+- `samsara install`: 실행한 binary를 `<data>/samsara/install/versions/<버전>/samsara`로 복사하고 `install/bin/samsara` 링크를 그쪽으로 바꾼다. 다른 버전은 지우지 않는다. hook은 링크가 아니라 버전 경로를 가리키고, install·upgrade 때 설치 디렉터리의 버전을 가리키던 hook(등록 프로젝트·관리 worktree)은 새로 설치한 버전으로 옮긴다. 이전 binary는 이미 hook을 읽은 세션을 위해 디스크에 남는다. 개발 빌드처럼 설치 디렉터리 밖 binary를 가리키는 hook은 건드리지 않는다.
+- 플러그인·스크립트는 `scripts/samsara-bin.sh`로 binary 경로를 찾는다(`$SAMSARA_BIN` → install 링크 → `${CLAUDE_PLUGIN_ROOT}/runtime/dist/<os>_<arch>/samsara`(release.sh가 tarball과 함께 풀어 둔다) → PATH).
+- `samsara upgrade [--start] [--prune-old]`는 **새 binary로** 실행한다. 실행 중인 start lock 획득(그 사이 hook이 구 binary로 daemon을 띄우지 못함) → daemon 정지 → daemon lock 획득(구·신 프로세스 동시 쓰기 차단) → 미적용 DB 백업(`state/backups/pre-upgrade-*.db`) → migration → `integrity_check`·`foreign_key_check` → 설치 → 새 daemon 시작·버전 확인. 실패하면 이후 단계를 하지 않고 복원할 백업 경로를 알려 준다. 더 새로운 binary가 만든 DB는 건드리지 않는다.
+- `--prune-old`는 살아 있는 관리 세션이 있거나 등록 프로젝트·관리 worktree의 hook이 실행하는 버전을 남긴다(ACT-12).
+- `samsara restore --from <backup>`은 daemon이 멈춘 상태에서만 동작한다. 백업을 검증(무결성, schema ≤ binary, checksum)하고 현재 DB를 `pre-restore-*.db`로 남긴다. 복사본에서 migration·복원 처리·무결성 확인을 모두 끝낸 뒤 rename 한 번으로 교체하므로, 중간에 끊겨도 현재 DB는 그대로다. 복원된 DB는 `database_generation`을 새로 받아 이전 UI cursor가 `reset_required`가 된다(EVT-11). 진행 중이던 outbox intent는 UNKNOWN이 되고(재전송 금지), PUBLISHING 후보는 실제 target을 다시 읽는다(DB-13). 외부를 먼저 확인하는 intent(worktree 생성, worker launch, git publish 등)는 reconcile이 다시 큐에 넣고, prompt·interrupt처럼 재전송이 위험한 intent는 사람이 판단할 때까지 UNKNOWN으로 남는다. 다음 daemon 시작이 backend·Git·GitHub를 reconcile한 뒤 새 작업을 받는다.
+
+## 관측 (01 §18)
+
+- `samsara metrics`: hook decision latency(p50/p95/p99), decision·deny reason별 count, SQLite writer latency, SSE 연결·재연결·`reset_required` 사유별 count(메모리, 현재 epoch 기준)와 DB gauge(active attempts, UNKNOWN sessions, quarantined attempts, outbox pending·lag, ambiguous operations, merge queue depth, event retention).
+- `samsara doctor --export <새 파일>`: doctor 결과, manifest, registry, 프로젝트 config, runtime·metrics, `daemon.log` 마지막 200줄을 0600 JSON으로 쓴다. token·secret·password·credential·authorization·cookie·api key·prompt·transcript·tool input/response·payload·bootstrap 이름의 필드는 `[REDACTED]`, GitHub·Anthropic·Slack·AWS 자격증명과 Bearer 값은 본문에서 지운다.
+- 이벤트 replay 보존 기간은 `observation.event_retention_days`(기본 7)다. 이벤트 cursor 경계가 전역이라 활성 프로젝트 중 가장 긴 값을 쓴다(각 프로젝트는 설정한 기간 이상 보존된다).
+
 ## 빠른 시작
 
 ```bash

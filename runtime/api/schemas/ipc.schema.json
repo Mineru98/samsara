@@ -1529,6 +1529,21 @@
             "request",
             "response"
           ]
+        },
+        "/ipc/v1/metrics": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/Empty"
+            },
+            "response": {
+              "$ref": "#/$defs/MetricsView"
+            }
+          }
         }
       },
       "required": [
@@ -1574,7 +1589,8 @@
         "/ipc/v1/plans/revise",
         "/ipc/v1/merge/resolve",
         "/ipc/v1/merge/prioritize",
-        "/ipc/v1/worktrees/cleanup"
+        "/ipc/v1/worktrees/cleanup",
+        "/ipc/v1/metrics"
       ]
     },
     "PlanReviseRequest": {
@@ -1765,6 +1781,159 @@
       "required": [
         "dry_run",
         "items"
+      ]
+    },
+    "LatencySummary": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "mean_ms": {
+          "type": "number"
+        },
+        "p50_ms": {
+          "type": "number"
+        },
+        "p95_ms": {
+          "type": "number"
+        },
+        "p99_ms": {
+          "type": "number"
+        },
+        "max_ms": {
+          "type": "number"
+        },
+        "window": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "mean_ms",
+        "p50_ms",
+        "p95_ms",
+        "p99_ms",
+        "max_ms",
+        "window"
+      ]
+    },
+    "MetricsView": {
+      "type": "object",
+      "properties": {
+        "runtime_epoch": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "collected_at": {
+          "type": "string"
+        },
+        "hook": {
+          "type": "object",
+          "properties": {
+            "decision_latency": {
+              "$ref": "#/$defs/LatencySummary"
+            },
+            "decisions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "deny_by_reason": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            }
+          },
+          "required": [
+            "decision_latency",
+            "decisions",
+            "deny_by_reason"
+          ]
+        },
+        "sqlite_writer_latency": {
+          "$ref": "#/$defs/LatencySummary"
+        },
+        "sse": {
+          "type": "object",
+          "properties": {
+            "connects": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "reconnects": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "reset_required_by_reason": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            }
+          },
+          "required": [
+            "connects",
+            "reconnects",
+            "reset_required_by_reason"
+          ]
+        },
+        "gauges": {
+          "type": "object",
+          "properties": {
+            "active_attempts": {
+              "type": "integer"
+            },
+            "unknown_sessions": {
+              "type": "integer"
+            },
+            "quarantined_attempts": {
+              "type": "integer"
+            },
+            "outbox_pending": {
+              "type": "integer"
+            },
+            "outbox_lag_ms": {
+              "type": "integer"
+            },
+            "ambiguous_operations": {
+              "type": "integer"
+            },
+            "merge_queue_depth": {
+              "type": "integer"
+            },
+            "event_retention_days": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_attempts",
+            "unknown_sessions",
+            "quarantined_attempts",
+            "outbox_pending",
+            "outbox_lag_ms",
+            "ambiguous_operations",
+            "merge_queue_depth",
+            "event_retention_days"
+          ]
+        }
+      },
+      "required": [
+        "runtime_epoch",
+        "since",
+        "collected_at",
+        "hook",
+        "sqlite_writer_latency",
+        "sse",
+        "gauges"
       ]
     }
   }

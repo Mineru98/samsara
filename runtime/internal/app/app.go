@@ -21,6 +21,7 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/gitops"
+	"github.com/Mineru98/samsara/runtime/internal/metrics"
 	"github.com/Mineru98/samsara/runtime/internal/paths"
 	"github.com/Mineru98/samsara/runtime/internal/project"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
@@ -57,6 +58,8 @@ type App struct {
 	// RequireHookReadiness makes registration verify that the managed
 	// policy hook is installed in the worker's worktree. Tests may disable.
 	RequireHookReadiness bool
+	// Metrics holds the in-memory runtime metrics (01 §18.1).
+	Metrics *metrics.Runtime
 
 	ready        atomic.Bool
 	wake         chan struct{}
@@ -80,7 +83,7 @@ func New(db *sqlite.DB, layout paths.Layout, backends *backend.Set, log *slog.Lo
 	layout.WorktreeRoot = filepath.Join(resolveExistingPrefix(filepath.Dir(layout.WorktreeRoot)), filepath.Base(layout.WorktreeRoot))
 	return &App{DB: db, Clock: db.Clock, Layout: layout, Backends: backends, Git: gitops.New(), Log: log, SelfExe: exe,
 		Epoch: domain.NewID("epoch"), wake: make(chan struct{}, 1), ghWake: make(chan struct{}, 1), RequireHookReadiness: true,
-		GitHub: github.NewCLI(),
+		GitHub: github.NewCLI(), Metrics: newMetrics(db),
 		Claude: func() ClaudeSupport { return ClaudeSupport{} }}
 }
 

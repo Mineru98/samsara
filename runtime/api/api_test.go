@@ -409,6 +409,7 @@ func TestIPCNewSchemaFieldsMatchGo(t *testing.T) {
 		{"CleanupResult", app.CleanupResult{}},
 		{"CleanupItem", app.CleanupItem{}},
 		{"CommandResult", app.CommandResult{}},
+		{"MetricsView", app.MetricsView{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			want := map[string]bool{}

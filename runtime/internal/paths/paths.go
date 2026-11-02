@@ -132,3 +132,10 @@ func (l Layout) Ensure() error {
 	}
 	return nil
 }
+
+// InstallDir holds installed binaries: versions/<version>/samsara and the
+// bin/samsara link to the current one. It sits next to the worktree root.
+func (l Layout) InstallDir() string { return filepath.Join(filepath.Dir(l.WorktreeRoot), "install") }
+
+// BackupDir holds the backups taken by upgrade and restore.
+func (l Layout) BackupDir() string { return filepath.Join(l.StateDir, "backups") }

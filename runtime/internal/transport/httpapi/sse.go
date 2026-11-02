@@ -91,6 +91,25 @@ func writeEvent(w http.ResponseWriter, id, typ string, data any) error {
 	return err
 }
 
+// countStream records an opened stream; one that carries Last-Event-ID is a
+// client reconnect (01 §18.1 SSE reconnect count).
+func (s *Server) countStream(r *http.Request, kind string) {
+	if m := s.App.Metrics; m != nil {
+		m.SSEConnects.Inc(kind)
+		if r.Header.Get("Last-Event-ID") != "" {
+			m.SSEReconnects.Inc(kind)
+		}
+	}
+}
+
+// writeReset sends reset_required and counts it by reason (replay gap).
+func (s *Server) writeReset(w http.ResponseWriter, reason string) error {
+	if m := s.App.Metrics; m != nil {
+		m.SSEResets.Inc(reason)
+	}
+	return writeEvent(w, "", "reset_required", map[string]string{"reason": reason})
+}
+
 // cursorParam implements "after" vs Last-Event-ID (both allowed, must agree).
 func cursorParam(r *http.Request) (string, error) {
 	after := r.URL.Query().Get("after")
@@ -126,9 +145,10 @@ func (s *Server) projectEvents(w http.ResponseWriter, r *http.Request, p app.Pri
 	defer unsub()
 	fl, _ := w.(http.Flusher)
 	sseHeaders(w)
+	s.countStream(r, "project")
 	cur, derr := app.DecodeCursor(raw)
 	if derr != nil {
-		_ = writeEvent(w, "", "reset_required", map[string]string{"reason": "CURSOR_INVALID"})
+		_ = s.writeReset(w, "CURSOR_INVALID")
 		return
 	}
 	hb := time.NewTicker(HeartbeatInterval)
@@ -139,7 +159,7 @@ func (s *Server) projectEvents(w http.ResponseWriter, r *http.Request, p app.Pri
 			return
 		}
 		if batch.ResetRequired != "" {
-			_ = writeEvent(w, "", "reset_required", map[string]string{"reason": batch.ResetRequired})
+			_ = s.writeReset(w, batch.ResetRequired)
 			if fl != nil {
 				fl.Flush()
 			}
@@ -191,9 +211,10 @@ func (s *Server) catalogEvents(w http.ResponseWriter, r *http.Request, p app.Pri
 	defer unsub()
 	fl, _ := w.(http.Flusher)
 	sseHeaders(w)
+	s.countStream(r, "catalog")
 	cur, derr := app.DecodeCursor(raw)
 	if derr != nil {
-		_ = writeEvent(w, "", "reset_required", map[string]string{"reason": "CURSOR_INVALID"})
+		_ = s.writeReset(w, "CURSOR_INVALID")
 		return
 	}
 	hb := time.NewTicker(HeartbeatInterval)
@@ -204,7 +225,7 @@ func (s *Server) catalogEvents(w http.ResponseWriter, r *http.Request, p app.Pri
 			return
 		}
 		if reset != "" {
-			_ = writeEvent(w, "", "reset_required", map[string]string{"reason": reset})
+			_ = s.writeReset(w, reset)
 			if fl != nil {
 				fl.Flush()
 			}
