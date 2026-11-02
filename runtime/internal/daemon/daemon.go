@@ -167,7 +167,8 @@ func Run(opts Options) error {
 	if manifest.HerdrProtocolVerified {
 		verified = manifest.HerdrSchemaSHA256
 	}
-	set := backend.NewSet(clock, herdr.New(clock, verified), tmux.New(clock), &standalone.Adapter{Clock: clock})
+	hd := herdr.New(clock, verified, manifest.HerdrCLIVersion)
+	set := backend.NewSet(clock, hd, tmux.New(clock), &standalone.Adapter{Clock: clock})
 	a := app.New(db, l, set, log)
 	var claudeOnce sync.Once
 	var claude app.ClaudeSupport
@@ -177,6 +178,11 @@ func Run(opts Options) error {
 	}
 	if err := a.Recover(ctx); err != nil {
 		return fmt.Errorf("recovery: %w", err)
+	}
+	if verified != "" {
+		// herdr events only invalidate: each one wakes reconciliation, which
+		// rereads bindings authoritatively (01 §7.4).
+		go hd.Watch(ctx, a.Wake)
 	}
 	ipcSrv := ipc.NewServer(a)
 	httpSrv := httpapi.New(a)

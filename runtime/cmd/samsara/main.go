@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Mineru98/samsara/runtime/internal/app"
+	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/backend/herdr"
 	"github.com/Mineru98/samsara/runtime/internal/backend/tmux"
 	"github.com/Mineru98/samsara/runtime/internal/config"
@@ -862,7 +863,12 @@ func (c *cli) doctor(args []string) int {
 	tm := tmux.New(nil)
 	tprobe, _ := tm.Probe(ctx)
 	report["tmux"] = tprobe
-	hd := herdr.New(nil, daemon.LoadManifest(c.layout).HerdrSchemaSHA256)
+	mf := daemon.LoadManifest(c.layout)
+	verifiedSchema := ""
+	if mf.HerdrProtocolVerified {
+		verifiedSchema = mf.HerdrSchemaSHA256
+	}
+	hd := herdr.New(nil, verifiedSchema, mf.HerdrCLIVersion)
 	hprobe, _ := hd.Probe(ctx)
 	report["herdr"] = hprobe
 	g := gitops.New()
@@ -896,6 +902,7 @@ func (c *cli) doctor(args []string) int {
 	report["daemon_running"] = daemon.Ping(ctx, c.layout)
 	if *exercise {
 		report["tmux_exercise"] = exerciseTmux(ctx, tm)
+		report["herdr_exercise"] = exerciseHerdr(ctx, hd)
 	}
 	var probePassed *bool
 	if *hookProbe {
@@ -922,6 +929,7 @@ func (c *cli) doctor(args []string) int {
 	}
 	if *write {
 		m := daemon.LoadManifest(c.layout)
+		prevHerdr, prevSchema := m.HerdrCLIVersion, m.HerdrSchemaSHA256
 		m.VerifiedAt = time.Now().UTC().Format("2006-01-02")
 		m.Platform = runtime.GOOS + "/" + runtime.GOARCH
 		m.SamsaraBuild = version
@@ -939,6 +947,16 @@ func (c *cli) doctor(args []string) int {
 		if ex, ok := report["tmux_exercise"].(map[string]any); ok && ex["ok"] == true {
 			m.RealBackendSmokePassed = true
 		}
+		// herdr is verified only for a pinned schema fixture whose live
+		// create/observe/close exercise passed on this installation.
+		if ex, ok := report["herdr_exercise"].(map[string]any); ok {
+			m.HerdrProtocolVerified = ex["ok"] == true && herdr.PinnedSchemas[hprobe.SchemaSHA256] != ""
+			if v, ok := ex["server_version"].(string); ok {
+				m.HerdrServerVersion = v
+			}
+		} else if prevHerdr != m.HerdrCLIVersion || prevSchema != m.HerdrSchemaSHA256 {
+			m.HerdrProtocolVerified = false // a changed herdr needs a new exercise
+		}
 		_ = c.layout.Ensure()
 		b, _ := json.MarshalIndent(m, "", "  ")
 		if err := os.WriteFile(daemon.ManifestPath(c.layout), b, 0o600); err != nil {
@@ -955,6 +973,32 @@ func (c *cli) doctor(args []string) int {
 		return domain.ExitBlocked
 	}
 	return domain.ExitOK
+}
+
+// exerciseHerdr creates a throwaway owned workspace on the running herdr
+// server, observes it and closes it. It never starts a server.
+func exerciseHerdr(ctx context.Context, hd *herdr.Adapter) map[string]any {
+	res := map[string]any{"ok": false}
+	var pong struct {
+		Version string `json:"version"`
+	}
+	if err := hd.Client.Call(ctx, "ping", nil, &pong); err != nil {
+		res["error"] = err.Error()
+		return res
+	}
+	res["server_version"] = pong.Version
+	corr := "doctor-" + domain.NewID("x")[2:10]
+	rc, err := hd.Launch(ctx, launchSpec(corr))
+	if err != nil || rc.Ref == nil {
+		res["error"] = fmt.Sprint(err, rc.Detail)
+		return res
+	}
+	obs, _ := hd.Observe(ctx, *rc.Ref)
+	res["observed"] = obs.Liveness
+	cl, _ := hd.CloseOwnedSession(ctx, *rc.Ref)
+	res["close"] = cl.Outcome
+	res["ok"] = obs.Liveness == domain.LivenessAlive && cl.Outcome == backend.Delivered
+	return res
 }
 
 func exerciseTmux(ctx context.Context, tm *tmux.Adapter) map[string]any {

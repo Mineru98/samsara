@@ -139,6 +139,29 @@ type LaunchSpec struct {
 	Argv        []string
 	Env         map[string]string
 	Correlation string // unique, stable across retries of the same intent
+	// Prompt is the initial task text. Adapters that start the worker
+	// through argv append it; adapters that cannot (herdr types the command
+	// into a shell) leave it to the runtime's first automated dispatch.
+	Prompt string
+	// Checkpoints holds the step results a previous attempt of the same
+	// launch recorded, so a retry continues instead of creating a second
+	// worker (01 §7.2). Checkpoint durably records one step result.
+	Checkpoints map[string]string
+	Checkpoint  func(key, value string) error
+}
+
+// ArgvWithPrompt returns Argv with the initial prompt as the last argument.
+func (s LaunchSpec) ArgvWithPrompt() []string {
+	if s.Prompt == "" {
+		return s.Argv
+	}
+	return append(append([]string{}, s.Argv...), s.Prompt)
+}
+
+// DefersInitialPrompt is implemented by launchers that never pass the
+// initial prompt in argv; the runtime dispatches it after registration.
+type DefersInitialPrompt interface {
+	DefersInitialPrompt() bool
 }
 
 // LaunchReceipt is the result of Launch.
