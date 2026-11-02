@@ -9,8 +9,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
+	"github.com/Mineru98/samsara/runtime/internal/webui"
 )
 
 // Server is the HTTP API.
@@ -26,12 +29,14 @@ type Server struct {
 	Hub      *Hub
 	Port     int
 	TokenTTL time.Duration
-	mux      *http.ServeMux
+	// UI is the dashboard bundle served same-origin; nil serves the placeholder.
+	UI  fs.FS
+	mux *http.ServeMux
 }
 
 // New builds the server and installs the DB notifier into the hub.
 func New(a *app.App) *Server {
-	s := &Server{App: a, Hub: NewHub(), TokenTTL: 12 * time.Hour, mux: http.NewServeMux()}
+	s := &Server{App: a, Hub: NewHub(), TokenTTL: 12 * time.Hour, UI: webui.FS(), mux: http.NewServeMux()}
 	a.DB.SetNotifier(s.Hub.Notify)
 	s.routes()
 	return s
@@ -361,10 +366,46 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /v1/sessions/{id}/release-input", command(func(r *http.Request, c app.Cmd) (any, error) {
 		return a.ReleaseInput(r.Context(), c, r.PathValue("id"))
 	}))
-	m.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+	m.HandleFunc("GET /", s.static)
+}
+
+// static serves the embedded dashboard. Unknown non-asset paths get
+// index.html so deep links like /projects/<id> load the SPA (02 §3); /v1/*
+// never falls back to HTML.
+func (s *Server) static(w http.ResponseWriter, r *http.Request) {
+	p := path.Clean("/" + r.URL.Path)
+	if p == "/v1" || strings.HasPrefix(p, "/v1/") {
+		writeErr(w, r, domain.Errf(domain.CodeNotFound, "no such endpoint"))
+		return
+	}
+	if s.UI == nil {
+		if p != "/" {
+			writeErr(w, r, domain.Errf(domain.CodeNotFound, "not found"))
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(placeholderPage))
-	})
+		return
+	}
+	name := strings.TrimPrefix(p, "/")
+	if name != "" && name != "index.html" {
+		if st, err := fs.Stat(s.UI, name); err == nil && !st.IsDir() {
+			http.ServeFileFS(w, r, s.UI, name)
+			return
+		}
+		if path.Ext(name) != "" {
+			// A missing asset is a 404, not the SPA shell.
+			writeErr(w, r, domain.Errf(domain.CodeNotFound, "not found"))
+			return
+		}
+	}
+	b, err := fs.ReadFile(s.UI, "index.html")
+	if err != nil {
+		writeErr(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(b)
 }
 
 const placeholderPage = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Samsara runtime</title></head>
