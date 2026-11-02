@@ -127,3 +127,11 @@ test('닫는 줄 형식이 바뀌면 통과시키지 않고 실패한다', (t) =
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /git detection (drift|declaration not closed): trustedExecutable/);
 });
+
+test('한쪽 사본의 기준 브랜치 어긋남 판정만 바꾸면 어긋난 선언을 알린다', (t) => {
+  const root = fixture(t);
+  edit(root, 'end', "'--limit', '20'", "'--limit', '5'");
+  const r = check(root);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /base branch drift: baseDrift \(skills\/issue-end\/scripts\/issue-common\.mjs/);
+});

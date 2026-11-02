@@ -440,6 +440,9 @@ neither         문서·설정만 바뀜 — 캡처 대신 변경 근거를 글�
 
 `references/worktree.md` 를 따른다. 배치 방식이 정해지지 않았으면 여기서 딱 한 번 묻고 고정한다.
 
+`worktree` 가 exit 8(`BASE_DRIFT=1`)로 빠지면 기록된 기준 브랜치가 실제 흐름과 어긋난 것이다.
+`references/worktree.md` 의 `기록값이 실제 흐름과 어긋날 때` 대로 한 번 묻고 `base --set` 으로 기록한 뒤 다시 실행한다.
+
 워크트리가 서면 스크립트가 진행 상태를 `status:in-process` 로 옮긴다. 코드가 돌아가기 시작했다는 뜻이다.
 
 ## 6단계 — before 캡처
@@ -482,6 +485,8 @@ gh repo view --json visibility --jq .visibility
 node <skill>/scripts/issue-start.mjs report-check {issue_number}
 gh issue comment {issue_number} --body-file .issue/{issue_number}/evidence/comment.md
 ```
+
+`evidence-mirror --push` 가 exit 8(`BASE_DRIFT=1`)로 빠지면 아무것도 올라가지 않은 상태다. 5단계와 같은 방법으로 묻고 기록한 뒤 다시 실행한다.
 
 `evidence-urls` 의 `renderMode` 가 `auto-upload` 면(= `isPrivate: true` 이고 gh-attach 가 전부 성공)
 `images[].inlineUrl` 이 이미 채워져 있으니 그대로 쓴다. `manual-upload` 면 그중 자동 업로드에 실패한

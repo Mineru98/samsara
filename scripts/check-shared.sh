@@ -135,3 +135,43 @@ for name in $detection_names; do
 done
 
 echo "git detection code: $group_count copies match ($(echo $detection_names | wc -w | tr -d ' ') declarations)"
+
+# -----------------------------------------------------------------------------
+# 기준 브랜치 기록·어긋남 검사 (이슈 #90)
+#
+# 미러 push 와 워크트리 생성 전 검사는 사본 여섯 벌 모두에 있어야 한다.
+# 어느 스킬에서 들어오든 같은 기록 위치(주 체크아웃)와 같은 판정을 써야 하기 때문이다.
+# -----------------------------------------------------------------------------
+
+base_names='
+projectRoot
+baseDrift
+assertBaseAgreed
+setProjectBaseBranch
+'
+
+for name in $base_names; do
+  ref=''
+  ref_rel=''
+  for rel in $files; do
+    decl="$tmp/decl"
+    if ! extract_decl "$root/$rel" "$name" > "$decl"; then
+      echo "base branch declaration not closed (0열 } }; ]; 없음): $name in $rel" >&2
+      exit 1
+    fi
+    if [ ! -s "$decl" ]; then
+      echo "base branch declaration missing: $name in $rel" >&2
+      exit 1
+    fi
+    if [ -z "$ref" ]; then
+      ref="$tmp/base-$name"
+      ref_rel="$rel"
+      cp "$decl" "$ref"
+    elif ! cmp -s "$ref" "$decl"; then
+      echo "base branch drift: $name ($rel differs from $ref_rel)" >&2
+      exit 1
+    fi
+  done
+done
+
+echo "base branch code: 6 copies match ($(echo $base_names | wc -w | tr -d ' ') declarations)"

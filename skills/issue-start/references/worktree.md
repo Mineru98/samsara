@@ -20,12 +20,14 @@
 
 `detectBase` 가 이 순서를 내장하고 있으므로 4개 스킬 어디서 들어와도 같은 값이 나온다. 직접 `git symbolic-ref` 를 다시 호출하지 않는다.
 
+기록 파일은 **주 체크아웃**의 `.issue/settings.json` 하나다. 링크된 워크트리 안에서 실행해도 그 파일을 읽고 쓴다.
+
 ### 확인과 고정
 
 ```bash
-node <skill>/scripts/issue-create.mjs base                    # 지금 무엇으로 정해지는지 확인
-node <skill>/scripts/issue-create.mjs base --set master       # 이 저장소를 master 로 고정
-node <skill>/scripts/issue-create.mjs base --default master   # 사용자 기본값을 master 로 고정
+node <skill>/scripts/issue-start.mjs base                    # 지금 무엇으로 정해지는지 확인
+node <skill>/scripts/issue-start.mjs base --set master       # 이 저장소를 master 로 고정
+node <skill>/scripts/issue-start.mjs base --default master   # 사용자 기본값을 master 로 고정
 ```
 
 출력의 `SOURCE=` 가 어디서 왔는지 알려준다.
@@ -38,6 +40,38 @@ fallback       판별도 실패, 사용자 기본값도 없다 → DEFAULT_BASE_
 ```
 
 `DEFAULT_BASE_UNSET=1` 이 뜨면 **딱 한 번** AskUserQuestion 으로 묻고 `base --default` 로 고정한다.
+
+### 기록값이 실제 흐름과 어긋날 때
+
+`worktree` 와 `evidence-mirror --push` 는 시작 전에 기록값을 두 신호와 대조한다.
+
+```text
+주 체크아웃의 현재 브랜치     git worktree list 의 첫 항목
+최근 PR base 의 최빈값        gh pr list --state all --limit 20
+```
+
+두 신호가 **같은 다른 브랜치**를 가리키고 그 브랜치가 원격에 있으면 아무것도 만들거나 올리지 않고 exit 8 로 빠진다.
+한쪽만 다르거나 gh 를 못 쓰면 지금처럼 진행한다. `--base` 를 명시한 실행은 검사하지 않는다.
+
+```text
+✗ 기록된 기준 브랜치(main)가 실제 작업 흐름(dev/0.4.0-alpha)과 다릅니다.
+BASE_DRIFT=1
+BASE_RECORDED=main
+BASE_CANDIDATE=dev/0.4.0-alpha
+```
+
+이때 **딱 한 번** AskUserQuestion 으로 묻고, 답을 `base --set` 으로 기록한 뒤 같은 명령을 다시 실행한다.
+
+```text
+질문   issue-start 5단계(워크트리 생성)입니다. 기준 브랜치 기록은 main 인데,
+       메인 폴더와 최근 PR 은 dev/0.4.0-alpha 를 쓰고 있습니다. 어느 쪽을 기준으로 할까요?
+
+1. dev/0.4.0-alpha (권장)   지금 실제로 합치는 브랜치입니다. 이후 워크트리·증거가 여기로 갑니다.
+2. main                     기록값을 유지합니다. 같은 이유로는 다시 묻지 않습니다.
+```
+
+기록값을 유지하면 그때 본 후보가 `git.baseDriftAck` 로 남아 같은 후보로는 다시 멈추지 않는다.
+미러 단계에서 멈췄다면 질문의 단계 표기만 `issue-start 10단계(증거 미러 커밋·푸시)` 로 바꾼다.
 
 ```text
 질문   issue-start 5단계(워크트리 생성)입니다. 이 컴퓨터에서는 보통 어떤 브랜치를 기준으로 작업하시나요?
