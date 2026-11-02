@@ -47,6 +47,7 @@ export const catalogSpec: StreamSpec<CatalogState> = {
   async load(signal) {
     const snap = await get<CatalogSnapshot>("/v1/catalog/snapshot", signal);
     if (snap.schema_version !== "1") throw mismatch(snap.schema_version);
+    if (!isDec(snap.catalog_version)) throw mismatch(`catalog_version ${String(snap.catalog_version)}`);
     const projects: Record<string, ProjectSummary> = {};
     for (const p of snap.projects) projects[p.id] = p;
     return { state: { catalogVersion: snap.catalog_version, projects }, cursor: snap.snapshot_cursor };

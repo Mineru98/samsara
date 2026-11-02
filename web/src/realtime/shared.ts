@@ -109,6 +109,12 @@ export class SharedStream<S> implements StreamHandle<S> {
   }
 
   private publish(v: StreamView<S>): void {
+    // Taking over from a leader: keep showing the mirrored data, marked as not
+    // current, until the new snapshot lands instead of blanking every tab.
+    const prev = this.view.get();
+    if (v.data === null && v.status === "connecting" && prev.data !== null) {
+      v = { ...v, status: "resyncing", data: prev.data, lastAppliedAt: prev.lastAppliedAt, resyncReason: "LEADER_HANDOVER" };
+    }
     this.view.set(v);
     this.broadcast();
   }

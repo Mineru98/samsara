@@ -142,9 +142,13 @@ describe("SharedStream (02 §15.5)", () => {
     b.start();
     await until(() => b.view.get().status === "live");
     expect(rt.streams()).toBe(1);
+    const seen: (string | null)[] = [];
+    b.view.subscribe(() => seen.push(b.view.get().data?.projectVersion ?? null));
     a.stop();
     await until(() => rt.streams() === 2 && b.view.get().status === "live");
     expect(b.view.get().data?.projectVersion).toBe("11");
+    // The tab never blanks while the new leader reloads the snapshot.
+    expect(seen).not.toContain(null);
     b.stop();
   });
 
