@@ -356,6 +356,8 @@ export interface CandidateView {
   native_queue_state: Open<NativeQueueState>;
   output_id: string;
   project_id: string;
+  /** Provider validation group (merge group head/base/entry) the candidate is currently validated in; omitted outside a github_queue group. */
+  provider_validation_id?: string;
   publication_observation?: string;
   queue_position: Decimal;
   resolution_attempt_id?: string;
