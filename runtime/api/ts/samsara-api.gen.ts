@@ -879,6 +879,10 @@ export interface IpcRoutes {
     request: CandidateRef;
     response: CommandResult;
   };
+  "/ipc/v1/metrics": {
+    request: Empty;
+    response: MetricsView;
+  };
   "/ipc/v1/outputs/submit": {
     request: OutputSubmitRequest;
     response: OutputSubmitResult;
@@ -989,6 +993,16 @@ export interface IssueRef {
   issue_id: string;
 }
 
+export interface LatencySummary {
+  count: number;
+  max_ms: number;
+  mean_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  window: number;
+}
+
 export interface LinkRequest {
   external_key: string;
   issue_id?: string;
@@ -1006,6 +1020,33 @@ export interface ListProjectsRequest {
 export interface LookupRequest {
   id: string;
   kind: string;
+}
+
+export interface MetricsView {
+  collected_at: string;
+  gauges: {
+    active_attempts: number;
+    ambiguous_operations: number;
+    event_retention_days: number;
+    merge_queue_depth: number;
+    outbox_lag_ms: number;
+    outbox_pending: number;
+    quarantined_attempts: number;
+    unknown_sessions: number;
+  };
+  hook: {
+    decision_latency: LatencySummary;
+    decisions: Record<string, number>;
+    deny_by_reason: Record<string, number>;
+  };
+  runtime_epoch: string;
+  since: string;
+  sqlite_writer_latency: LatencySummary;
+  sse: {
+    connects: Record<string, number>;
+    reconnects: Record<string, number>;
+    reset_required_by_reason: Record<string, number>;
+  };
 }
 
 export interface OK {

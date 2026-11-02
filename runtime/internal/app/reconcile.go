@@ -310,11 +310,16 @@ func (a *App) reconcileUnknownOutbox(ctx context.Context) error {
 	})
 }
 
-// PruneEvents removes replay events older than the retention window. Audit
-// and integration evidence are kept separately (DB-14).
+// PruneEvents removes replay events older than the retention window
+// (observation.event_retention_days, see eventRetentionDays). Audit and
+// integration evidence are kept separately (DB-14).
 func (a *App) PruneEvents(ctx context.Context) error {
 	return a.DB.Write(ctx, func(tx *sqlite.Tx) error {
-		cutoff := tx.Now - 7*24*3600*1000
+		days, err := eventRetentionDays(ctx, tx)
+		if err != nil {
+			return err
+		}
+		cutoff := tx.Now - int64(days)*24*3600*1000
 		var maxSeq int64
 		if err := tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(seq),0) FROM events WHERE recorded_at < ?", cutoff).Scan(&maxSeq); err != nil || maxSeq == 0 {
 			return err
@@ -326,7 +331,7 @@ func (a *App) PruneEvents(ctx context.Context) error {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM catalog_events WHERE recorded_at < ?", cutoff); err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx, "UPDATE runtime_metadata SET pruned_through_seq=MAX(pruned_through_seq, ?) WHERE id=1", maxSeq)
+		_, err = tx.ExecContext(ctx, "UPDATE runtime_metadata SET pruned_through_seq=MAX(pruned_through_seq, ?) WHERE id=1", maxSeq)
 		return err
 	})
 }
