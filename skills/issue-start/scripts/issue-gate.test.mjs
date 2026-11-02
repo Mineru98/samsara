@@ -624,6 +624,11 @@ test('owner liveness is locale independent (ko worker vs C controller, legacy lo
   const { startKey } = await import(GATE);
   assert.equal(startKey('2026년 10월 29일 목요일 08시 04분 02초'), startKey('Thu Oct 29 08:04:02 2026  '));
   assert.notEqual(startKey('2026년 10월 29일 목요일 08시 04분 03초'), startKey('Thu Oct 29 08:04:02 2026'));
+  const probe = sh('ps', ['-o', 'lstart=', '-p', String(process.pid)], f.base, { env: { ...f.env, ...ko } }).out;
+  if (!/년/.test(probe)) {
+    t.skip(`ko_KR.UTF-8 locale unavailable: ps lstart rendered "${probe.trim()}"`);
+    return;
+  }
   const s = f.session('S-ko');
   const asWorker = { env: { ...s.env, ...ko } };
   assert.equal(f.gate(['begin', '--phase', 'implement'], asWorker).code, 0);
