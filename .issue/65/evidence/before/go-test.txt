@@ -1,0 +1,24 @@
+ok  	github.com/Mineru98/samsara/runtime/api	0.139s
+?   	github.com/Mineru98/samsara/runtime/api/apitest	[no test files]
+?   	github.com/Mineru98/samsara/runtime/cmd/samsara	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/app	5.691s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.007s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/herdr	1.117s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.400s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	0.011s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.007s
+?   	github.com/Mineru98/samsara/runtime/internal/domain	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/github	0.005s
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.286s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.010s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.008s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.012s
+?   	github.com/Mineru98/samsara/runtime/internal/paths	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/plan	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/procinfo	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/project	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	0.178s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.317s
+?   	github.com/Mineru98/samsara/runtime/internal/transport/ipc	[no test files]
