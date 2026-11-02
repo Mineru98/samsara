@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/plan.schema.json",
+  "title": "Samsara plan",
+  "description": "Plan document accepted by `samsara plan validate|apply` and /ipc/v1/plans/* (03 §4). Unknown fields are rejected. Semantic checks (cycles, dangling keys, trust, profiles) stay in the runtime.",
+  "$ref": "#/$defs/Plan",
+  "$defs": {
+    "PlanIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_key",
+        "title"
+      ],
+      "properties": {
+        "client_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "check_profile": {
+          "type": "string"
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanCapability"
+          }
+        },
+        "target_repository_id": {
+          "type": "string"
+        },
+        "target_ref": {
+          "type": "string"
+        }
+      }
+    },
+    "PlanDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "predecessor_key",
+        "successor_key"
+      ],
+      "properties": {
+        "predecessor_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "successor_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required_milestone": {
+          "$ref": "common.schema.json#/$defs/Milestone",
+          "description": "Default INTEGRATED."
+        },
+        "downstream_phase": {
+          "$ref": "common.schema.json#/$defs/DownstreamPhase",
+          "description": "Default EXECUTION."
+        },
+        "target_repository_id": {
+          "type": "string"
+        },
+        "target_ref": {
+          "type": "string"
+        }
+      }
+    },
+    "Plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "project_id",
+        "expected_graph_version",
+        "issues"
+      ],
+      "properties": {
+        "spec_version": {
+          "const": "1"
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "issues": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/PlanIssue"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanDependency"
+          }
+        }
+      }
+    },
+    "PlanProblem": {
+      "type": "object",
+      "required": [
+        "code",
+        "path",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "PlanCapability": {
+      "enum": [
+        "create_worker",
+        "attach_session",
+        "submit_prompt",
+        "observe_process",
+        "observe_agent",
+        "read_output",
+        "request_interrupt",
+        "restore_conversation"
+      ]
+    }
+  }
+}

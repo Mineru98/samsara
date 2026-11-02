@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/api/apitest"
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/github"
@@ -58,6 +59,7 @@ func (e *env) history() map[string]any {
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	apitest.Check(e.t, "entities.schema.json#/$defs/GitHubHistory", h)
 	b, _ := json.Marshal(h)
 	var out map[string]any
 	_ = json.Unmarshal(b, &out)

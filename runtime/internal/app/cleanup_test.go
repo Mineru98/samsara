@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/api/apitest"
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
@@ -62,6 +63,8 @@ func (e *env) cleanup(req app.CleanupRequest) *app.CleanupItem {
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	apitest.Check(e.t, "ipc.schema.json#/$defs/CleanupRequest", req)
+	apitest.Check(e.t, "ipc.schema.json#/$defs/CleanupResult", res)
 	if len(res.Items) != 1 {
 		e.t.Fatalf("expected one item, got %+v", res.Items)
 	}

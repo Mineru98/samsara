@@ -1,0 +1,1342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/entities.schema.json",
+  "title": "Samsara entity projections",
+  "description": "Read-model views returned by GET endpoints, snapshots and change events (03 §5, §8). Status axes stay separate; display_status is a server-derived label.",
+  "$defs": {
+    "ProjectView": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "root_path",
+        "display_name",
+        "activation",
+        "registry_state",
+        "drain_state",
+        "policy_version",
+        "graph_version",
+        "project_version",
+        "last_activity_at",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "root_path": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "activation": {
+          "$ref": "common.schema.json#/$defs/ProjectActivation"
+        },
+        "registry_state": {
+          "$ref": "common.schema.json#/$defs/RegistryState"
+        },
+        "drain_state": {
+          "$ref": "common.schema.json#/$defs/DrainState"
+        },
+        "policy_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "project_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "last_activity_at": {
+          "$ref": "common.schema.json#/$defs/OptionalTimestamp"
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "ProjectSummary": {
+      "description": "ProjectView plus sidebar counters.",
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "root_path",
+        "display_name",
+        "activation",
+        "registry_state",
+        "drain_state",
+        "policy_version",
+        "graph_version",
+        "project_version",
+        "last_activity_at",
+        "created_at",
+        "running",
+        "blocked",
+        "approval_pending",
+        "integration_pending"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "root_path": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "activation": {
+          "$ref": "common.schema.json#/$defs/ProjectActivation"
+        },
+        "registry_state": {
+          "$ref": "common.schema.json#/$defs/RegistryState"
+        },
+        "drain_state": {
+          "$ref": "common.schema.json#/$defs/DrainState"
+        },
+        "policy_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "project_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "last_activity_at": {
+          "$ref": "common.schema.json#/$defs/OptionalTimestamp"
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "running": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approval_pending": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "integration_pending": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latest_run_id": {
+          "type": "string"
+        },
+        "latest_run_state": {
+          "$ref": "common.schema.json#/$defs/RunState"
+        }
+      }
+    },
+    "BlockingReason": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Reason code such as DEPENDENCY_UNMET or DEPENDENCY_APPROVAL_PENDING."
+        },
+        "source_issue_id": {
+          "type": "string"
+        },
+        "required_milestone": {
+          "$ref": "common.schema.json#/$defs/Milestone"
+        },
+        "downstream_phase": {
+          "$ref": "common.schema.json#/$defs/DownstreamPhase"
+        },
+        "approval_id": {
+          "type": "string"
+        },
+        "dependency_id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "Action": {
+      "description": "Server-decided action availability; the UI never infers it (03 §13).",
+      "type": "object",
+      "required": [
+        "action",
+        "enabled"
+      ],
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "resource_id": {
+          "type": "string"
+        },
+        "reason_code": {
+          "type": "string"
+        }
+      }
+    },
+    "IssueView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "version",
+        "client_key",
+        "title",
+        "lifecycle",
+        "acceptance_criteria",
+        "check_profile",
+        "required_capabilities",
+        "display_status",
+        "blocking_reasons",
+        "available_actions",
+        "resume_required"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "client_key": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "lifecycle": {
+          "$ref": "common.schema.json#/$defs/IssueLifecycle"
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "check_profile": {
+          "type": "string"
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "current_attempt_id": {
+          "type": "string"
+        },
+        "execution_state": {
+          "$ref": "common.schema.json#/$defs/AttemptState"
+        },
+        "integration_state": {
+          "$ref": "common.schema.json#/$defs/CandidateState"
+        },
+        "display_status": {
+          "type": "string"
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BlockingReason"
+          }
+        },
+        "available_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        },
+        "resume_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RunView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "version",
+        "state",
+        "run_generation",
+        "graph_version",
+        "plan_digest",
+        "alias_mapping",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/RunState"
+        },
+        "run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "plan_digest": {
+          "type": "string"
+        },
+        "alias_mapping": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "started_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "ended_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "AttemptView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "run_id",
+        "issue_id",
+        "version",
+        "state",
+        "run_generation",
+        "resume_required",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/AttemptState"
+        },
+        "state_reason": {
+          "type": "string"
+        },
+        "quarantine_reason": {
+          "type": "string"
+        },
+        "run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "worktree_id": {
+          "type": "string"
+        },
+        "backend_kind": {
+          "$ref": "common.schema.json#/$defs/BackendKind"
+        },
+        "backend_reason": {
+          "type": "string"
+        },
+        "output_id": {
+          "type": "string"
+        },
+        "resume_required": {
+          "type": "boolean"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "lease_state": {
+          "$ref": "common.schema.json#/$defs/LeaseState"
+        },
+        "lease_fence": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "lease_deadline_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "updated_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "BackendLocation": {
+      "type": "object",
+      "required": [
+        "binding_id",
+        "kind",
+        "ref",
+        "generation"
+      ],
+      "properties": {
+        "binding_id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "common.schema.json#/$defs/BackendKind"
+        },
+        "instance": {
+          "type": "string"
+        },
+        "ref": {
+          "description": "Adapter-specific opaque location."
+        },
+        "generation": {
+          "type": "string"
+        }
+      }
+    },
+    "SessionView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "version",
+        "claude_session_id",
+        "managed",
+        "desired_state",
+        "liveness",
+        "input_state",
+        "input_owner",
+        "source",
+        "confidence",
+        "observed_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "claude_session_id": {
+          "type": "string"
+        },
+        "managed": {
+          "type": "boolean"
+        },
+        "desired_state": {
+          "$ref": "common.schema.json#/$defs/SessionDesiredState"
+        },
+        "liveness": {
+          "$ref": "common.schema.json#/$defs/Liveness"
+        },
+        "input_state": {
+          "$ref": "common.schema.json#/$defs/InputState"
+        },
+        "input_owner": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "backend_raw_state": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string"
+        },
+        "observed_at": {
+          "$ref": "common.schema.json#/$defs/OptionalTimestamp"
+        },
+        "last_hook_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "ended_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "backend": {
+          "$ref": "#/$defs/BackendLocation"
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "WorktreeView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "version",
+        "path",
+        "branch_ref",
+        "base_sha",
+        "ownership",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "repository_id": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "branch_ref": {
+          "type": "string"
+        },
+        "base_sha": {
+          "type": "string"
+        },
+        "ownership": {
+          "$ref": "common.schema.json#/$defs/Ownership"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/WorktreeState"
+        },
+        "state_reason": {
+          "type": "string"
+        }
+      }
+    },
+    "DependencyView": {
+      "type": "object",
+      "required": [
+        "dependency_id",
+        "project_id",
+        "run_id",
+        "predecessor_issue_id",
+        "successor_issue_id",
+        "required_milestone",
+        "downstream_phase",
+        "required_run_generation",
+        "required_output_id",
+        "graph_version",
+        "invalidation_policy",
+        "version",
+        "met"
+      ],
+      "properties": {
+        "dependency_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "predecessor_issue_id": {
+          "type": "string"
+        },
+        "successor_issue_id": {
+          "type": "string"
+        },
+        "required_milestone": {
+          "$ref": "common.schema.json#/$defs/Milestone"
+        },
+        "downstream_phase": {
+          "$ref": "common.schema.json#/$defs/DownstreamPhase"
+        },
+        "required_run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "required_output_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_repository_id": {
+          "type": "string"
+        },
+        "target_ref": {
+          "type": "string"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "invalidation_policy": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "met": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GateMember": {
+      "type": "object",
+      "required": [
+        "dependency_id",
+        "issue_id",
+        "required_milestone",
+        "met"
+      ],
+      "properties": {
+        "dependency_id": {
+          "type": "string"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "required_milestone": {
+          "$ref": "common.schema.json#/$defs/Milestone"
+        },
+        "met": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GateView": {
+      "description": "AND gate over two or more requirements of one successor phase.",
+      "type": "object",
+      "required": [
+        "id",
+        "run_id",
+        "run_generation",
+        "successor_issue_id",
+        "downstream_phase",
+        "members",
+        "open",
+        "membership_version",
+        "membership_digest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "successor_issue_id": {
+          "type": "string"
+        },
+        "downstream_phase": {
+          "$ref": "common.schema.json#/$defs/DownstreamPhase"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GateMember"
+          }
+        },
+        "open": {
+          "type": "boolean"
+        },
+        "membership_version": {
+          "type": "string"
+        },
+        "membership_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "ApprovalView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "version",
+        "kind",
+        "state",
+        "subject_digest",
+        "subject",
+        "policy_version",
+        "requested_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "kind": {
+          "$ref": "common.schema.json#/$defs/ApprovalKind"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/ApprovalState"
+        },
+        "state_reason": {
+          "type": "string"
+        },
+        "subject_digest": {
+          "type": "string"
+        },
+        "subject": {
+          "description": "Canonical subject the decision binds to (base/source/policy)."
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "output_id": {
+          "type": "string"
+        },
+        "merge_candidate_id": {
+          "type": "string"
+        },
+        "candidate_revision": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "policy_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "requested_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "decided_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "decision_actor": {
+          "type": "string"
+        }
+      }
+    },
+    "ApprovalGate": {
+      "type": "object",
+      "required": [
+        "required",
+        "state",
+        "approval_ids"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/ApprovalState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subject_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "CandidateView": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "version",
+        "issue_id",
+        "run_id",
+        "attempt_id",
+        "output_id",
+        "target_id",
+        "target_ref",
+        "authority",
+        "source_sha",
+        "revision",
+        "state",
+        "native_queue_state",
+        "enqueued",
+        "queue_position",
+        "approval_gate",
+        "blocking_reasons"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "output_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "target_ref": {
+          "type": "string"
+        },
+        "authority": {
+          "$ref": "common.schema.json#/$defs/IntegrationAuthority"
+        },
+        "source_sha": {
+          "type": "string"
+        },
+        "base_sha": {
+          "type": "string"
+        },
+        "candidate_sha": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/CandidateState"
+        },
+        "state_reason": {
+          "type": "string"
+        },
+        "native_queue_state": {
+          "$ref": "common.schema.json#/$defs/NativeQueueState"
+        },
+        "publication_observation": {
+          "type": "string"
+        },
+        "enqueued": {
+          "type": "boolean"
+        },
+        "queue_position": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "approval_gate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ApprovalGate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BlockingReason"
+          }
+        },
+        "evidence_id": {
+          "type": "string"
+        },
+        "waiting_since": {
+          "type": "string"
+        },
+        "revalidation_count": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "starvation_risk": {
+          "type": "boolean"
+        },
+        "conflict": {
+          "$ref": "#/$defs/ConflictView"
+        },
+        "resolution_attempt_id": {
+          "type": "string"
+        },
+        "superseded_by": {
+          "type": "string"
+        }
+      }
+    },
+    "TargetView": {
+      "type": "object",
+      "required": [
+        "id",
+        "repository_id",
+        "target_ref",
+        "authority",
+        "policy_version",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "repository_id": {
+          "type": "string"
+        },
+        "target_ref": {
+          "type": "string"
+        },
+        "authority": {
+          "$ref": "common.schema.json#/$defs/IntegrationAuthority"
+        },
+        "policy_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        }
+      }
+    },
+    "OperationView": {
+      "description": "External effect. UNKNOWN means the outcome is not known and is never rewritten to success or failure automatically.",
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "state",
+        "result",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/OperationState"
+        },
+        "resource_key": {
+          "type": "string"
+        },
+        "command_id": {
+          "type": "string"
+        },
+        "result": {
+          "description": "Operation result JSON, or null."
+        },
+        "error": {
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "updated_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "IssueDetail": {
+      "type": "object",
+      "required": [
+        "issue",
+        "dependencies",
+        "attempts",
+        "outputs",
+        "merge_candidates"
+      ],
+      "properties": {
+        "issue": {
+          "$ref": "#/$defs/IssueView"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DependencyView"
+          }
+        },
+        "attempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttemptView"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "merge_candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateView"
+          }
+        }
+      }
+    },
+    "Capability": {
+      "description": "Backend capability support (01 §5).",
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "SUPPORTED",
+            "CONDITIONAL",
+            "UNSUPPORTED",
+            ""
+          ],
+          "description": "Empty when the backend was not probed (adapter missing, binary absent or probe error)."
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ProbeResult": {
+      "type": "object",
+      "required": [
+        "kind",
+        "availability",
+        "capabilities",
+        "probed_at"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "common.schema.json#/$defs/BackendKind"
+        },
+        "availability": {
+          "$ref": "common.schema.json#/$defs/BackendAvailability"
+        },
+        "version": {
+          "type": "string"
+        },
+        "instance": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Capability"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "schema_sha256": {
+          "type": "string"
+        },
+        "probed_at": {
+          "type": "string"
+        }
+      }
+    },
+    "ClaudeSupport": {
+      "type": "object",
+      "required": [
+        "version",
+        "block_on_failure",
+        "failure_injection_verified"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "block_on_failure": {
+          "type": "boolean"
+        },
+        "failure_injection_verified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RuntimeInfo": {
+      "type": "object",
+      "required": [
+        "version",
+        "runtime_epoch",
+        "database_generation",
+        "host_id",
+        "schema_version",
+        "sqlite_version",
+        "ready",
+        "pid",
+        "claude",
+        "backends"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "runtime_epoch": {
+          "type": "string"
+        },
+        "database_generation": {
+          "type": "string"
+        },
+        "host_id": {
+          "type": "string"
+        },
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "sqlite_version": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "claude": {
+          "$ref": "#/$defs/ClaudeSupport"
+        },
+        "backends": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ProbeResult"
+          }
+        }
+      }
+    },
+    "ConflictFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "types"
+      ]
+    },
+    "ConflictView": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConflictFile"
+          }
+        }
+      },
+      "required": [
+        "source",
+        "kinds",
+        "files"
+      ]
+    },
+    "GitHubHistoryItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "external_key": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "synced_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {}
+      },
+      "required": [
+        "id",
+        "issue_id",
+        "provider",
+        "kind",
+        "external_key",
+        "url",
+        "title",
+        "observed_at",
+        "state",
+        "source",
+        "synced_at",
+        "detail"
+      ]
+    },
+    "GitHubHistory": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GitHubHistoryItem"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "freshness": {
+          "$ref": "common.schema.json#/$defs/Freshness"
+        },
+        "sync": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "last_synced_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_attempt_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retry_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "truncated",
+        "freshness",
+        "sync",
+        "repository",
+        "last_synced_at",
+        "last_attempt_at",
+        "retry_at",
+        "error"
+      ]
+    },
+    "RefreshProjectResult": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "ACCEPTED"
+        },
+        "github": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "github"
+      ]
+    }
+  }
+}
