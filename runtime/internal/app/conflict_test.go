@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/api/apitest"
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
@@ -74,6 +76,16 @@ func (e *env) candidate(id string) (*sqlite.Candidate, *sqlite.CandidateView) {
 	}); err != nil {
 		e.t.Fatal(err)
 	}
+	payload := apitest.Check(e.t, "entities.schema.json#/$defs/CandidateView", v)
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &fields); err != nil {
+		e.t.Fatal(err)
+	}
+	for _, name := range []string{"waiting_since", "revalidation_count", "starvation_risk"} {
+		if _, ok := fields[name]; !ok {
+			e.t.Fatalf("current candidate response missing %s", name)
+		}
+	}
 	return c, v
 }
 
@@ -126,8 +138,11 @@ func TestConflictResolutionRevalidatesOnLatestBase(t *testing.T) {
 	e.exitWorker(issueID)
 	firstAttempt := e.attempt(issueID)
 	e.clock.Advance(time.Second)
-	if _, err := e.app.ResolveConflict(e.ctx, e.cmd, oldID); err != nil {
+	if result, err := e.app.ResolveConflict(e.ctx, e.cmd, oldID); err != nil {
 		t.Fatal(err)
+	} else {
+		apitest.Check(t, "ipc.schema.json#/$defs/CandidateRef", map[string]string{"candidate_id": oldID})
+		apitest.Check(t, "ipc.schema.json#/$defs/CommandResult", result)
 	}
 	if _, err := e.app.ResolveConflict(e.ctx, e.cmd, oldID); !domain.IsCode(err, domain.CodeConflict) {
 		t.Fatalf("a second resolution while one is queued must be refused: %v", err)
@@ -225,8 +240,11 @@ func TestPrioritizeRespectsDependencies(t *testing.T) {
 	if _, err := e.app.PrioritizeCandidate(e.ctx, e.cmd, ca.ID, app.PrioritizeRequest{Before: cb.ID, Reason: "noop"}); err != nil {
 		t.Fatalf("keeping the predecessor first is allowed: %v", err)
 	}
-	if _, err := e.app.PrioritizeCandidate(e.ctx, e.cmd, cc.ID, app.PrioritizeRequest{Reason: "release blocker"}); err != nil {
+	if result, err := e.app.PrioritizeCandidate(e.ctx, e.cmd, cc.ID, app.PrioritizeRequest{Reason: "release blocker"}); err != nil {
 		t.Fatal(err)
+	} else {
+		apitest.Check(t, "ipc.schema.json#/$defs/PrioritizeRequest", map[string]string{"candidate_id": cc.ID, "reason": "release blocker"})
+		apitest.Check(t, "ipc.schema.json#/$defs/CommandResult", result)
 	}
 	pa, _ := e.candidate(ca.ID)
 	pb, _ := e.candidate(cb.ID)

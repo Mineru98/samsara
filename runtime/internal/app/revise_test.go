@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/api/apitest"
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/plan"
@@ -32,7 +33,12 @@ func (e *env) revise(runID, gen, planJSON string) (*app.PlanReviseResult, error)
 	if err != nil {
 		e.t.Fatal(err)
 	}
-	return e.app.RevisePlan(e.ctx, e.cmd, body)
+	result, err := e.app.RevisePlan(e.ctx, e.cmd, body)
+	if err == nil {
+		apitest.Check(e.t, "ipc.schema.json#/$defs/PlanReviseRequest", json.RawMessage(body))
+		apitest.Check(e.t, "ipc.schema.json#/$defs/PlanReviseResult", result)
+	}
+	return result, err
 }
 
 func (e *env) approvals(where string, args ...any) []*sqlite.Approval {
@@ -399,6 +405,11 @@ func TestReviseCLIAndIPCAgree(t *testing.T) {
 		req.Header.Set(ipc.HeaderProtocol, ipc.ProtocolVersion)
 		w := httptest.NewRecorder()
 		srv.ServeHTTP(w, req)
+		ref := "ipc.schema.json#/$defs/PlanReviseResult"
+		if w.Code != http.StatusOK {
+			ref = "ipc.schema.json#/$defs/IPCError"
+		}
+		apitest.Check(e.t, ref, json.RawMessage(w.Body.Bytes()))
 		var m map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &m)
 		return w.Code, m

@@ -1469,6 +1469,66 @@
               "$ref": "#/$defs/BackupResult"
             }
           }
+        },
+        "/ipc/v1/plans/revise": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/PlanReviseRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/PlanReviseResult"
+            }
+          },
+          "required": [
+            "request",
+            "response"
+          ]
+        },
+        "/ipc/v1/merge/resolve": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/CandidateRef"
+            },
+            "response": {
+              "$ref": "#/$defs/CommandResult"
+            }
+          },
+          "required": [
+            "request",
+            "response"
+          ]
+        },
+        "/ipc/v1/merge/prioritize": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/PrioritizeRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/CommandResult"
+            }
+          },
+          "required": [
+            "request",
+            "response"
+          ]
+        },
+        "/ipc/v1/worktrees/cleanup": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/CleanupRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/CleanupResult"
+            }
+          },
+          "required": [
+            "request",
+            "response"
+          ]
         }
       },
       "required": [
@@ -1510,7 +1570,201 @@
         "/ipc/v1/sessions/release-input",
         "/ipc/v1/tools/check",
         "/ipc/v1/tools/result",
-        "/ipc/v1/ui/bootstrap"
+        "/ipc/v1/ui/bootstrap",
+        "/ipc/v1/plans/revise",
+        "/ipc/v1/merge/resolve",
+        "/ipc/v1/merge/prioritize",
+        "/ipc/v1/worktrees/cleanup"
+      ]
+    },
+    "PlanReviseRequest": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "expected_run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "plan": {
+          "$ref": "plan.schema.json#/$defs/Plan"
+        }
+      },
+      "required": [
+        "run_id",
+        "expected_run_generation",
+        "plan"
+      ]
+    },
+    "PlanReviseResult": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "run_state": {
+          "$ref": "common.schema.json#/$defs/RunState"
+        },
+        "run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "plan_digest": {
+          "type": "string"
+        },
+        "issue_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "change_kind": {
+          "type": "string"
+        },
+        "affected_issue_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "superseded_output_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "invalidated_approval_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "plan_approval_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "run_state",
+        "run_generation",
+        "graph_version",
+        "plan_digest",
+        "issue_mapping",
+        "change_kind",
+        "affected_issue_ids",
+        "superseded_output_ids",
+        "invalidated_approval_ids"
+      ]
+    },
+    "PrioritizeRequest": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "reason"
+      ]
+    },
+    "CleanupRequest": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "worktree_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "delete_branch": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "project_id"
+      ]
+    },
+    "CleanupItem": {
+      "type": "object",
+      "properties": {
+        "worktree_id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "branch_ref": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "worktree_removed": {
+          "type": "boolean"
+        },
+        "branch_removed": {
+          "type": "boolean"
+        },
+        "branch_kept_reason": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "worktree_id",
+        "path",
+        "state",
+        "eligible",
+        "reasons",
+        "worktree_removed",
+        "branch_removed"
+      ]
+    },
+    "CleanupResult": {
+      "type": "object",
+      "properties": {
+        "dry_run": {
+          "type": "boolean"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CleanupItem"
+          }
+        }
+      },
+      "required": [
+        "dry_run",
+        "items"
       ]
     }
   }

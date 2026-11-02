@@ -190,3 +190,32 @@ func TestBootstrapAuthAndSSE(t *testing.T) {
 		t.Fatal("revoked token still works")
 	}
 }
+
+func TestGitHubHistoryAndRefreshContract(t *testing.T) {
+	_, pid, bootstrapURL := newServer(t)
+	base := strings.SplitN(bootstrapURL, "/#", 2)[0]
+	code := strings.SplitN(bootstrapURL, "#bootstrap=", 2)[1]
+	response, body := do(t, http.MethodPost, base+"/v1/ui/sessions", "", `{"code":"`+code+`"}`)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("bootstrap: %d %s", response.StatusCode, body)
+	}
+	var session struct{ Token string }
+	if err := json.Unmarshal(body, &session); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		method, path, schema string
+		status               int
+	}{
+		{http.MethodGet, "/v1/projects/" + pid + "/github-history", "GitHubHistory", http.StatusOK},
+		{http.MethodPost, "/v1/projects/" + pid + "/refresh", "RefreshProjectResult", http.StatusAccepted},
+	} {
+		response, body := do(t, tc.method, base+tc.path, session.Token, "", "Idempotency-Key", "contract-"+tc.schema)
+		if response.StatusCode != tc.status {
+			t.Fatalf("%s: %d %s", tc.path, response.StatusCode, body)
+		}
+		if err := api.ValidateStrict(api.Ref("entities.schema.json", tc.schema), body); err != nil {
+			t.Fatalf("%s: %v; body: %s", tc.path, err, body)
+		}
+	}
+}

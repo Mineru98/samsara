@@ -893,6 +893,24 @@
         },
         "evidence_id": {
           "type": "string"
+        },
+        "waiting_since": {
+          "type": "string"
+        },
+        "revalidation_count": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "starvation_risk": {
+          "type": "boolean"
+        },
+        "conflict": {
+          "$ref": "#/$defs/ConflictView"
+        },
+        "resolution_attempt_id": {
+          "type": "string"
+        },
+        "superseded_by": {
+          "type": "string"
         }
       }
     },
@@ -1146,6 +1164,179 @@
           }
         }
       }
+    },
+    "ConflictFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "types"
+      ]
+    },
+    "ConflictView": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConflictFile"
+          }
+        }
+      },
+      "required": [
+        "source",
+        "kinds",
+        "files"
+      ]
+    },
+    "GitHubHistoryItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "external_key": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "synced_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {}
+      },
+      "required": [
+        "id",
+        "issue_id",
+        "provider",
+        "kind",
+        "external_key",
+        "url",
+        "title",
+        "observed_at",
+        "state",
+        "source",
+        "synced_at",
+        "detail"
+      ]
+    },
+    "GitHubHistory": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GitHubHistoryItem"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "freshness": {
+          "$ref": "common.schema.json#/$defs/Freshness"
+        },
+        "sync": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "last_synced_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_attempt_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retry_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "truncated",
+        "freshness",
+        "sync",
+        "repository",
+        "last_synced_at",
+        "last_attempt_at",
+        "retry_at",
+        "error"
+      ]
+    },
+    "RefreshProjectResult": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "ACCEPTED"
+        },
+        "github": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "github"
+      ]
     }
   }
 }

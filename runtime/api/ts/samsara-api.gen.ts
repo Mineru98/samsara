@@ -237,6 +237,13 @@ export interface Config {
     integration_authority?: Open<IntegrationAuthority>;
     merge_concurrency_per_target?: 1;
     target_ref?: string;
+    worktree_retention_hours?: number;
+  } | null;
+  github?: {
+    close_issues?: boolean;
+    repository?: string;
+    sync?: Open<"auto" | "off">;
+    sync_interval_seconds?: number;
   } | null;
   observation?: {
     collect_terminal_output?: boolean;
@@ -337,6 +344,7 @@ export interface CandidateView {
   base_sha?: string;
   blocking_reasons: BlockingReason[];
   candidate_sha?: string;
+  conflict?: ConflictView;
   enqueued: boolean;
   evidence_id?: string;
   id: string;
@@ -346,14 +354,19 @@ export interface CandidateView {
   project_id: string;
   publication_observation?: string;
   queue_position: Decimal;
+  resolution_attempt_id?: string;
+  revalidation_count?: Decimal;
   revision: Decimal;
   run_id: string;
   source_sha: string;
+  starvation_risk?: boolean;
   state: Open<CandidateState>;
   state_reason?: string;
+  superseded_by?: string;
   target_id: string;
   target_ref: string;
   version: Decimal;
+  waiting_since?: string;
 }
 
 /** Backend capability support (01 §5). */
@@ -368,6 +381,18 @@ export interface ClaudeSupport {
   block_on_failure: boolean;
   failure_injection_verified: boolean;
   version: string;
+}
+
+export interface ConflictFile {
+  kind: string;
+  path: string;
+  types: string[];
+}
+
+export interface ConflictView {
+  files: ConflictFile[];
+  kinds: string[];
+  source: string;
 }
 
 export interface DependencyView {
@@ -406,6 +431,33 @@ export interface GateView {
   run_generation: Decimal;
   run_id: string;
   successor_issue_id: string;
+}
+
+export interface GitHubHistory {
+  error: string;
+  freshness: Open<Freshness>;
+  items: GitHubHistoryItem[];
+  last_attempt_at: string | null;
+  last_synced_at: string | null;
+  repository: string;
+  retry_at: string | null;
+  sync: string;
+  truncated: boolean;
+}
+
+export interface GitHubHistoryItem {
+  detail: unknown;
+  external_key: string;
+  id: string;
+  issue_id: string;
+  kind: string;
+  observed_at: string;
+  provider: string;
+  source: string;
+  state: string;
+  synced_at: string | null;
+  title: string;
+  url: string;
 }
 
 export interface IssueDetail {
@@ -497,6 +549,11 @@ export interface ProjectView {
   registry_state: Open<RegistryState>;
   root_path: string;
   version: Decimal;
+}
+
+export interface RefreshProjectResult {
+  github: string;
+  status: "ACCEPTED";
 }
 
 export interface RunView {
@@ -656,6 +713,31 @@ export interface CheckProfileRequest {
   timeout_sec?: number;
 }
 
+export interface CleanupItem {
+  branch_kept_reason?: string;
+  branch_ref?: string;
+  branch_removed: boolean;
+  eligible: boolean;
+  error?: string;
+  path: string;
+  reasons: string[] | null;
+  state: string;
+  worktree_id: string;
+  worktree_removed: boolean;
+}
+
+export interface CleanupRequest {
+  delete_branch?: boolean;
+  dry_run?: boolean;
+  project_id: string;
+  worktree_ids?: string[];
+}
+
+export interface CleanupResult {
+  dry_run: boolean;
+  items: CleanupItem[];
+}
+
 /** Accepted command. The effect is observed through events, not this response. */
 export interface CommandResult {
   command_id: string;
@@ -785,9 +867,17 @@ export interface IpcRoutes {
     request: CandidateRef;
     response: CandidateView;
   };
+  "/ipc/v1/merge/prioritize": {
+    request: PrioritizeRequest;
+    response: CommandResult;
+  };
   "/ipc/v1/merge/queues": {
     request: ProjectRef;
     response: unknown;
+  };
+  "/ipc/v1/merge/resolve": {
+    request: CandidateRef;
+    response: CommandResult;
   };
   "/ipc/v1/outputs/submit": {
     request: OutputSubmitRequest;
@@ -796,6 +886,10 @@ export interface IpcRoutes {
   "/ipc/v1/plans/apply": {
     request: Plan;
     response: PlanApplyResult;
+  };
+  "/ipc/v1/plans/revise": {
+    request: PlanReviseRequest;
+    response: PlanReviseResult;
   };
   "/ipc/v1/plans/validate": {
     request: Plan;
@@ -885,6 +979,10 @@ export interface IpcRoutes {
     request: Empty;
     response: UIBootstrap;
   };
+  "/ipc/v1/worktrees/cleanup": {
+    request: CleanupRequest;
+    response: CleanupResult;
+  };
 }
 
 export interface IssueRef {
@@ -960,6 +1058,26 @@ export interface PlanApplyResult {
   run_state: Open<RunState>;
 }
 
+export interface PlanReviseRequest {
+  expected_run_generation: Decimal;
+  plan: Plan;
+  run_id: string;
+}
+
+export interface PlanReviseResult {
+  affected_issue_ids: string[];
+  change_kind: string;
+  graph_version: Decimal;
+  invalidated_approval_ids: string[];
+  issue_mapping: Record<string, string>;
+  plan_approval_id?: string;
+  plan_digest: string;
+  run_generation: Decimal;
+  run_id: string;
+  run_state: Open<RunState>;
+  superseded_output_ids: string[];
+}
+
 export interface PlanValidation {
   blocking_run_id?: string;
   current_graph_version?: Decimal;
@@ -968,6 +1086,12 @@ export interface PlanValidation {
   project_validated: boolean;
   resolved_target_ref?: string;
   valid: boolean;
+}
+
+export interface PrioritizeRequest {
+  before?: string;
+  candidate_id: string;
+  reason: string;
 }
 
 export interface ProjectCursor {

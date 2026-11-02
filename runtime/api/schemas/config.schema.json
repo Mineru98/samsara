@@ -151,6 +151,10 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 100
+            },
+            "worktree_retention_hours": {
+              "type": "integer",
+              "minimum": 0
             }
           }
         },
@@ -169,6 +173,31 @@
               "minimum": 1
             }
           }
+        },
+        "github": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "sync": {
+              "enum": [
+                "auto",
+                "off"
+              ]
+            },
+            "repository": {
+              "type": "string"
+            },
+            "sync_interval_seconds": {
+              "type": "integer",
+              "minimum": 60
+            },
+            "close_issues": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
         }
       }
     }

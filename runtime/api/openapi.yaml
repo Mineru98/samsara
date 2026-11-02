@@ -287,20 +287,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                - items
-                - freshness
-                - sync
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                  freshness:
-                    $ref: ./schemas/common.schema.json#/$defs/Freshness
-                  sync:
-                    type: string
+                $ref: ./schemas/entities.schema.json#/$defs/GitHubHistory
         default: *id001
       security:
       - bearer: []
@@ -623,12 +610,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                - status
-                properties:
-                  status:
-                    const: ACCEPTED
+                $ref: ./schemas/entities.schema.json#/$defs/RefreshProjectResult
         default: *id001
       security:
       - bearer: []

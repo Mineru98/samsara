@@ -6,6 +6,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -13,7 +14,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/backend"
+	"github.com/Mineru98/samsara/runtime/internal/config"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/plan"
 )
@@ -338,5 +341,135 @@ func TestTypeScriptUpToDate(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("%s is stale; run `go test ./api -run TestTypeScriptUpToDate -update`", TSFile)
+	}
+}
+
+func TestCurrentConfigContract(t *testing.T) {
+	cfg := config.Default()
+	cfg.Git.WorktreeRetentionHours = 24
+	cfg.GitHub.Repository = "example/repo"
+	cfg.GitHub.CloseIssues = true
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateStrict("config.schema.json", b); err != nil {
+		t.Fatalf("config contract: %v\n%s", err, b)
+	}
+}
+
+func TestGitHubOpenAPIResponseSchemas(t *testing.T) {
+	b, err := os.ReadFile("openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]struct {
+			Responses map[string]struct {
+				Content map[string]struct {
+					Schema map[string]any `yaml:"schema"`
+				} `yaml:"content"`
+			} `yaml:"responses"`
+		} `yaml:"paths"`
+	}
+	if err := yaml.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ path, method, status, ref string }{
+		{"/v1/projects/{project_id}/github-history", "get", "200", "./schemas/entities.schema.json#/$defs/GitHubHistory"},
+		{"/v1/projects/{project_id}/refresh", "post", "202", "./schemas/entities.schema.json#/$defs/RefreshProjectResult"},
+	} {
+		got := doc.Paths[tc.path][tc.method].Responses[tc.status].Content["application/json"].Schema["$ref"]
+		if got != tc.ref {
+			t.Errorf("%s %s response schema = %v, want %s", tc.method, tc.path, got, tc.ref)
+		}
+	}
+}
+
+func TestIPCNewSchemaFieldsMatchGo(t *testing.T) {
+	doc, err := SchemaDoc("ipc.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defs := doc["$defs"].(map[string]any)
+	for _, tc := range []struct {
+		name  string
+		value any
+	}{
+		{"PlanReviseRequest", plan.Revision{}},
+		{"PlanReviseResult", app.PlanReviseResult{}},
+		{"CandidateRef", struct {
+			CandidateID string `json:"candidate_id"`
+		}{}},
+		{"PrioritizeRequest", struct {
+			CandidateID string `json:"candidate_id"`
+			app.PrioritizeRequest
+		}{}},
+		{"CleanupRequest", app.CleanupRequest{}},
+		{"CleanupResult", app.CleanupResult{}},
+		{"CleanupItem", app.CleanupItem{}},
+		{"CommandResult", app.CommandResult{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			want := map[string]bool{}
+			var fields func(reflect.Type)
+			fields = func(typ reflect.Type) {
+				for i := 0; i < typ.NumField(); i++ {
+					f := typ.Field(i)
+					if f.Anonymous {
+						fields(f.Type)
+						continue
+					}
+					tag := strings.Split(f.Tag.Get("json"), ",")[0]
+					if tag != "" && tag != "-" {
+						want[tag] = true
+					}
+				}
+			}
+			fields(reflect.TypeOf(tc.value))
+			props := defs[tc.name].(map[string]any)["properties"].(map[string]any)
+			for name := range want {
+				if _, ok := props[name]; !ok {
+					t.Errorf("schema missing Go field %s", name)
+				}
+			}
+			for name := range props {
+				if !want[name] {
+					t.Errorf("schema field %s absent from Go", name)
+				}
+			}
+		})
+	}
+}
+
+func TestIPCRouteCatalogRequiresEveryRoute(t *testing.T) {
+	doc, err := SchemaDoc("ipc.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog := doc["$defs"].(map[string]any)["IpcRoutes"].(map[string]any)
+	props := catalog["properties"].(map[string]any)
+	required := map[string]bool{}
+	for _, name := range catalog["required"].([]any) {
+		required[name.(string)] = true
+	}
+	for name := range props {
+		if !required[name] {
+			t.Errorf("route %s is not required by the catalog schema", name)
+		}
+	}
+	for name := range required {
+		if _, ok := props[name]; !ok {
+			t.Errorf("required route %s has no definition", name)
+		}
+	}
+	err = ValidateStrict(Ref("ipc.schema.json", "IpcRoutes"), []byte(`{}`))
+	if err == nil {
+		t.Fatal("empty IPC route catalog accepted")
+	}
+	for _, name := range []string{"/ipc/v1/plans/revise", "/ipc/v1/merge/resolve", "/ipc/v1/merge/prioritize", "/ipc/v1/worktrees/cleanup"} {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("missing %s did not cause validation failure: %v", name, err)
+		}
 	}
 }
