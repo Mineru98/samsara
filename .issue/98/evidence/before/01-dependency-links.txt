@@ -1,0 +1,25 @@
+# HEAD f439def (feat/98-issue-dependency-links) — 변경 전
+
+$ node skills/issue-start/scripts/issue-start.mjs prereq 98
+✗ 알 수 없는 모드: prereq
+Usage:
+[exit 1]
+
+$ node skills/issue-create/scripts/issue-create.mjs link 99 --after 98 --dry-run
+✗ 알 수 없는 모드: link
+Usage:
+[exit 1]
+
+$ node skills/issue-create/scripts/issue-create.mjs create --title t --body-file README.md --label enhancement --skip-duplicate-review --after 97 --dry-run
+✗ 알 수 없는 옵션: --after
+Usage:
+[exit 1]
+
+$ node skills/issue-merge/scripts/issue-merge.mjs mark-successors --issue 98
+Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|status|cleanup> [options]
+
+[exit 1]
+
+$ grep -c '선행 이슈' skills/issue-create/references/issue-draft.md
+0
+[exit 1]
