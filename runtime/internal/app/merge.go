@@ -866,6 +866,9 @@ func (a *App) maybeCompleteIssue(ctx context.Context, tx *sqlite.Tx, runID, issu
 	}
 	tx.Touch(out.ProjectID, sqlite.KindIssue, issueID)
 	tx.Event(out.ProjectID, "issue.completed", "issue", issueID, 0)
+	if err := a.enqueueGitHubClose(ctx, tx, out.ProjectID, issueID); err != nil {
+		return err
+	}
 	return a.maybeCompleteRun(ctx, tx, runID)
 }
 

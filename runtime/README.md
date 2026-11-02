@@ -53,6 +53,10 @@ Standalone(직접 연 Claude 세션)은 scheduler가 준비한 worktree에서 Cl
 | `execution.worker_command` | `[claude]` | 관리 worker로 실행할 argv(shell 미사용) |
 | `execution.lease_ttl_seconds` / `heartbeat_seconds` | 30 / 5 | lease TTL과 launcher heartbeat |
 | `git.branch_prefix` | `samsara` | `refs/heads/<prefix>/<project>/<issue>/<attempt>` |
+| `github.sync` | `auto` | `auto`면 origin이 github.com이고 `gh`가 로그인돼 있을 때 이력을 동기화, `off`면 조회하지 않음 |
+| `github.repository` | `""` | `owner/name`. 비우면 origin remote에서 추론 |
+| `github.sync_interval_seconds` | 300 | 동기화 주기(최소 60). 최근 성공이 2주기 이내면 freshness `LIVE`, 넘으면 `STALE` |
+| `github.close_issues` | `false` | `true`일 때만 로컬 이슈 COMPLETED 시 `samsara link add --issue`로 연결한 GitHub 이슈를 닫는다(쓰기) |
 
 ## 문서 ↔ 코드 대응
 
@@ -108,7 +112,7 @@ Claude Code 2.1.311, tmux 3.4, git 2.43, SQLite 3.53.3, Linux 환경에서 실�
 
 - **herdr**: 설치된 binary의 version과 `herdr api schema --json` hash는 기록한다. 하지만 compatibility manifest에서 protocol 검증(`herdr_protocol_verified`)을 하기 전에는 생성·입력 capability를 `UNSUPPORTED(HERDR_COMPAT_UNVERIFIED)`로 보고한다. 그래서 auto mode는 tmux로 넘어간다. 실제 herdr CLI·socket adapter 구현은 M5 범위다.
 - **GitHub native merge queue(`github_queue`)**: provider 정책 검사 연동을 검증하기 전이므로 enqueue 요청에 `UNSUPPORTED_CAPABILITY`를 반환한다. `manual` authority는 사용자가 외부에서 반영하면 target에 source가 포함된 것을 관찰해 증거를 기록한다.
-- **GitHub 이력 동기화**: `samsara link add`로 기록한 issue·PR·commit 링크만 제공한다. 원격 동기화는 하지 않고, freshness를 `UNAVAILABLE`로 표시한다.
+- **GitHub 이력 동기화**: 사용자의 `gh` 로그인으로 issue·PR·commit·check·review를 읽기 전용 조회해 `external_links`에 출처(`source`)·동기화 시각(`synced_at`)과 함께 기록한다. 토큰은 런타임이 읽지도 저장하지도 않는다. cursor(`since`) 증분 조회, rate limit은 reset 시각까지 대기, 그 밖의 장애는 지수 backoff다. 장애·rate limit은 `github-history`의 `sync` 상태(`AUTH_REQUIRED`·`REPO_NOT_FOUND`·`RATE_LIMITED`·`PROVIDER_ERROR`)로만 나타나고 로컬 업무 상태는 바꾸지 않는다. `POST /v1/projects/{id}/refresh`는 다음 동기화를 즉시 실행한다(rate limit 창은 유지). GitHub Enterprise 원격과 PR↔로컬 이슈 자동 연결은 지원하지 않는다.
 - **실행 중 계획 수정(pause+revise)**: 미구현이다. 실행 중 apply는 409를 반환하고, 새 계획은 기존 run을 취소한 뒤 적용한다.
 - **Hook 실패 차단의 실측**: `claude --version` ≥ 2.1.295일 때만 managed execution을 허용한다. `samsara doctor --hook-probe`는 임시 디렉터리에서 실제 Claude(haiku)에 HK-01·03·04·05·06·07·16을 주입하고, `touch marker` 실행 여부로 차단을 판정한다. 결과는 `<state>/hook-failure-probe.json`에 남고, `--write-manifest`를 함께 주면 통과한 Claude 버전만 manifest의 `policy_hook_failure_block_verified=true`로 기록한다. probe 없이 Claude 버전이 바뀌면 이 값은 false로 돌아간다. doctor의 `claude_fail_closed`는 버전 조건과 실측을 모두 통과했을 때만 true다. managed execution 허용 조건은 아직 버전 숫자만 본다. 참고로 Claude는 문법이 깨진 hook stdout(exit 0)을 plain text로 보고 native permission에 맡긴다(HK-07s, 정보 항목). bridge는 JSON을 한 번에 쓰고 실패하면 exit 2로 끝나므로 이 경로를 만들지 않는다.
 - **Windows, 원격 호스트, OS sandbox**: 범위 밖이다(ADR 23). Hook과 lease는 협력적 정책 경계이며, 같은 OS 사용자의 임의 프로세스를 격리하지 않는다.

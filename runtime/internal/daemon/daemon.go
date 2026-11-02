@@ -209,7 +209,11 @@ func Run(opts Options) error {
 		case <-ctx.Done():
 		}
 	}()
+	var ghDone sync.WaitGroup
+	ghDone.Add(1)
+	go func() { defer ghDone.Done(); a.GitHubLoop(ctx, 15*time.Second) }()
 	a.Loop(ctx, opts.Interval)
+	ghDone.Wait()
 
 	// Graceful stop: no new assignments; DB transactions finish. Managed
 	// workers keep running but their next policy check fails closed because

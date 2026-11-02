@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
 )
 
@@ -159,7 +161,11 @@ func (a *App) ProjectSnapshot(ctx context.Context, projectID string) (*sqlite.Sn
 		s.RuntimeEpoch = a.Epoch
 		s.DatabaseGeneration = a.DB.DatabaseGeneration
 		s.SnapshotCursor = EncodeCursor(Cursor{Scope: projectID, DBGen: a.DB.DatabaseGeneration, Seq: seq})
-		s.Freshness = map[string]string{"runtime": domain.FreshLive, "backend_observation": a.observationFreshness(ctx, q, projectID), "github": domain.FreshUnavailable}
+		gh, err := a.githubFreshnessOf(ctx, q, projectID)
+		if err != nil {
+			return err
+		}
+		s.Freshness = map[string]string{"runtime": domain.FreshLive, "backend_observation": a.observationFreshness(ctx, q, projectID), "github": gh}
 		snap = s
 		return nil
 	})
@@ -502,30 +508,82 @@ func (a *App) History(ctx context.Context, projectID string, pr PageReq, include
 	return p, err
 }
 
-// GitHubHistory lists recorded external links. Live GitHub sync is not
-// part of this build; freshness says so explicitly.
+// githubHistoryLimit bounds the history list; older rows stay in the DB.
+const githubHistoryLimit = 500
+
+// GitHubHistory lists external links (manual and synced) with the sync
+// provenance: source and last sync time per item, provider status and the
+// last successful sync for the whole list. A provider failure is reported in
+// `sync`, never as a missing project (03 §7.3).
 func (a *App) GitHubHistory(ctx context.Context, projectID string) (map[string]any, error) {
 	items := []map[string]any{}
+	out := map[string]any{"items": items}
 	err := a.DB.Read(ctx, func(q sqlite.Q) error {
-		if _, err := sqlite.GetProject(ctx, q, projectID); err != nil {
+		p, err := sqlite.GetProject(ctx, q, projectID)
+		if err != nil {
 			return err
 		}
-		rows, err := q.QueryContext(ctx, "SELECT id, COALESCE(issue_id,''), provider, kind, external_key, url, title, observed_at FROM external_links WHERE project_id=? ORDER BY observed_at DESC", projectID)
+		rows, err := q.QueryContext(ctx, `SELECT id, COALESCE(issue_id,''), provider, kind, external_key, url, title, observed_at, state, source, synced_at, detail
+			FROM external_links WHERE project_id=? ORDER BY COALESCE(synced_at, observed_at) DESC, observed_at DESC, id LIMIT ?`, projectID, githubHistoryLimit+1)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var id, issue, prov, kind, key, url, title string
+			var id, issue, prov, kind, key, url, title, state, source, detail string
 			var obs int64
-			if err := rows.Scan(&id, &issue, &prov, &kind, &key, &url, &title, &obs); err != nil {
+			var synced sql.NullInt64
+			if err := rows.Scan(&id, &issue, &prov, &kind, &key, &url, &title, &obs, &state, &source, &synced, &detail); err != nil {
 				return err
 			}
-			items = append(items, map[string]any{"id": id, "issue_id": issue, "provider": prov, "kind": kind, "external_key": key, "url": url, "title": title, "observed_at": domain.RFC3339(obs)})
+			it := map[string]any{"id": id, "issue_id": issue, "provider": prov, "kind": kind, "external_key": key, "url": url, "title": title,
+				"observed_at": domain.RFC3339(obs), "state": state, "source": source, "synced_at": nil, "detail": json.RawMessage(detail)}
+			if synced.Valid {
+				it["synced_at"] = domain.RFC3339(synced.Int64)
+			}
+			items = append(items, it)
 		}
-		return rows.Err()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		out["truncated"] = len(items) > githubHistoryLimit
+		if len(items) > githubHistoryLimit {
+			items = items[:githubHistoryLimit]
+		}
+		st, err := loadGitHubState(ctx, q, projectID)
+		if err != nil {
+			return err
+		}
+		out["items"] = items
+		out["freshness"] = githubFreshness(st, projectConfig(p), a.nowMillis())
+		out["sync"], out["repository"], out["last_synced_at"], out["last_attempt_at"], out["retry_at"], out["error"] = github.StatusNotConfigured, "", nil, nil, nil, ""
+		if st != nil {
+			out["sync"], out["repository"], out["error"] = st.Status, st.Repository, st.LastError
+			if st.LastSuccess.Valid {
+				out["last_synced_at"] = domain.RFC3339(st.LastSuccess.Int64)
+			}
+			if st.LastAttempt.Valid {
+				out["last_attempt_at"] = domain.RFC3339(st.LastAttempt.Int64)
+			}
+			if st.Status != github.StatusOK && st.NextAttempt > 0 {
+				out["retry_at"] = domain.RFC3339(st.NextAttempt)
+			}
+		}
+		return nil
 	})
-	return map[string]any{"items": items, "freshness": domain.FreshUnavailable, "sync": "NOT_CONFIGURED"}, err
+	return out, err
+}
+
+func (a *App) githubFreshnessOf(ctx context.Context, q sqlite.Q, projectID string) (string, error) {
+	p, err := sqlite.GetProject(ctx, q, projectID)
+	if err != nil {
+		return "", err
+	}
+	st, err := loadGitHubState(ctx, q, projectID)
+	if err != nil {
+		return "", err
+	}
+	return githubFreshness(st, projectConfig(p), a.nowMillis()), nil
 }
 
 // LinkRequest records an external issue/PR/commit link for an issue.
@@ -548,6 +606,11 @@ func (a *App) AddExternalLink(ctx context.Context, cmd Cmd, req LinkRequest) err
 	}
 	if req.Provider == "" || req.ExternalKey == "" {
 		return domain.Errf(domain.CodeInvalidRequest, "provider and external_key are required")
+	}
+	// Sync and the opt-in close address GitHub issues and PRs by
+	// owner/name#N; any other spelling would never match them.
+	if _, _, ok := github.ParseIssueKey(req.ExternalKey); req.Provider == "github" && req.Kind != "commit" && !ok {
+		return domain.Errf(domain.CodeInvalidRequest, "github %s external_key must be owner/name#N", req.Kind)
 	}
 	return a.DB.Write(ctx, func(tx *sqlite.Tx) error {
 		if _, err := sqlite.GetProject(ctx, tx, req.ProjectID); err != nil {

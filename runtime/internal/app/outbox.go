@@ -51,6 +51,7 @@ type outboxRow struct {
 // (14.2). prompt.submit and session.interrupt are never resent.
 var resendSafe = map[string]bool{
 	"worktree.create": true, "worker.launch": true, "output.verify": true, "merge.validate": true, "git.publish": true,
+	"github.issue.close": true,
 }
 
 const maxOutboxAttempts = 8
@@ -127,6 +128,8 @@ func (a *App) runHandler(ctx context.Context, r outboxRow) (o outcome) {
 		return a.handleMergeValidate(ctx, payload)
 	case "git.publish":
 		return a.handlePublish(ctx, payload)
+	case "github.issue.close":
+		return a.handleGitHubIssueClose(ctx, r, payload)
 	}
 	return failed("unknown outbox kind "+r.Kind, nil)
 }
