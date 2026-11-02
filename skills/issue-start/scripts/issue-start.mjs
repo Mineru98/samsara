@@ -12,6 +12,7 @@
  *   evidence-urls <n>    코멘트에 붙일 raw 이미지 URL 출력
  *   migrate              .issue-start / .issue-evidence 를 .issue 로 이관
  *   sync-base            증거 미러 뒤 주 체크아웃의 기본 브랜치를 최신화
+ *   base [--set <b>]     기준 브랜치와 어긋남 신호 확인, --set 이면 저장소에 기록
  *
  * 사용:
  *   node issue-start.mjs fetch 59
@@ -42,7 +43,9 @@ import {
   branchExists, remoteBranchExists, existingWorktreeFor, isIgnored,
   slugify, prefixFromLabels, parseIssueNumber, inferIssue,
   issueDir, evidenceDir, evidenceRel, listEvidence, ensureIgnoreBlock,
-  mirrorEvidence, resolveSkillScript, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
+  mirrorEvidence, assertBaseAgreed, baseDrift, setProjectBaseBranch, readProjectSettings,
+  getDefaultBaseBranch, setDefaultBaseBranch,
+  resolveSkillScript, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
   setTerminalTitle, WORKSPACE_DIR, GRAPH_FILE_NAME, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
 } from './issue-common.mjs';
 import {
@@ -64,6 +67,7 @@ function usage(exitCode = 1) {
   node issue-start.mjs evidence-init|evidence-commit|evidence-mirror|evidence-urls|report-check <issue-number> [options]
   node issue-start.mjs migrate [--dry-run]
   node issue-start.mjs sync-base [--base <branch>]
+  node issue-start.mjs base [--set <branch>] [--default <branch>]
 
 fetch:
   이슈 본문·코멘트·라벨을 .issue/<번호>/issue.json / issue.md 로 저장하고
@@ -77,6 +81,13 @@ worktree options:
   --layout <l>     이번 실행에 한해 배치 강제 (${WORKTREE_LAYOUTS.join('|')})
   --path <dir>     워크트리 경로 직접 지정 (설정을 우회하는 탈출구)
   --dry-run        실행 계획만 출력
+
+  기록된 기준 브랜치가 주 체크아웃·최근 PR base 와 어긋나면 exit 8 과 BASE_DRIFT=1 로 멈춘다.
+  evidence-mirror --push 도 같다. 어느 쪽을 쓸지 정해 base --set <branch> 로 기록한 뒤 다시 실행한다.
+
+base options:
+  --set <branch>       이 저장소의 기준 브랜치를 기록 (.issue/settings.json, 워크트리 공용)
+  --default <branch>   판별이 안 될 때 쓸 사용자 기본값을 기록 (~/.issue/settings.json)
 
 evidence options:
   --push           evidence-mirror 에서 push 까지 수행
@@ -239,6 +250,7 @@ function labelsOf(root, number) {
 function cmdWorktree(number, root, opts) {
   const remote = detectRemote(root);
   const base = detectBase(root, remote, opts.base);
+  assertBaseAgreed(root, base, opts.base, remote);
   const labels = labelsOf(root, number);
   const slug = slugify(opts.slug || `issue-${number}`);
 
@@ -451,6 +463,28 @@ function cmdSyncBase(root, opts) {
   console.log(JSON.stringify(syncBaseCheckout({ root, base: opts.base }), null, 2));
 }
 
+function cmdBase(root, opts) {
+  if (opts.default) setDefaultBaseBranch(opts.default);
+  if (opts.set) setProjectBaseBranch(root, opts.set);
+  const recorded = readProjectSettings(root).git?.baseBranch;
+  const base = detectBase(root, 'origin');
+  let source = 'project';
+  if (!recorded) {
+    if (readProjectSettings(root).git?.baseBranch) source = 'detected';
+    else source = getDefaultBaseBranch() ? 'home-default' : 'fallback';
+  }
+  const d = baseDrift(root, base);
+  console.log(`BASE=${base}`);
+  console.log(`SOURCE=${source}`);
+  if (source === 'fallback') console.log('DEFAULT_BASE_UNSET=1');
+  console.log(`SIGNAL_MAIN_CHECKOUT=${d.signals.mainCheckout ?? ''}`);
+  console.log(`SIGNAL_RECENT_PR_BASE=${d.signals.recentPrBase ?? ''}`);
+  if (d.drift) {
+    console.log('BASE_DRIFT=1');
+    console.log(`BASE_CANDIDATE=${d.candidate}`);
+  }
+}
+
 /* ---------------------------------------------------------------- migrate */
 
 /** `.issue-start/<n>` → `.issue/<n>`, `.issue-evidence/<k>` → `.issue/<k>/evidence` */
@@ -503,7 +537,7 @@ function cmdMigrate(root, opts) {
 const NEEDS_NUMBER = new Set([
   'fetch', 'worktree', 'evidence-init', 'evidence-commit', 'evidence-mirror', 'evidence-urls', 'report-check',
 ]);
-const MODES = new Set([...NEEDS_NUMBER, 'guard', 'migrate', 'sync-base', 'status']);
+const MODES = new Set([...NEEDS_NUMBER, 'guard', 'migrate', 'sync-base', 'base', 'status']);
 // 영속 gate 가 걸린 이슈에서는 issue-gate.mjs run 의 자식(fence 일치)만 부수효과를 낼 수 있다
 const GATED_MODES = new Set(['fetch', 'worktree', 'evidence-commit', 'evidence-mirror', 'sync-base']);
 
@@ -548,6 +582,8 @@ function main() {
     else if (arg === '--repo') opts.repo = argv[++i];
     else if (arg === '--issue') number = parseIssueNumber(argv[++i]);
     else if (arg === '--mirrorRef') opts.mirrorRef = argv[++i];
+    else if (arg === '--set') opts.set = argv[++i];
+    else if (arg === '--default') opts.default = argv[++i];
     else if (arg.startsWith('-')) {
       console.error(`✗ 알 수 없는 옵션: ${arg}`);
       usage();
@@ -599,6 +635,7 @@ function main() {
     case 'report-check': cmdReportCheck(number, root); break;
     case 'migrate': cmdMigrate(root, opts); break;
     case 'sync-base': cmdSyncBase(root, opts); break;
+    case 'base': cmdBase(root, opts); break;
     default: usage();
   }
 }

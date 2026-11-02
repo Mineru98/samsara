@@ -320,6 +320,66 @@ function recordBaseBranch(root, branch) {
   );
 }
 
+/**
+ * 기록된 기준 브랜치가 실제 작업 흐름과 어긋나는지 본다(이슈 #90).
+ *
+ * 신호는 둘이다. 주 체크아웃이 지금 걸어 둔 브랜치와 최근 PR 들이 가장 많이 겨눈 base.
+ * 둘이 같은 다른 브랜치를 가리키고 그 브랜치가 원격에 있을 때만 어긋남으로 본다.
+ * 한쪽만 다르면 기능 브랜치에 잠깐 가 있거나 예외 PR 일 수 있으므로 묻지 않는다.
+ * gh 를 못 쓰면 PR 신호가 없어 멈추지 않는다.
+ * 사용자가 같은 후보를 보고 기록값을 유지하기로 했으면(git.baseDriftAck) 다시 묻지 않는다.
+ */
+export function baseDrift(root, base, remote = 'origin') {
+  const mainBranch = currentBranch(mainCheckout(root) ?? root);
+  const pr = run('gh', ['pr', 'list', '--state', 'all', '--limit', '20', '--json', 'baseRefName'], { cwd: root });
+  let prBase = null;
+  if (pr.code === 0) {
+    try {
+      const counts = new Map();
+      for (const p of JSON.parse(pr.out || '[]')) {
+        if (p?.baseRefName) counts.set(p.baseRefName, (counts.get(p.baseRefName) ?? 0) + 1);
+      }
+      prBase = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    } catch {
+      prBase = null;
+    }
+  }
+  const candidate = mainBranch && mainBranch === prBase && mainBranch !== base ? mainBranch : null;
+  const drift = Boolean(candidate)
+    && readProjectSettings(root).git?.baseDriftAck !== candidate
+    && remoteBranchExists(root, remote, candidate);
+  return { drift, base, candidate, signals: { mainCheckout: mainBranch, recentPrBase: prBase } };
+}
+
+/**
+ * 미러 push·워크트리 생성 전에 부른다. 어긋나면 아무것도 하지 않고 exit 8 로 빠진다.
+ * 스킬이 BASE_RECORDED 와 BASE_CANDIDATE 중 무엇을 쓸지 사용자에게 한 번 묻고
+ * `issue-start.mjs base --set <branch>` 로 기록한 뒤 다시 실행한다.
+ * --base 를 명시한 실행은 사용자가 이미 고른 것이므로 검사하지 않는다.
+ */
+export function assertBaseAgreed(root, base, explicit, remote = 'origin') {
+  if (explicit) return;
+  const d = baseDrift(root, base, remote);
+  if (!d.drift) return;
+  console.error(`✗ 기록된 기준 브랜치(${d.base})가 실제 작업 흐름(${d.candidate})과 다릅니다.`);
+  console.error(`  주 체크아웃: ${d.signals.mainCheckout} / 최근 PR base: ${d.signals.recentPrBase}`);
+  console.log('BASE_DRIFT=1');
+  console.log(`BASE_RECORDED=${d.base}`);
+  console.log(`BASE_CANDIDATE=${d.candidate}`);
+  process.exit(8);
+}
+
+/** 사용자가 고른 기준 브랜치를 기록한다. 그때 보이던 다른 후보는 거절한 것으로 남긴다. */
+export function setProjectBaseBranch(root, branch, remote = 'origin') {
+  if (!branch || typeof branch !== 'string') fail(`기준 브랜치 이름이 필요하다: ${branch}`);
+  const chosen = branch.replace(new RegExp(`^${remote}/`), '');
+  const { candidate } = baseDrift(root, chosen, remote);
+  const next = { ...(readProjectSettings(root).git ?? {}), baseBranch: chosen, confirmedAt: new Date().toISOString() };
+  if (candidate) next.baseDriftAck = candidate;
+  else delete next.baseDriftAck;
+  return writeProjectSettings(root, { git: next });
+}
+
 /** 주 체크아웃 경로. `git worktree list` 의 첫 항목이 항상 주 체크아웃이다. */
 export function mainCheckout(root) {
   return listWorktrees(root)[0]?.path ?? null;
@@ -1193,9 +1253,20 @@ export function writeIssueSettings(patch) {
  *
  * 홈 설정(`~/.issue-plugin/settings.json`)은 "사용자가 보통 어떻게 하는가"를 담고,
  * 이 파일은 "이 저장소에서는 실제로 무엇을 쓰는가"를 담는다. 저장소 쪽이 우선이다.
+ *
+ * 링크된 워크트리에서 불러도 주 체크아웃의 파일을 쓴다(이슈 #90).
+ * 워크트리마다 따로 두면 워크트리 안에서 판별한 `main` 이 새로 기록되어
+ * 메인 폴더에 기록된 통합 브랜치를 무시하고 그쪽으로 미러가 올라간다.
  */
+export function projectRoot(root) {
+  if (!root) return root;
+  const common = git(['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root }).out;
+  if (!common || path.basename(common) !== '.git') return root;
+  return path.dirname(common);
+}
+
 export function projectSettingsPath(root) {
-  return path.join(root, WORKSPACE_DIR, PROJECT_SETTINGS_FILE);
+  return path.join(projectRoot(root), WORKSPACE_DIR, PROJECT_SETTINGS_FILE);
 }
 
 export function readProjectSettings(root) {
@@ -1219,6 +1290,7 @@ export function readProjectSettings(root) {
  */
 export function writeProjectSettings(root, patch, { ensureIgnored = true } = {}) {
   if (!root) return null;
+  root = projectRoot(root);
   if (!isIgnored(root, PROJECT_SETTINGS_REL)) {
     if (!ensureIgnored) return null;
     ensureIgnoreBlock(root);
@@ -1298,6 +1370,7 @@ export function mirrorEvidence({ root, key, issue, push = false, base: explicitB
   if (files.length === 0) fail(`증거 파일이 없습니다: ${evidenceRel(root, key)}`);
 
   const base = detectBase(root, 'origin', explicitBase);
+  if (push) assertBaseAgreed(root, base, explicitBase);
   git(['fetch', 'origin', base, '--prune'], { cwd: root });
 
   const tmp = path.join(os.tmpdir(), `issue-mirror-${key}-${process.pid}`);
