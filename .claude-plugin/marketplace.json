@@ -9,7 +9,7 @@
     {
       "name": "samsara",
       "description": "Manage software changes as linked issues with ontology-aware planning, evidence capture, verification, and merge orchestration.",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "author": {
         "name": "Mineru98"
       },
