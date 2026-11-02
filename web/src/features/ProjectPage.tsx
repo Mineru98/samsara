@@ -1,6 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { ProjectSummary } from "../api/contract";
-import { useStream } from "../hooks";
+import { useMediaQuery, useStream } from "../hooks";
 import { projectSpec } from "../realtime/specs";
 import { setParams, useRoute } from "../router";
 import { stateLabel } from "../status";
@@ -9,6 +9,7 @@ import { ConnectionBanner } from "./ConnectionBanner";
 import { CommandButton } from "./CommandButton";
 import { ActivityDock, type DockTab } from "./dock/ActivityDock";
 import { IssueGraph } from "./graph/IssueGraph";
+import { warmLayoutWorker } from "./graph/layout";
 import { defaultRunId, issuesOf } from "./graph/model";
 import { Inspector } from "./inspector/Inspector";
 import { IssueTable } from "./IssueTable";
@@ -25,10 +26,13 @@ const enc = encodeURIComponent;
 export function ProjectPage({ projectId, summary }: { projectId: string; summary: ProjectSummary | undefined }) {
   const { view: stream, controller } = useStream(projectId, projectSpec);
   const { params } = useRoute();
-  const viewMode = (params.get("view") as View) || "issues";
+  // Phones open on the list; the DAG stays one tap away (02 §19).
+  const defaultView: View = useMediaQuery("(max-width: 767px)") ? "list" : "issues";
+  const viewMode = (params.get("view") as View) || defaultView;
   const selected = params.get("sel");
   const tab = (params.get("tab") as DockTab) || "sessions";
   const select = useCallback((id: string | null) => setParams({ sel: id }, { replace: true }), []);
+  useEffect(warmLayoutWorker, []);
 
   if (!stream || (stream.status === "connecting" && !stream.data)) {
     return <div className="center muted">프로젝트를 불러오는 중…</div>;
@@ -106,7 +110,7 @@ export function ProjectPage({ projectId, summary }: { projectId: string; summary
       <div className="toolbar" role="toolbar" aria-label="그래프 보기">
         <div role="group" aria-label="보기 방식" className="chips">
           {VIEWS.map((v) => (
-            <button key={v.key} type="button" className="chip" aria-pressed={viewMode === v.key} onClick={() => setParams({ view: v.key === "issues" ? null : v.key }, { replace: true })}>
+            <button key={v.key} type="button" className="chip" aria-pressed={viewMode === v.key} onClick={() => setParams({ view: v.key === defaultView ? null : v.key }, { replace: true })}>
               {v.label}
             </button>
           ))}
@@ -124,7 +128,7 @@ export function ProjectPage({ projectId, summary }: { projectId: string; summary
           )}
         </div>
         {selected ? (
-          <Inspector entities={e} selected={selected} canCommand={canCommand} offlineReason={offlineReason} onClose={() => select(null)} />
+          <Inspector key={selected} entities={e} selected={selected} canCommand={canCommand} offlineReason={offlineReason} onClose={() => select(null)} />
         ) : (
           <MergeQueuePanel entities={e} canCommand={canCommand} offlineReason={offlineReason} onSelectIssue={(id) => select(`issue:${id}`)} />
         )}

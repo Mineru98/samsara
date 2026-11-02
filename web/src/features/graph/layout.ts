@@ -22,6 +22,11 @@ function getWorker(): Worker | null {
   return worker;
 }
 
+/** Start the worker (and its ELK bundle parse) while the snapshot is still loading. */
+export function warmLayoutWorker(): void {
+  getWorker();
+}
+
 /**
  * Lay out a graph in the ELK worker. The caller compares the returned
  * structure key with its current graph so a slow answer for an old project
