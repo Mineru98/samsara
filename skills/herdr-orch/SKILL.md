@@ -85,6 +85,8 @@ agent 여러 개를 한 번에 넘길 수 있다. 하나라도 이벤트가 나�
 | issue-end 11 다음 행동 | 여기서 종료 → tab 닫기 | 4 참조 |
 | issue-merge 3 후보 확정 · 6 PR merge · 7 정리 | 6 참조 | 6 참조 |
 
+issue-start 마지막 화면(메인 최신화 + 다음 행동)은 `scripts/start-finish.sh <agent> <메인 경로>` 로 한 번에 답한다. 다른 세션의 `issue-sync` stash 가 있으면 멈추고(exit 2) 기다린다(실측: #96).
+
 설계 범위·해석을 정하는 질문(issue-start 4단계 등), 원격 브랜치에 push·revert 하는 선택은 자동 응답하지 않고 사용자에게 묻는다.
 선택지에 없는 지시를 넣을 때는 `Type something.` 줄로 커서를 옮기고 `herdr pane send-text <pane> "<지시>"` → 화면에 입력된 것을 확인 → `enter` (실측: #88 main revert + dev 재미러 지시).
 
@@ -96,6 +98,7 @@ agent 여러 개를 한 번에 넘길 수 있다. 하나라도 이벤트가 나�
 
 - issue-end 가 PR 을 만들고 마지막 "다음 행동" 질문(`issue-end 11단계`)을 띄우면 그 이슈의 tab 일은 끝난 것이다.
   이 질문은 사용자에게 묻지 않는다. merge 는 그 tab 에서 하지 않는다.
+- 실행: `scripts/end-tab.sh <agent>` — 아래 절차를 한 번에 한다(실측: #103).
 - "종료" 선택지 번호는 화면마다 다르다(3 또는 4). 번호로 옮기지 말고 `down` 을 하나씩 보내며 커서 줄에 `종료` 가 보일 때까지 옮긴다(실측: #89 는 3번).
 - 자동 처리: "여기서 종료" 로 커서를 옮겨 확인 → enter → `pane wait-output --match "User answered"` →
   `agent wait --until idle --until done` → 마지막 출력(PR 번호, 남은 판단 거리)을 읽어 둔다 → `herdr tab close <tab_id>`.
@@ -165,6 +168,8 @@ LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 �
   - `agent prompt` 직후 잠깐 `done` 으로 읽힌다. 감시기를 다시 띄우기 전에 `agent wait <agent> --until working --timeout 15000` 으로 작업 시작을 확인한다.
   - `~/.codex/hooks.json` 이 바뀌면 codex 가 시작할 때 "hooks need review" 화면을 띄워 첫 프롬프트를 삼킨다. 상태는 `done` 으로 읽힌다. hook 신뢰는 사용자에게 묻고(실측: 사용자가 trust all 선택 → `t`), `esc` 로 닫은 뒤 첫 프롬프트를 다시 보낸다.
   - 사다리 단계를 올릴 때 이전 단계가 남긴 `.issue/merge/<묶음>/` 계획·의미 충돌 목록·사용자 결정(예: S3)을 첫 프롬프트에 요약해 넘긴다.
+- 사다리를 건너뛰는 경우: 모델 문제가 아니라 설치 플러그인 문제(예: codex 쪽 0.3.6 issue-merge 의 계약 해시 불일치로 실행 거부)로 cx tab 이 시작조차 못 하면, cx 다음 단계도 같은 플러그인이라 같은 결과다. 사용자에게 묻고 cc 사다리(별도 설치본)로 넘긴다(실측: #65 #69 #97 회차).
+- merge tab 을 손으로 열 때도 `LAUNCH` 를 반드시 넘긴다. 빠뜨리면 `start-tab.sh` 기본값(`cc --mode=dev --model=opus`, effort medium)으로 뜬다(실측: 한 번 빠뜨려 다시 띄움).
 - `EXHAUSTED=1` 이면 더 올리지 않고 사용자에게 상황을 보고하고 묻는다.
 - tab 이름에 단계 모델을 넣는다. 예: `#64 #66 merge[6.1 sol medium]: …`.
 
