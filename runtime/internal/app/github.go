@@ -126,12 +126,7 @@ func (a *App) syncGitHubProject(ctx context.Context, p *sqlite.Project) error {
 	// A refresh that lands while this pass is in flight must survive the
 	// write-back below.
 	a.ghRefresh.Delete(p.ID)
-	repo := cfg.GitHub.Repository
-	if repo == "" {
-		if r, err := a.Git.Run(ctx, p.RootPath, nil, "remote", "get-url", "origin"); err == nil {
-			repo, _ = github.RepoFromRemote(r.Stdout)
-		}
-	}
+	repo := a.projectGitHubRepo(ctx, p)
 	if repo == "" {
 		st.Status, st.LastError, st.NextAttempt = github.StatusNotConfigured, "no github.com origin remote and no github.repository", now+interval
 		return a.DB.Write(ctx, func(tx *sqlite.Tx) error { return saveGitHubState(ctx, tx, p.ID, st) })

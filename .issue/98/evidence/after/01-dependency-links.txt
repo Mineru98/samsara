@@ -1,0 +1,61 @@
+# HEAD 7f2c01b (feat/98-issue-dependency-links) — 변경 후 · 가짜 gh, 실제 GitHub 미사용
+
+$ issue-create create ... --after 999   # 없는 선행
+✗ 연결할 이슈를 조회하지 못했다: #999 — 이슈를 만들지 않았다.
+[exit 2] 생성된 이슈 수: 2
+
+$ issue-create create --title 새기능 ... --after 61 --before 70
+  ✓ #61 본문 갱신
+  ✓ #70 본문 갱신
+LINK_AFTER=61
+LINK_BEFORE=70
+ISSUE_NUMBER=100
+  ┆ #100 본문 → ## 배경 | ## 선행 이슈 | - [x] #61 | ## 후행 이슈 | - #70 | ## 참고
+  ┆ #61 본문 → ## 배경 | ## 후행 이슈 | - #100
+  ┆ #70 본문 → ## 배경 | ## 선행 이슈 | - [ ] #100 | ## 참고
+
+$ issue-create create 형제 #101, #102 (연결 없이) → link 101 --after 100 --before 102
+#101 선행 #100 / 후행 #102
+  ✓ #101 본문 갱신
+  ✓ #100 본문 갱신
+  ✓ #102 본문 갱신
+  ┆ #101 본문 → ## 배경 | ## 선행 이슈 | - [ ] #100 | ## 후행 이슈 | - #102 | ## 참고
+
+$ issue-create link 101 --after 100 --before 102   # 다시 실행 (멱등)
+  · #101 이미 연결됨
+  · #100 이미 연결됨
+  · #102 이미 연결됨
+
+$ issue-start prereq 101
+  ✗ #100 OPEN · status:open
+PREREQ_TOTAL=1
+PREREQ_PENDING=100
+✗ 완료되지 않은 선행 이슈: #100 — 진행하려면 사용자 확인을 받으세요.
+[exit 3]
+
+$ issue-merge close --issue 100
+{"closed":true,"successors":["#70:갱신","#101:갱신"],"successorsOk":true}
+  ┆ #70 본문 → ## 배경 | ## 선행 이슈 | - [x] #100 | ## 참고
+  ┆ #101 본문 → ## 배경 | ## 선행 이슈 | - [x] #100 | ## 후행 이슈 | - #102 | ## 참고
+
+$ issue-merge mark-successors --issue 100   # 다시 실행 (멱등)
+{"ok":true,"successors":["#70:그대로","#101:그대로"]}
+
+$ issue-start prereq 101
+  ✓ #100 CLOSED · status:close
+PREREQ_TOTAL=1
+PREREQ_PENDING=
+[exit 0]
+
+$ issue-start prereq 61   # 연결 섹션 없는 기존 이슈
+✓ #61 본문에 선행 이슈가 없습니다.
+PREREQ_TOTAL=0
+[exit 0]
+
+$ node --test skills/issue-start/scripts/issue-links.test.mjs
+ℹ tests 22
+ℹ pass 22
+ℹ fail 0
+
+$ sh scripts/check-shared.sh
+issue-links: 3 copies match

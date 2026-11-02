@@ -241,6 +241,9 @@ export interface Config {
   } | null;
   github?: {
     close_issues?: boolean;
+    merge_queue?: {
+      policy_app_id?: number;
+    };
     repository?: string;
     sync?: Open<"auto" | "off">;
     sync_interval_seconds?: number;

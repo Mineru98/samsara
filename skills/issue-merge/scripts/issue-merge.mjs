@@ -10,6 +10,7 @@
  *   resolve --worktree <p> 작업 브랜치 쪽에서 충돌을 해소할 판을 깐다
  *   merge --pr <n>         PR merge 래퍼. 실패 사유를 구조화해 출력
  *   close --issue <n> [--comment-file <f>]  이슈를 닫는다
+ *   close-check <n> [<n>...]  회차 끝에 merge 된 이슈가 status:close + CLOSED 인지 재확인 (--fix 로 보정)
  *   cleanup                통합이 끝난 워크트리와 base-tree 를 정리
  *
  * 이 스크립트는 판단하지 않는다. 사실 수집과 단일 동작 실행만 한다.
@@ -32,7 +33,7 @@ import { createTracker, gitHost, setTrackerStatus } from './issue-tracker.mjs';
 import { cmdPhase } from './issue-merge-phase.mjs';
 import { gateAction } from './issue-ontology.mjs';
 
-const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|status|cleanup> [options]
+const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|close-check|status|cleanup> [options]
 
   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
   base-tree [--remove]         base 전용 임시 워크트리 생성/정리
@@ -41,6 +42,7 @@ const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflig
   resolve --worktree <path> [--continue [--push] | --abort]
   merge --pr <n> [--method squash|merge|rebase]
   close --issue <n> [--comment-file <f>]
+  close-check <n> [<n>...] [--hold <n,...>] [--comment-dir <dir>] [--fix]
   status <n> <open|plan|in-process|review|close>
   cleanup --worktree <path> [--branch <name>]
 
@@ -561,6 +563,66 @@ function cmdClose(args) {
   }, null, 2));
 }
 
+/* ------------------------------------------------------------ close-check */
+
+/**
+ * 회차 끝에 merge 된 이슈가 실제로 status:close + CLOSED 인지 다시 조회한다.
+ * --fix 가 없으면 조회만 하고, 있으면 라벨 교체 → (열려 있으면) 결과 코멘트 → close 순으로 보정한다.
+ * --hold 로 넘긴 이슈(통합 테스트 실패로 close 보류)는 조회만 하고 손대지 않는다.
+ */
+function cmdCloseCheck(args) {
+  const toNumbers = (list) => list.map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  const hold = new Set(toNumbers(String(args.hold ?? '').split(',')));
+  // 보류 이슈도 보고에서 빠지지 않도록 대상에 합친다.
+  const issues = [...new Set([...toNumbers(args._), ...hold])];
+  if (!issues.length) fail('확인할 이슈 번호가 필요합니다. 예) close-check 16 21 53');
+  const tracker = createTracker(repoRoot());
+  const out = { confirmed: [], fixed: [], held: [], needsFix: [], failed: [] };
+
+  for (const number of issues) {
+    const issue = tracker.issueView(number);
+    if (!issue) { out.failed.push({ issue: number, err: '이슈를 조회하지 못했습니다.' }); continue; }
+    const labels = (issue.labels ?? []).map((l) => l.name);
+    const state = { issue: number, state: issue.state, status: labels.filter((l) => l.startsWith('status:')) };
+    const labelOk = labels.includes('status:close') && state.status.length === 1;
+    const closed = issue.state === 'CLOSED';
+
+    if (hold.has(number)) {
+      // 통합 테스트 실패로 보류했는데 닫혀 있으면 자동 close 를 막지 못한 것이다. 재오픈은 5절 절차로 사람이 정한다.
+      out.held.push(closed ? { ...state, warning: '보류 이슈가 이미 닫혀 있습니다. 재오픈이 필요합니다.' } : state);
+      continue;
+    }
+    if (labelOk && closed) { out.confirmed.push(state); continue; }
+    if (!args.fix) { out.needsFix.push({ ...state, label: !labelOk, close: !closed }); continue; }
+
+    const actions = [];
+    if (!labelOk) {
+      const r = setTrackerStatus(tracker, number, 'close', { quiet: true });
+      if (!r.ok) { out.failed.push({ ...state, err: `status:close 전환 실패: ${r.err}` }); continue; }
+      actions.push('status:close');
+    }
+    if (!closed) {
+      // close 가 실패한 뒤 다시 돌려도 코멘트가 겹치지 않도록 close 다음에 남긴다.
+      const r = tracker.issueClose(number);
+      if (!r.ok) { out.failed.push({ ...state, actions, err: `이슈 close 실패: ${r.err}` }); continue; }
+      actions.push('close');
+      const file = args['comment-dir'] ? path.join(args['comment-dir'], `${number}-result.md`) : null;
+      if (file && existsSync(file)) {
+        const c = tracker.issueComment(number, file);
+        if (!c.ok) { out.failed.push({ ...state, actions, err: `이슈 코멘트 실패: ${c.err}` }); continue; }
+        actions.push('comment');
+      }
+    }
+    out.fixed.push({ ...state, actions });
+  }
+
+  const summary = `확인 ${out.confirmed.length}건 / 보정 ${out.fixed.length}건 / 보류 ${out.held.length}건`
+    + (out.needsFix.length ? ` / 보정 필요 ${out.needsFix.length}건` : '')
+    + (out.failed.length ? ` / 실패 ${out.failed.length}건` : '');
+  console.log(JSON.stringify({ provider: tracker.provider, ...out, summary }, null, 2));
+  if (out.failed.length || out.needsFix.length) process.exit(1);
+}
+
 /* ---------------------------------------------------------------- cleanup */
 
 function cmdCleanup(args) {
@@ -585,7 +647,7 @@ function cmdCleanup(args) {
 /* ------------------------------------------------------------------ entry */
 
 const [, , sub, ...rest] = process.argv;
-const args = parseArgs(rest, ['json', 'dry-run', 'remove', 'force', 'no-status', 'continue', 'abort', 'push']);
+const args = parseArgs(rest, ['json', 'dry-run', 'remove', 'force', 'no-status', 'continue', 'abort', 'push', 'fix']);
 
 switch (sub) {
   case 'phase': cmdPhase(args); break;
@@ -596,6 +658,7 @@ switch (sub) {
   case 'resolve': cmdResolve(args); break;
   case 'merge': cmdMerge(args); break;
   case 'close': cmdClose(args); break;
+  case 'close-check': cmdCloseCheck(args); break;
   case 'status': {
     const result = setTrackerStatus(createTracker(repoRoot(), { repo: args.repo }), args._[0] ?? args.issue, args._[1], { dryRun: args.dryRun });
     if (!result.status) { console.error(`✗ 상태 전환 실패: ${result.err}`); process.exit(2); }

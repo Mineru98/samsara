@@ -584,13 +584,17 @@ func ApprovalsWhere(ctx context.Context, q Q, where string, args ...any) ([]*App
 type Target struct {
 	ID, RepositoryID, TargetRef, Authority, IntegrationRepo string
 	PolicyVersion, Version, CreatedAt                       int64
+	// ProviderCapability is the last native queue probe (JSON, 04 §10.2).
+	ProviderCapability string
+	ProviderCheckedAt  int64
 }
 
-const targetCols = `id,repository_id,target_ref,authority,integration_repo,policy_version,version,created_at`
+const targetCols = `id,repository_id,target_ref,authority,integration_repo,policy_version,version,created_at,provider_capability,provider_checked_at`
 
 func scanTarget(s interface{ Scan(...any) error }) (*Target, error) {
 	t := &Target{}
-	err := s.Scan(&t.ID, &t.RepositoryID, &t.TargetRef, &t.Authority, &t.IntegrationRepo, &t.PolicyVersion, &t.Version, &t.CreatedAt)
+	err := s.Scan(&t.ID, &t.RepositoryID, &t.TargetRef, &t.Authority, &t.IntegrationRepo, &t.PolicyVersion, &t.Version, &t.CreatedAt,
+		&t.ProviderCapability, &t.ProviderCheckedAt)
 	return t, err
 }
 
@@ -632,17 +636,35 @@ type Candidate struct {
 	ConflictFiles, ResolutionAttemptID, SupersededBy                                               string
 	Revision, QueuePosition, Version, CreatedAt, UpdatedAt                                         int64
 	Enqueued                                                                                       bool
+	// Native queue delivery (04 §10.3, §10.7).
+	ProviderPR                           int64
+	ProviderPRNode, ProviderValidationID string
 }
 
-const candidateCols = `id,project_id,issue_id,run_id,attempt_id,output_id,target_id,source_sha,base_sha,candidate_sha,candidate_tree,state,state_reason,native_queue_state,publication_observation,revision,queue_position,version,created_at,updated_at,enqueued,conflict_files,COALESCE(resolution_attempt_id,''),COALESCE(superseded_by,'')`
+const candidateCols = `id,project_id,issue_id,run_id,attempt_id,output_id,target_id,source_sha,base_sha,candidate_sha,candidate_tree,state,state_reason,native_queue_state,publication_observation,revision,queue_position,version,created_at,updated_at,enqueued,conflict_files,COALESCE(resolution_attempt_id,''),COALESCE(superseded_by,''),provider_pr,provider_pr_node,COALESCE(provider_validation_id,'')`
 
 func scanCandidate(s interface{ Scan(...any) error }) (*Candidate, error) {
 	c := &Candidate{}
 	err := s.Scan(&c.ID, &c.ProjectID, &c.IssueID, &c.RunID, &c.AttemptID, &c.OutputID, &c.TargetID, &c.SourceSHA, &c.BaseSHA,
 		&c.CandidateSHA, &c.CandidateTree, &c.State, &c.StateReason, &c.NativeQueueState, &c.PublicationObservation,
 		&c.Revision, &c.QueuePosition, &c.Version, &c.CreatedAt, &c.UpdatedAt, &c.Enqueued,
-		&c.ConflictFiles, &c.ResolutionAttemptID, &c.SupersededBy)
+		&c.ConflictFiles, &c.ResolutionAttemptID, &c.SupersededBy, &c.ProviderPR, &c.ProviderPRNode, &c.ProviderValidationID)
 	return c, err
+}
+
+// ProviderGroup is one merge group GitHub built for a candidate revision.
+type ProviderGroup struct {
+	ID, ProjectID, CandidateID, EntryID, HeadSHA, BaseSHA, Members, PolicyDigest, CheckState, CheckRunID string
+	CandidateRevision, CreatedAt, UpdatedAt                                                              int64
+}
+
+const providerGroupCols = `id,project_id,candidate_id,candidate_revision,entry_id,head_sha,base_sha,members,policy_digest,check_state,check_run_id,created_at,updated_at`
+
+func GetProviderGroup(ctx context.Context, q Q, id string) (*ProviderGroup, error) {
+	g := &ProviderGroup{}
+	err := q.QueryRowContext(ctx, "SELECT "+providerGroupCols+" FROM provider_validation_groups WHERE id=?", id).Scan(&g.ID, &g.ProjectID, &g.CandidateID,
+		&g.CandidateRevision, &g.EntryID, &g.HeadSHA, &g.BaseSHA, &g.Members, &g.PolicyDigest, &g.CheckState, &g.CheckRunID, &g.CreatedAt, &g.UpdatedAt)
+	return orNil(g, err), notFound(err, "provider_validation_group", id)
 }
 
 func GetCandidate(ctx context.Context, q Q, id string) (*Candidate, error) {
