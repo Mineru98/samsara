@@ -1,0 +1,42 @@
+# before — base e344850, claude 2.1.316 (Claude Code)
+$ samsara doctor --write-manifest
+{
+ "claude": {
+  "version": "2.1.316",
+  "block_on_failure": true,
+  "failure_injection_verified": false
+ },
+ "manifest_note": "policy_hook_failure_block_verified and herdr_protocol_verified are set only after manual failure-injection / protocol fixture verification",
+ "problems": []
+}
+$ cat compatibility.json
+{
+  "verified_at": "2026-11-02",
+  "platform": "linux/amd64",
+  "samsara_build": "0.1.0-dev",
+  "claude_code_version": "2.1.316",
+  "policy_hook_failure_block_verified": false,
+  "herdr_cli_version": "herdr 0.9.3",
+  "herdr_server_version": "",
+  "herdr_schema_sha256": "sha256:9e2af207e9aa8183d4aeca5fde9cc48e7909bb40cdbd7cf21608a6d3ea78075b",
+  "tmux_version": "tmux 3.6",
+  "git_version": "git version 2.53.0",
+  "sqlite_version": "3.53.3",
+  "test_suite_revision": "",
+  "real_backend_smoke_passed": false,
+  "herdr_protocol_verified": false
+}
+$ samsara doctor --hook-probe
+flag provided but not defined: -hook-probe
+Usage of doctor:
+  -exercise
+    	create and destroy a throwaway tmux session to verify control
+  -write-manifest
+    	write the compatibility manifest
+exit=2
+# 결함 재현: 다른 버전에서 검증된 true 가 새 버전으로 옮겨 붙는지
+(manifest 를 claude 2.1.300 + verified=true 로 바꾼 뒤)
+$ samsara doctor --write-manifest
+{'claude_code_version': '2.1.316', 'policy_hook_failure_block_verified': True}
+$ samsara doctor  (claude 필드)
+{'version': '2.1.316', 'block_on_failure': True, 'failure_injection_verified': True}
