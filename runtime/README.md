@@ -5,11 +5,12 @@
 
 - 언어/런타임: Go 1.25+ (`go.mod`), SQLite는 `modernc.org/sqlite` v1.55.0에 포함된 엔진 **3.53.3**을 사용한다. 기준은 3.51.3 이상이고, 시작할 때 `sqlite_version()`으로 확인한다.
 - 단일 바이너리 `samsara`가 CLI, daemon, Hook Bridge, worker launcher 역할을 모두 맡는다.
-- React 대시보드(02 문서)는 이 모듈에 포함되지 않는다. 대시보드가 쓸 HTTP·SSE API는 이 모듈에 구현돼 있다.
+- React 대시보드(02 문서) 소스는 저장소 루트 `web/`에 있다. `pnpm -C web build`가 `internal/webui/static/`에 번들을 만들고, 런타임이 이를 embed해 같은 loopback origin에서 서빙한다. 번들 없이 빌드하면 `/`는 안내 페이지를 보여준다.
 
 ## 빌드와 테스트
 
 ```bash
+pnpm -C web install && pnpm -C web build   # 대시보드 번들(선택). 없으면 / 는 안내 페이지
 cd runtime
 go build -o bin/samsara ./cmd/samsara
 go test ./...            # 단위·불변식·실제 git/tmux 통합 테스트

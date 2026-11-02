@@ -361,3 +361,6 @@ design/assets/shots/
 
 # samsara runtime build output
 /runtime/bin/
+# dashboard bundle embedded by the runtime (pnpm -C web build); only the placeholder is tracked
+/runtime/internal/webui/static/*
+!/runtime/internal/webui/static/.gitkeep
