@@ -89,3 +89,16 @@ export function useCommand(): {
   }, []);
   return { state, run, reset };
 }
+
+/** Live CSS media query match (02 §19 breakpoints). */
+export function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (fn: () => void) => {
+      const m = window.matchMedia(query);
+      m.addEventListener("change", fn);
+      return () => m.removeEventListener("change", fn);
+    },
+    [query],
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
+}

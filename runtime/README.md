@@ -15,6 +15,8 @@ cd runtime
 go build -o bin/samsara ./cmd/samsara
 go test ./...            # 단위·불변식·실제 git/tmux 통합 테스트
 go test -race ./internal/app/
+cd .. && pnpm -C web e2e   # 대시보드 브라우저 시나리오 UI-T01~T24 + 실제 daemon 시나리오(Go·tmux 필요)
+pnpm -C web perf           # 02 §22 성능 예산(200·1,000노드 seed 109), 결과는 web/test-results/perf/
 ```
 
 테스트에는 실제 `git`이 필요하다. `tmux` 어댑터 테스트는 tmux가 없으면 건너뛴다.

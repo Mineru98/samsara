@@ -69,7 +69,7 @@ export function MergeQueuePanel({ entities, canCommand, offlineReason, onSelectI
                   return (
                     <li key={c.id} className="qitem">
                       <div className="row">
-                        <button type="button" className="linklike ell" onClick={() => onSelectIssue(c.issue_id)}>
+                        <button type="button" className="linklike ell" data-opens={`issue:${c.issue_id}`} onClick={() => onSelectIssue(c.issue_id)}>
                           {issue ? `${issue.client_key} ${issue.title}` : c.issue_id}
                         </button>
                         <Badge tone={s.tone}>{s.label}</Badge>
