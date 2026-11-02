@@ -30,6 +30,9 @@ samsara plan apply --file plan.json                # PLANNED run 접수(worker �
 samsara run start <run_id>                         # PLAN 승인 확인 후 ACTIVE → scheduler가 실행
 samsara approval list / samsara approval decide <id> --approve
 samsara merge queue / samsara merge enqueue <candidate_id>
+samsara merge resolve <candidate_id>               # CONFLICT 후보를 해결할 새 attempt(보존된 worktree 재사용)
+samsara merge prioritize <candidate_id> --before <id> --reason <text>   # 의존 순서를 거스르면 거부
+samsara worktree cleanup --dry-run [--delete-branch] [<worktree_id>...]  # 정리 자격 판정, --force 없음
 samsara ui --open                                  # 일회용 코드로 loopback 대시보드 API 인증
 ```
 

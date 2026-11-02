@@ -124,3 +124,101 @@ func TestWorktreeMergeTreeAndCAS(t *testing.T) {
 		t.Fatalf("conflict expected: %+v %v", mr, err)
 	}
 }
+
+// F-GIT conflict classification: text, binary, rename and directory
+// conflicts are told apart from real git merge-tree output (04 §12.1).
+func TestMergeTreeConflictClassification(t *testing.T) {
+	ctx := context.Background()
+	g := New()
+	repo := t.TempDir()
+	run(t, repo, "init", "-q", "-b", "main")
+	write(t, filepath.Join(repo, "text.txt"), "base\n")
+	write(t, filepath.Join(repo, "img.bin"), "\x00\x01base")
+	write(t, filepath.Join(repo, "old.txt"), "keep me\n")
+	write(t, filepath.Join(repo, "node"), "file\n")
+	write(t, filepath.Join(repo, "clean.txt"), "clean\n")
+	run(t, repo, "add", ".")
+	run(t, repo, "commit", "-q", "-m", "base")
+
+	run(t, repo, "checkout", "-q", "-b", "src")
+	write(t, filepath.Join(repo, "text.txt"), "source\n")
+	write(t, filepath.Join(repo, "img.bin"), "\x00\x02source")
+	run(t, repo, "mv", "old.txt", "renamed.txt")
+	run(t, repo, "rm", "-q", "node")
+	if err := os.MkdirAll(filepath.Join(repo, "node"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(repo, "node", "child.txt"), "dir\n")
+	run(t, repo, "add", "-A")
+	run(t, repo, "commit", "-q", "-m", "source")
+	source := run(t, repo, "rev-parse", "HEAD")
+
+	run(t, repo, "checkout", "-q", "main")
+	write(t, filepath.Join(repo, "text.txt"), "target\n")
+	write(t, filepath.Join(repo, "img.bin"), "\x00\x03target")
+	run(t, repo, "rm", "-q", "old.txt")
+	write(t, filepath.Join(repo, "node"), "changed file\n")
+	write(t, filepath.Join(repo, "clean.txt"), "clean on target\n")
+	run(t, repo, "add", "-A")
+	run(t, repo, "commit", "-q", "-m", "target")
+	target := run(t, repo, "rev-parse", "HEAD")
+
+	mr, err := g.MergeTree(ctx, repo, target, source)
+	if err != nil || !mr.Conflict {
+		t.Fatalf("expected conflict: %+v %v", mr, err)
+	}
+	kinds := map[string]string{}
+	for _, f := range mr.Files {
+		kinds[f.Path] = f.Kind
+		if len(f.Types) == 0 {
+			t.Fatalf("%s carries no git conflict type", f.Path)
+		}
+	}
+	want := map[string]string{"text.txt": ConflictText, "img.bin": ConflictBinary, "renamed.txt": ConflictRename}
+	for p, k := range want {
+		if kinds[p] != k {
+			t.Fatalf("%s classified %q, want %q (all: %v)", p, kinds[p], k, kinds)
+		}
+	}
+	dir := false
+	for p, k := range kinds {
+		if strings.HasPrefix(p, "node") && k == ConflictDirectory {
+			dir = true
+		}
+	}
+	if !dir {
+		t.Fatalf("file/directory conflict not classified: %v", kinds)
+	}
+	if _, ok := kinds["clean.txt"]; ok {
+		t.Fatalf("one-sided change must not be reported as a conflict: %v", kinds)
+	}
+	// A clean merge still yields a tree.
+	if mr, err := g.MergeTree(ctx, repo, target, target); err != nil || mr.Conflict || !ValidOID(mr.Tree) {
+		t.Fatalf("clean merge: %+v %v", mr, err)
+	}
+}
+
+func TestRefsContainingAndDeleteRefCAS(t *testing.T) {
+	ctx := context.Background()
+	g := New()
+	repo := t.TempDir()
+	run(t, repo, "init", "-q", "-b", "main")
+	write(t, filepath.Join(repo, "f"), "1\n")
+	run(t, repo, "add", ".")
+	run(t, repo, "commit", "-q", "-m", "one")
+	run(t, repo, "branch", "topic")
+	tip := run(t, repo, "rev-parse", "topic")
+	refs, err := g.RefsContaining(ctx, repo, tip)
+	if err != nil || len(refs) != 2 {
+		t.Fatalf("refs containing: %v %v", refs, err)
+	}
+	if err := g.DeleteRefCAS(ctx, repo, "refs/heads/topic", strings.Repeat("1", 40), "t"); !errors.Is(err, ErrCASFailed) {
+		t.Fatalf("CAS delete with a wrong old value must fail: %v", err)
+	}
+	if err := g.DeleteRefCAS(ctx, repo, "refs/heads/topic", tip, "t"); err != nil {
+		t.Fatal(err)
+	}
+	if oid, _ := g.ResolveRef(ctx, repo, "refs/heads/topic"); oid != "" {
+		t.Fatal("branch must be deleted")
+	}
+}
