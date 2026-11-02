@@ -1,0 +1,22 @@
+$ samsara worktree
+usage: samsara worktree list | inspect <id> | cleanup [--dry-run] [--delete-branch] [<id>...]
+(exit 2)
+$ samsara worktree cleanup --help
+Usage of worktree cleanup:
+  -delete-branch
+    	also delete the branch when its commits stay reachable from another ref
+  -dry-run
+    	report eligibility without removing anything
+  -project string
+    	project id
+(exit 2)
+$ samsara merge
+usage: samsara merge queue | inspect|enqueue|cancel|resolve <candidate_id> | prioritize <candidate_id> [--before <candidate_id>] --reason <text>
+(exit 2)
+$ samsara merge prioritize mc_x --help
+Usage of merge prioritize:
+  -before string
+    	candidate to move ahead of (default: front of the queue)
+  -reason string
+    	why the order changes (recorded)
+(exit 2)
