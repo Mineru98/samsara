@@ -1,0 +1,33 @@
+# f07f97d — go test ./internal/app -run GitHubQueue -v -count=1
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/no_queue
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/ambiguous_rulesets
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/headgreen
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/group_size
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/no_policy_check
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/unpinned_source
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/no_publisher
+--- PASS: TestGitHubQueueUnsupportedStaysWaiting (0.73s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/no_queue (0.11s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/ambiguous_rulesets (0.10s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/headgreen (0.12s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/group_size (0.11s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/no_policy_check (0.10s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/unpinned_source (0.10s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/no_publisher (0.10s)
+=== RUN   TestGitHubQueueEnqueueGroupApprovalMerged
+--- PASS: TestGitHubQueueEnqueueGroupApprovalMerged (0.15s)
+=== RUN   TestGitHubQueueRemovedAndRejected
+--- PASS: TestGitHubQueueRemovedAndRejected (0.12s)
+=== RUN   TestGitHubQueueLostIntentAndUnauthorizedMerge
+--- PASS: TestGitHubQueueLostIntentAndUnauthorizedMerge (0.12s)
+=== RUN   TestGitHubQueueUnsupportedPublisherAppAndManifest
+=== RUN   TestGitHubQueueUnsupportedPublisherAppAndManifest/other_app
+=== RUN   TestGitHubQueueUnsupportedPublisherAppAndManifest/no_manifest_workflow
+--- PASS: TestGitHubQueueUnsupportedPublisherAppAndManifest (0.20s)
+    --- PASS: TestGitHubQueueUnsupportedPublisherAppAndManifest/other_app (0.10s)
+    --- PASS: TestGitHubQueueUnsupportedPublisherAppAndManifest/no_manifest_workflow (0.10s)
+=== RUN   TestGitHubQueueManifestRejectedPublishesFailure
+--- PASS: TestGitHubQueueManifestRejectedPublishesFailure (0.12s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.453s
