@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify issues/PRs/worktrees into MERGE / HOLD / EXCLUDE for /issue-merge.
+"""Classify issues/PRs/worktrees into MERGE / HOLD / EXCLUDE for $issue-merge.
 
 usage: merge-candidates.py --base <branch> [--live <N> ...] [--owned <N> ...] [--merging]
   --base   target branch PRs must point to (e.g. dev/0.4.0-alpha)
@@ -24,7 +24,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--base", required=True)
 ap.add_argument("--live", type=int, nargs="*", default=[])
 ap.add_argument("--owned", type=int, nargs="*", default=[])
-ap.add_argument("--merging", action="store_true", help="an /issue-merge tab is still running")
+ap.add_argument("--merging", action="store_true", help="an $issue-merge tab is still running")
 a = ap.parse_args()
 
 PR_FIELDS = ("number,title,headRefName,headRefOid,baseRefName,isDraft,mergeable,"
@@ -129,13 +129,13 @@ nums = sorted(r["issue"] for r in merge)
 if not merge:
     action, why = "none", "MERGE 판정이 없다"
 elif a.merging:
-    action, why = "wait", "다른 /issue-merge tab 이 아직 돈다"
+    action, why = "wait", "다른 $issue-merge tab 이 아직 돈다"
 elif a.live:
     action, why = "wait", "아직 작업 중인 이슈 tab 이 있다: " + " ".join(f"#{n}" for n in a.live) + " — 끝나면 함께 묶는다"
 else:
     action, why = "merge", "작업 중인 tab 이 없고 MERGE 판정이 있다"
 out = {"base": a.base, "rows": rows, "overlap": overlap, "action": action, "action_reason": why,
        "merge_issues": nums,
-       "merge_command": ("/issue-merge " + " ".join(f"#{n}" for n in nums)) if merge else None}
+       "merge_command": ("$issue-merge " + " ".join(f"#{n}" for n in nums)) if merge else None}
 json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
 print()
