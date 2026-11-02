@@ -1,0 +1,9 @@
+=== RUN   TestResolveReviseProbe
+    zz_probe_test.go:23: after resolve: state=CONFLICT reason=RESOLUTION_REQUESTED resolution=att_972c45804c5ab27474428c14
+    zz_probe_test.go:31: after revise: candidate=CANCELLED reason=PLAN_REVISED superseded_by="" resolution_attempt=att_972c45804c5ab27474428c14 new_attempt=att_114aa4e2400167d09b5f958c new_state=PENDING old_worktree=wt_95abe09ce923d8ac4e994e9e new_worktree=
+    zz_probe_test.go:34: resolution attempt: state=CANCELLED reason=PLAN_REVISED
+    zz_probe_test.go:36: cleanup dry run: eligible=true reasons=[]
+    zz_probe_test.go:37: cleanup branch kept=
+--- PASS: TestResolveReviseProbe (0.23s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.248s
