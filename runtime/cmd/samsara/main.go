@@ -46,7 +46,7 @@ const usage = `samsara — local orchestration runtime for Claude Code work
 Usage: samsara [--json] <command> [args]
 
 Project:   init | enable | disable | status | project list|relink|archive
-Plans:     plan validate|apply --file plan.json | profile add
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
 Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
 Sessions:  session attach --issue <id> | session inspect|release-input|focus <id>
 Approvals: approval list | approval decide <id> --approve|--reject|--revoke
@@ -509,12 +509,14 @@ func (c *cli) profile(args []string) int {
 
 func (c *cli) planCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara plan validate|apply --file plan.json")
+		fmt.Fprintln(c.errw, "usage: samsara plan validate|apply --file plan.json | plan revise --run <run_id> --expected-run-generation N --file plan.json")
 		return domain.ExitInput
 	}
 	fs := newFlags("plan")
 	file := fs.String("file", "", "plan JSON file ('-' for stdin)")
-	key := fs.String("idempotency-key", "", "idempotency key (apply)")
+	key := fs.String("idempotency-key", "", "idempotency key (apply, revise)")
+	runID := fs.String("run", "", "run to revise (revise)")
+	runGen := fs.String("expected-run-generation", "", "current run generation (revise)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return domain.ExitInput
 	}
@@ -561,6 +563,16 @@ func (c *cli) planCmd(args []string) int {
 			k = "plan:" + domain.DigestBytes(raw)
 		}
 		return c.callPrint("/ipc/v1/plans/apply", json.RawMessage(raw), ipc.CallOpts{IdempotencyKey: k})
+	case "revise":
+		body, err := json.Marshal(plan.Revision{RunID: *runID, ExpectedRunGeneration: *runGen, Plan: json.RawMessage(raw)})
+		if err != nil {
+			return c.fail(domain.Errf(domain.CodeInvalidRequest, "%v", err))
+		}
+		k := *key
+		if k == "" {
+			k = "plan-revise:" + domain.DigestBytes(body)
+		}
+		return c.callPrint("/ipc/v1/plans/revise", json.RawMessage(body), ipc.CallOpts{IdempotencyKey: k})
 	}
 	return domain.ExitInput
 }
@@ -700,7 +712,7 @@ func (c *cli) approvalCmd(args []string) int {
 
 func (c *cli) worktreeCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara worktree list | inspect <id>")
+		fmt.Fprintln(c.errw, "usage: samsara worktree list | inspect <id> | cleanup [--dry-run] [--delete-branch] [<id>...]")
 		return domain.ExitInput
 	}
 	switch args[0] {
@@ -728,13 +740,30 @@ func (c *cli) worktreeCmd(args []string) int {
 			return domain.ExitInput
 		}
 		return c.callPrint("/ipc/v1/lookup", map[string]string{"kind": sqlite.KindWorktree, "id": args[1]})
+	case "cleanup":
+		fs := newFlags("worktree cleanup")
+		pid := fs.String("project", "", "project id")
+		dry := fs.Bool("dry-run", false, "report eligibility without removing anything")
+		branch := fs.Bool("delete-branch", false, "also delete the branch when its commits stay reachable from another ref")
+		if err := fs.Parse(args[1:]); err != nil {
+			return domain.ExitInput
+		}
+		id, err := c.projectID(*pid)
+		if err != nil {
+			return c.fail(err)
+		}
+		opts := ipc.CallOpts{}
+		if !*dry {
+			opts.IdempotencyKey = domain.NewID("cli")
+		}
+		return c.callPrint("/ipc/v1/worktrees/cleanup", app.CleanupRequest{ProjectID: id, WorktreeIDs: fs.Args(), DryRun: *dry, DeleteBranch: *branch}, opts)
 	}
 	return domain.ExitInput
 }
 
 func (c *cli) mergeCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara merge queue | inspect|enqueue|cancel <candidate_id>")
+		fmt.Fprintln(c.errw, "usage: samsara merge queue | inspect|enqueue|cancel|resolve <candidate_id> | prioritize <candidate_id> [--before <candidate_id>] --reason <text>")
 		return domain.ExitInput
 	}
 	switch args[0] {
@@ -749,7 +778,19 @@ func (c *cli) mergeCmd(args []string) int {
 			return c.fail(err)
 		}
 		return c.callPrint("/ipc/v1/merge/queues", map[string]string{"project_id": id})
-	case "inspect", "enqueue", "cancel":
+	case "prioritize":
+		if len(args) < 2 {
+			return domain.ExitInput
+		}
+		fs := newFlags("merge prioritize")
+		before := fs.String("before", "", "candidate to move ahead of (default: front of the queue)")
+		reason := fs.String("reason", "", "why the order changes (recorded)")
+		if err := fs.Parse(args[2:]); err != nil {
+			return domain.ExitInput
+		}
+		return c.callPrint("/ipc/v1/merge/prioritize", map[string]string{"candidate_id": args[1], "before": *before, "reason": *reason},
+			ipc.CallOpts{IdempotencyKey: domain.NewID("cli")})
+	case "inspect", "enqueue", "cancel", "resolve":
 		if len(args) < 2 {
 			return domain.ExitInput
 		}

@@ -1,0 +1,18 @@
+# commit db930a5 (origin/dev/0.4.0-alpha)
+$ go test ./internal/app/ -run TestProbeBeforeRevise -v   # scratch copy, worktree untouched
+    zz_probe_test.go:20: PAUSED run + plan apply => CONFLICT: project already has an unfinished run run_0523962c8488f7651b2d4ed9; cancel it or use pause+revise
+--- PASS: TestProbeBeforeRevise (0.04s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.043s
+
+$ grep -n "plans/" runtime/internal/transport/ipc/ipc.go
+147:	m.HandleFunc("/ipc/v1/plans/validate", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+150:	m.HandleFunc("/ipc/v1/plans/apply", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+156:	m.HandleFunc("/ipc/v1/runs/start", handle(func(r *http.Request, req runReq) (any, error) {
+159:	m.HandleFunc("/ipc/v1/runs/pause", handle(func(r *http.Request, req runReq) (any, error) {
+162:	m.HandleFunc("/ipc/v1/runs/resume", handle(func(r *http.Request, req runReq) (any, error) {
+165:	m.HandleFunc("/ipc/v1/runs/cancel", handle(func(r *http.Request, req runReq) (any, error) {
+
+$ samsara plan --help 의 하위 명령
+531:	case "validate":
+557:	case "apply":

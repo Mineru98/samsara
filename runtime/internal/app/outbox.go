@@ -51,6 +51,7 @@ type outboxRow struct {
 // (14.2). prompt.submit and session.interrupt are never resent.
 var resendSafe = map[string]bool{
 	"worktree.create": true, "worker.launch": true, "output.verify": true, "merge.validate": true, "git.publish": true,
+	"github.issue.close": true,
 }
 
 const maxOutboxAttempts = 8
@@ -127,6 +128,8 @@ func (a *App) runHandler(ctx context.Context, r outboxRow) (o outcome) {
 		return a.handleMergeValidate(ctx, payload)
 	case "git.publish":
 		return a.handlePublish(ctx, payload)
+	case "github.issue.close":
+		return a.handleGitHubIssueClose(ctx, r, payload)
 	}
 	return failed("unknown outbox kind "+r.Kind, nil)
 }
@@ -333,6 +336,22 @@ func (a *App) handleWorkerLaunch(ctx context.Context, r outboxRow, p map[string]
 	}
 	cfg := projectConfig(proj)
 	prompt := workerPrompt(issue, att)
+	var resolving []*sqlite.Candidate
+	var targetRef string
+	_ = a.DB.Read(ctx, func(q sqlite.Q) error {
+		var err error
+		if resolving, err = sqlite.CandidatesWhere(ctx, q, "resolution_attempt_id=?", att.ID); err != nil || len(resolving) == 0 {
+			return err
+		}
+		t, err := sqlite.GetTarget(ctx, q, resolving[0].TargetID)
+		if err == nil {
+			targetRef = t.TargetRef
+		}
+		return err
+	})
+	if len(resolving) > 0 {
+		prompt += conflictPrompt(resolving[0], targetRef)
+	}
 	argv := []string{a.SelfExe, "launcher", "--"}
 	argv = append(argv, cfg.Execution.WorkerCommand...)
 	env := map[string]string{"SAMSARA_LAUNCH_TICKET": p["ticket"], "SAMSARA_MANAGED": "1", "SAMSARA_ATTEMPT_ID": att.ID,
@@ -457,6 +476,19 @@ func workerPrompt(issue *sqlite.Issue, att *sqlite.Attempt) string {
 		b.WriteString("\n")
 	}
 	fmt.Fprintf(&b, "이 worktree 안에서만 구현하세요. 완료되면 변경을 commit하고 `samsara output submit`으로 결과를 제출하세요. (attempt %s)", att.ID)
+	return b.String()
+}
+
+// conflictPrompt tells a resolution attempt what to reconcile (04 §12.2).
+func conflictPrompt(c *sqlite.Candidate, targetRef string) string {
+	var files []gitops.ConflictFile
+	_ = json.Unmarshal([]byte(c.ConflictFiles), &files)
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n\n충돌 해결 작업: merge 후보 %s 가 대상 `%s`(%s)와 충돌했습니다.\n", c.ID, targetRef, c.BaseSHA)
+	for _, f := range files {
+		fmt.Fprintf(&b, "- %s (%s)\n", f.Path, f.Kind)
+	}
+	fmt.Fprintf(&b, "이 branch 에 `%s` 를 merge 해 충돌을 해결하고 commit 한 뒤 `samsara output submit` 으로 새 결과를 제출하세요. 기존 commit 은 rebase·reset 하지 마세요.", targetRef)
 	return b.String()
 }
 

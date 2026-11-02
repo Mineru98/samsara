@@ -1,0 +1,26 @@
+# commit e2eea2b (feat/67-plan-revise)
+$ go test -count=1 ./internal/app/ -run Revise -v
+--- PASS: TestRevisePausedRun (0.14s)
+--- PASS: TestRevisePlanApprovalRequiredOnResume (0.07s)
+--- PASS: TestReviseCarriesUnaffectedResults (0.18s)
+--- PASS: TestReviseCLIAndIPCAgree (0.04s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.435s
+
+$ grep -n "plans/" runtime/internal/transport/ipc/ipc.go
+147:	m.HandleFunc("/ipc/v1/plans/validate", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+150:	m.HandleFunc("/ipc/v1/plans/apply", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+153:	m.HandleFunc("/ipc/v1/plans/revise", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+159:	m.HandleFunc("/ipc/v1/runs/start", handle(func(r *http.Request, req runReq) (any, error) {
+162:	m.HandleFunc("/ipc/v1/runs/pause", handle(func(r *http.Request, req runReq) (any, error) {
+165:	m.HandleFunc("/ipc/v1/runs/resume", handle(func(r *http.Request, req runReq) (any, error) {
+168:	m.HandleFunc("/ipc/v1/runs/cancel", handle(func(r *http.Request, req runReq) (any, error) {
+
+$ samsara plan --help 의 하위 명령
+533:	case "validate":
+559:	case "apply":
+565:	case "revise":
+
+$ go build ./... && go vet ./... && go test -count=1 ./...   # 전체
+ok packages: 11
+FAIL packages: 0

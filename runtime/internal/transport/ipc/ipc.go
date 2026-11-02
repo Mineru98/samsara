@@ -150,6 +150,9 @@ func (s *Server) routes() {
 	m.HandleFunc("/ipc/v1/plans/apply", handle(func(r *http.Request, req json.RawMessage) (any, error) {
 		return a.ApplyPlan(r.Context(), cmdFrom(r), req)
 	}))
+	m.HandleFunc("/ipc/v1/plans/revise", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+		return a.RevisePlan(r.Context(), cmdFrom(r), req)
+	}))
 	type runReq struct {
 		RunID string `json:"run_id"`
 	}
@@ -239,6 +242,18 @@ func (s *Server) routes() {
 	}))
 	m.HandleFunc("/ipc/v1/merge/cancel", handle(func(r *http.Request, req candReq) (any, error) {
 		return a.CancelCandidate(r.Context(), cmdFrom(r), req.CandidateID)
+	}))
+	m.HandleFunc("/ipc/v1/merge/resolve", handle(func(r *http.Request, req candReq) (any, error) {
+		return a.ResolveConflict(r.Context(), cmdFrom(r), req.CandidateID)
+	}))
+	m.HandleFunc("/ipc/v1/merge/prioritize", handle(func(r *http.Request, req struct {
+		CandidateID string `json:"candidate_id"`
+		app.PrioritizeRequest
+	}) (any, error) {
+		return a.PrioritizeCandidate(r.Context(), cmdFrom(r), req.CandidateID, req.PrioritizeRequest)
+	}))
+	m.HandleFunc("/ipc/v1/worktrees/cleanup", handle(func(r *http.Request, req app.CleanupRequest) (any, error) {
+		return a.CleanupWorktrees(r.Context(), cmdFrom(r), req)
 	}))
 	m.HandleFunc("/ipc/v1/merge/inspect", handle(func(r *http.Request, req candReq) (any, error) {
 		return a.Lookup(r.Context(), "merge_candidates", req.CandidateID)
