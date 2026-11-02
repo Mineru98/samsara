@@ -711,7 +711,7 @@ func (c *cli) approvalCmd(args []string) int {
 
 func (c *cli) worktreeCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara worktree list | inspect <id>")
+		fmt.Fprintln(c.errw, "usage: samsara worktree list | inspect <id> | cleanup [--dry-run] [--delete-branch] [<id>...]")
 		return domain.ExitInput
 	}
 	switch args[0] {
@@ -739,13 +739,30 @@ func (c *cli) worktreeCmd(args []string) int {
 			return domain.ExitInput
 		}
 		return c.callPrint("/ipc/v1/lookup", map[string]string{"kind": sqlite.KindWorktree, "id": args[1]})
+	case "cleanup":
+		fs := newFlags("worktree cleanup")
+		pid := fs.String("project", "", "project id")
+		dry := fs.Bool("dry-run", false, "report eligibility without removing anything")
+		branch := fs.Bool("delete-branch", false, "also delete the branch when its commits stay reachable from another ref")
+		if err := fs.Parse(args[1:]); err != nil {
+			return domain.ExitInput
+		}
+		id, err := c.projectID(*pid)
+		if err != nil {
+			return c.fail(err)
+		}
+		opts := ipc.CallOpts{}
+		if !*dry {
+			opts.IdempotencyKey = domain.NewID("cli")
+		}
+		return c.callPrint("/ipc/v1/worktrees/cleanup", app.CleanupRequest{ProjectID: id, WorktreeIDs: fs.Args(), DryRun: *dry, DeleteBranch: *branch}, opts)
 	}
 	return domain.ExitInput
 }
 
 func (c *cli) mergeCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara merge queue | inspect|enqueue|cancel <candidate_id>")
+		fmt.Fprintln(c.errw, "usage: samsara merge queue | inspect|enqueue|cancel|resolve <candidate_id> | prioritize <candidate_id> [--before <candidate_id>] --reason <text>")
 		return domain.ExitInput
 	}
 	switch args[0] {
@@ -760,7 +777,19 @@ func (c *cli) mergeCmd(args []string) int {
 			return c.fail(err)
 		}
 		return c.callPrint("/ipc/v1/merge/queues", map[string]string{"project_id": id})
-	case "inspect", "enqueue", "cancel":
+	case "prioritize":
+		if len(args) < 2 {
+			return domain.ExitInput
+		}
+		fs := newFlags("merge prioritize")
+		before := fs.String("before", "", "candidate to move ahead of (default: front of the queue)")
+		reason := fs.String("reason", "", "why the order changes (recorded)")
+		if err := fs.Parse(args[2:]); err != nil {
+			return domain.ExitInput
+		}
+		return c.callPrint("/ipc/v1/merge/prioritize", map[string]string{"candidate_id": args[1], "before": *before, "reason": *reason},
+			ipc.CallOpts{IdempotencyKey: domain.NewID("cli")})
+	case "inspect", "enqueue", "cancel", "resolve":
 		if len(args) < 2 {
 			return domain.ExitInput
 		}
