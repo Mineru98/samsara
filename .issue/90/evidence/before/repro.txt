@@ -1,0 +1,18 @@
+== A. 기록 main / 주 체크아웃 dev/x / 최근 PR base dev/x ==
+  브랜치 : fix/1-t (신규, origin/main 기준)
+exit=0
+
+== B. 'base --set dev/x' 로 기록 후 다시 실행 ==
+✗ 알 수 없는 모드: base
+Usage:
+  브랜치 : fix/2-t (신규, origin/main 기준)
+exit=0
+  기록값: {"git":{"baseBranch":"main"}}
+
+== C. 링크된 워크트리 안에서 기준 브랜치 판별 (주 체크아웃 기록 dev/x) ==
+detectBase = main
+  워크트리 쪽 기록 파일: {"git":{"baseBranch":"main","detectedAt":"2026-11-02T16:18:09.086Z"},"updatedAt":"2026-11-02T16:18:09.090Z"}
+
+== D. 기록·신호 일치 저장소 (기록 main / 주 체크아웃 main / PR base main) ==
+  브랜치 : fix/4-t (신규, origin/main 기준)
+exit=0

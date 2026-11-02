@@ -1,0 +1,22 @@
+== A. 기록 main / 주 체크아웃 dev/x / 최근 PR base dev/x ==
+✗ 기록된 기준 브랜치(main)가 실제 작업 흐름(dev/x)과 다릅니다.
+BASE_DRIFT=1
+BASE_RECORDED=main
+BASE_CANDIDATE=dev/x
+exit=8
+
+== B. 'base --set dev/x' 로 기록 후 다시 실행 ==
+BASE=dev/x
+SOURCE=project
+SIGNAL_RECENT_PR_BASE=dev/x
+  브랜치 : fix/2-t (신규, origin/dev/x 기준)
+exit=0
+  기록값: {"git":{"baseBranch":"dev/x","confirmedAt":"2026-11-02T16:25:03.787Z"},"updatedAt":"2026-11-02T16:25:03.799Z"}
+
+== C. 링크된 워크트리 안에서 기준 브랜치 판별 (주 체크아웃 기록 dev/x) ==
+detectBase = dev/x
+  워크트리 쪽 기록 파일: 없음
+
+== D. 기록·신호 일치 저장소 (기록 main / 주 체크아웃 main / PR base main) ==
+  브랜치 : fix/4-t (신규, origin/main 기준)
+exit=0
