@@ -107,3 +107,37 @@ func TestLaunchCheckpointsReachTheRetry(t *testing.T) {
 		t.Fatal("retry did not launch")
 	}
 }
+
+func TestConflictPromptReachesDeferredLauncher(t *testing.T) {
+	e := newEnv(t, baseConfig)
+	e.fake.DeferPrompt = true
+	issueID, wt := startSingle(t, e)
+	e.commitIn(wt, "shared.txt", "worker\n")
+	e.submitAndApprove(issueID)
+	oldID := e.candidates(issueID)[0].ID
+	e.advanceIntegration("shared.txt", "target\n")
+	if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, oldID); err != nil {
+		t.Fatal(err)
+	}
+	e.reconcile(4)
+	e.exitWorker(issueID)
+	e.clock.Advance(time.Second)
+	if _, err := e.app.ResolveConflict(e.ctx, e.cmd, oldID); err != nil {
+		t.Fatal(err)
+	}
+	e.reconcile(3)
+	s := e.fake.SessionByAttempt(e.attempt(issueID).ID)
+	if s == nil {
+		t.Fatal("resolution worker not launched")
+	}
+	e.register(issueID, "claude-X2")
+	e.reconcile(3)
+	if len(s.Prompts) != 1 {
+		t.Fatalf("expected one deferred prompt, got %q", s.Prompts)
+	}
+	for _, want := range []string{"충돌 해결", "shared.txt (TEXT)", "refs/heads/integration"} {
+		if !strings.Contains(s.Prompts[0], want) {
+			t.Fatalf("deferred prompt lacks %q: %s", want, s.Prompts[0])
+		}
+	}
+}

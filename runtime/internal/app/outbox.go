@@ -335,22 +335,14 @@ func (a *App) handleWorkerLaunch(ctx context.Context, r outboxRow, p map[string]
 		})
 	}
 	cfg := projectConfig(proj)
-	prompt := workerPrompt(issue, att)
-	var resolving []*sqlite.Candidate
-	var targetRef string
-	_ = a.DB.Read(ctx, func(q sqlite.Q) error {
+	var prompt string
+	err = a.DB.Read(ctx, func(q sqlite.Q) error {
 		var err error
-		if resolving, err = sqlite.CandidatesWhere(ctx, q, "resolution_attempt_id=?", att.ID); err != nil || len(resolving) == 0 {
-			return err
-		}
-		t, err := sqlite.GetTarget(ctx, q, resolving[0].TargetID)
-		if err == nil {
-			targetRef = t.TargetRef
-		}
+		prompt, err = promptForAttempt(ctx, q, issue, att)
 		return err
 	})
-	if len(resolving) > 0 {
-		prompt += conflictPrompt(resolving[0], targetRef)
+	if err != nil {
+		return failed(err.Error(), nil)
 	}
 	argv := []string{a.SelfExe, "launcher", "--"}
 	argv = append(argv, cfg.Execution.WorkerCommand...)
@@ -477,6 +469,22 @@ func workerPrompt(issue *sqlite.Issue, att *sqlite.Attempt) string {
 	}
 	fmt.Fprintf(&b, "이 worktree 안에서만 구현하세요. 완료되면 변경을 commit하고 `samsara output submit`으로 결과를 제출하세요. (attempt %s)", att.ID)
 	return b.String()
+}
+
+func promptForAttempt(ctx context.Context, q sqlite.Q, issue *sqlite.Issue, att *sqlite.Attempt) (string, error) {
+	prompt := workerPrompt(issue, att)
+	resolving, err := sqlite.CandidatesWhere(ctx, q, "resolution_attempt_id=?", att.ID)
+	if err != nil {
+		return "", err
+	}
+	if len(resolving) == 0 {
+		return prompt, nil
+	}
+	target, err := sqlite.GetTarget(ctx, q, resolving[0].TargetID)
+	if err != nil {
+		return "", err
+	}
+	return prompt + conflictPrompt(resolving[0], target.TargetRef), nil
 }
 
 // conflictPrompt tells a resolution attempt what to reconcile (04 §12.2).

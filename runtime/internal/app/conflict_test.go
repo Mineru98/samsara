@@ -147,7 +147,7 @@ func TestConflictResolutionRevalidatesOnLatestBase(t *testing.T) {
 	if launch == nil {
 		t.Fatalf("resolution worker not launched (%s %s)", res.State, res.StateReason)
 	}
-	prompt := launch.Spec.Argv[len(launch.Spec.Argv)-1]
+	prompt := launch.Spec.Prompt
 	if !strings.Contains(prompt, "충돌 해결") || !strings.Contains(prompt, "shared.txt (TEXT)") || !strings.Contains(prompt, "refs/heads/integration") {
 		t.Fatalf("prompt lacks conflict guidance:\n%s", prompt)
 	}

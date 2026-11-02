@@ -361,7 +361,11 @@ func (a *App) registerManaged(ctx context.Context, req HookIdentity) (*RegisterR
 			if _, err := tx.ExecContext(ctx, "UPDATE sessions SET input_state='READY' WHERE id=?", s.ID); err != nil {
 				return err
 			}
-			if err := a.enqueuePrompt(ctx, tx, att, s.ID, "initial", workerPrompt(issue, att)); err != nil {
+			prompt, err := promptForAttempt(ctx, tx, issue, att)
+			if err != nil {
+				return err
+			}
+			if err := a.enqueuePrompt(ctx, tx, att, s.ID, "initial", prompt); err != nil {
 				return err
 			}
 		}
