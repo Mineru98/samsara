@@ -350,6 +350,25 @@ func (a *App) registerManaged(ctx context.Context, req HookIdentity) (*RegisterR
 		tx.Touch(p.ID, sqlite.KindWorktree, w.ID)
 		tx.Touch(p.ID, sqlite.KindIssue, att.IssueID)
 		tx.Event(p.ID, "attempt.running", "attempt", att.ID, att.Version+1)
+		if a.defersInitialPrompt(att.BackendKind) {
+			// The launcher started Claude without the task text (herdr types
+			// the command into a shell). A freshly started session waits for
+			// input; the adapter re-checks native readiness before sending.
+			issue, err := sqlite.GetIssue(ctx, tx, att.IssueID)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE sessions SET input_state='READY' WHERE id=?", s.ID); err != nil {
+				return err
+			}
+			prompt, err := promptForAttempt(ctx, tx, issue, att)
+			if err != nil {
+				return err
+			}
+			if err := a.enqueuePrompt(ctx, tx, att, s.ID, "initial", prompt); err != nil {
+				return err
+			}
+		}
 		res.LeaseID, res.Fence = l.ID, domain.Dec(l.Fence)
 		res.Context = workerContext(att)
 		return tx.Audit(ctx, p.ID, "hook", "session.register", "attempt", att.ID, domain.DecisionPass, "", map[string]string{"session_id": s.ID})
@@ -358,6 +377,15 @@ func (a *App) registerManaged(ctx context.Context, req HookIdentity) (*RegisterR
 		err = a.SyncRegistry(ctx)
 	}
 	return res, err
+}
+
+func (a *App) defersInitialPrompt(kind string) bool {
+	be, ok := a.Backends.Get(kind)
+	if !ok {
+		return false
+	}
+	d, ok := be.(backend.DefersInitialPrompt)
+	return ok && d.DefersInitialPrompt()
 }
 
 // readinessBlock verifies that the managed policy hook can fail closed.

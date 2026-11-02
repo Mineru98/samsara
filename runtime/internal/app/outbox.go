@@ -335,32 +335,29 @@ func (a *App) handleWorkerLaunch(ctx context.Context, r outboxRow, p map[string]
 		})
 	}
 	cfg := projectConfig(proj)
-	prompt := workerPrompt(issue, att)
-	var resolving []*sqlite.Candidate
-	var targetRef string
-	_ = a.DB.Read(ctx, func(q sqlite.Q) error {
+	var prompt string
+	err = a.DB.Read(ctx, func(q sqlite.Q) error {
 		var err error
-		if resolving, err = sqlite.CandidatesWhere(ctx, q, "resolution_attempt_id=?", att.ID); err != nil || len(resolving) == 0 {
-			return err
-		}
-		t, err := sqlite.GetTarget(ctx, q, resolving[0].TargetID)
-		if err == nil {
-			targetRef = t.TargetRef
-		}
+		prompt, err = promptForAttempt(ctx, q, issue, att)
 		return err
 	})
-	if len(resolving) > 0 {
-		prompt += conflictPrompt(resolving[0], targetRef)
+	if err != nil {
+		return failed(err.Error(), nil)
 	}
 	argv := []string{a.SelfExe, "launcher", "--"}
 	argv = append(argv, cfg.Execution.WorkerCommand...)
-	argv = append(argv, prompt)
 	env := map[string]string{"SAMSARA_LAUNCH_TICKET": p["ticket"], "SAMSARA_MANAGED": "1", "SAMSARA_ATTEMPT_ID": att.ID,
 		"SAMSARA_HEARTBEAT_SECONDS": domain.Dec(int64(cfg.Execution.HeartbeatSeconds))}
 	if h := os.Getenv("SAMSARA_HOME"); h != "" {
 		env["SAMSARA_HOME"] = h
 	}
-	spec := backend.LaunchSpec{OperationID: r.OperationID, AttemptID: att.ID, ProjectID: att.ProjectID, Dir: w.Path, Argv: argv, Env: env, Correlation: att.ID}
+	spec := backend.LaunchSpec{OperationID: r.OperationID, AttemptID: att.ID, ProjectID: att.ProjectID, Dir: w.Path, Argv: argv, Env: env, Correlation: att.ID, Prompt: prompt,
+		Checkpoints: map[string]string{}, Checkpoint: a.launchCheckpoint(r.ID)}
+	for k, v := range p {
+		if strings.HasPrefix(k, checkpointPrefix) {
+			spec.Checkpoints[strings.TrimPrefix(k, checkpointPrefix)] = v
+		}
+	}
 	rc, err := launcher.Launch(ctx, spec)
 	if err != nil {
 		rc = backend.LaunchReceipt{Outcome: backend.Ambiguous, Detail: err.Error()}
@@ -386,6 +383,22 @@ func (a *App) handleWorkerLaunch(ctx context.Context, r outboxRow, p map[string]
 	default:
 		// Unknown: never relaunch blindly. Reconcile resolves it via Lookup.
 		return unknown(rc.Detail, nil)
+	}
+}
+
+const checkpointPrefix = "cp_"
+
+// initialPromptTries bounds how long an initial dispatch waits (×10s).
+const initialPromptTries = 30
+
+// launchCheckpoint durably records one launch step result in the outbox
+// payload so a retry of the same intent resumes from it (01 §7.2).
+func (a *App) launchCheckpoint(outboxID string) func(key, value string) error {
+	return func(key, value string) error {
+		return a.DB.Write(context.Background(), func(tx *sqlite.Tx) error {
+			_, err := tx.ExecContext(context.Background(), "UPDATE outbox SET payload=json_set(payload,?,?) WHERE id=?", `$."`+checkpointPrefix+key+`"`, value, outboxID)
+			return err
+		})
 	}
 }
 
@@ -458,6 +471,22 @@ func workerPrompt(issue *sqlite.Issue, att *sqlite.Attempt) string {
 	return b.String()
 }
 
+func promptForAttempt(ctx context.Context, q sqlite.Q, issue *sqlite.Issue, att *sqlite.Attempt) (string, error) {
+	prompt := workerPrompt(issue, att)
+	resolving, err := sqlite.CandidatesWhere(ctx, q, "resolution_attempt_id=?", att.ID)
+	if err != nil {
+		return "", err
+	}
+	if len(resolving) == 0 {
+		return prompt, nil
+	}
+	target, err := sqlite.GetTarget(ctx, q, resolving[0].TargetID)
+	if err != nil {
+		return "", err
+	}
+	return prompt + conflictPrompt(resolving[0], target.TargetRef), nil
+}
+
 // conflictPrompt tells a resolution attempt what to reconcile (04 §12.2).
 func conflictPrompt(c *sqlite.Candidate, targetRef string) string {
 	var files []gitops.ConflictFile
@@ -497,12 +526,27 @@ func (a *App) handlePromptSubmit(ctx context.Context, r outboxRow, p map[string]
 			return err
 		})
 	}
-	if err != nil || b == nil {
-		return skip("no binding")
+	// The initial task of a deferring launcher (herdr) has no other way to
+	// reach the worker: transient conditions (binding not recorded yet,
+	// agent still starting or busy) are waited out instead of skipped.
+	wait := func(reason string) outcome {
+		if p["purpose"] == "initial" && r.AttemptCount < initialPromptTries {
+			return retry(10*time.Second, errors.New(reason))
+		}
+		return skip(reason)
+	}
+	if err != nil {
+		return skip(err.Error())
+	}
+	if b == nil || b.SessionID != s.ID {
+		return wait("binding not linked to the session yet")
 	}
 	// Re-check the automated input conditions immediately before sending.
-	if lease == nil || lease.State != domain.LeaseActive || s.InputOwner != "automation" || s.InputState != domain.InputReady || b.SessionID != s.ID {
+	if lease == nil || lease.State != domain.LeaseActive || s.InputOwner != "automation" {
 		return skip("input conditions not met: owner=" + s.InputOwner + " input=" + s.InputState)
+	}
+	if s.InputState != domain.InputReady {
+		return wait("input conditions not met: owner=" + s.InputOwner + " input=" + s.InputState)
 	}
 	be, _ := a.Backends.Get(b.Kind)
 	sub, ok := be.(backend.PromptSubmitter)
@@ -521,7 +565,9 @@ func (a *App) handlePromptSubmit(ctx context.Context, r outboxRow, p map[string]
 			_, err := tx.ExecContext(ctx, "UPDATE dispatches SET state='SENT' WHERE id=? AND state='QUEUED'", p["dispatch_id"])
 			return err
 		})
-	case backend.NotSent, backend.NotSupported, backend.PolicySkipped:
+	case backend.NotSent, backend.PolicySkipped:
+		return wait(rc.Detail)
+	case backend.NotSupported:
 		return skip(rc.Detail)
 	default:
 		return unknown(rc.Detail, func(tx *sqlite.Tx) error {

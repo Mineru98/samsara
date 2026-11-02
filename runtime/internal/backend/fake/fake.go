@@ -47,6 +47,15 @@ type Backend struct {
 	LoseLaunchAck        bool // performs the launch but reports UNKNOWN
 	LosePromptAck        bool
 	ObserveError         bool // persistent: observation channel broken
+	// DeferPrompt makes the fake behave like herdr: the initial prompt is
+	// not part of the launch and must arrive as a dispatch.
+	DeferPrompt bool
+	// SubmitNotReady makes the next n submits report NOT_SENT (agent not
+	// ready yet).
+	SubmitNotReady int
+
+	// LaunchCheckpoints is the checkpoint map each Launch call received.
+	LaunchCheckpoints []map[string]string
 
 	Sessions map[string]*Session // by correlation
 	Calls    []Call
@@ -91,10 +100,24 @@ func (b *Backend) Probe(ctx context.Context) (backend.ProbeResult, error) {
 	return backend.ProbeResult{Kind: b.kind, Availability: b.Availability, Version: "fake-1", Capabilities: b.Caps}, nil
 }
 
-// Launch implements backend.WorkerLauncher.
+// DefersInitialPrompt implements backend.DefersInitialPrompt.
+func (b *Backend) DefersInitialPrompt() bool { return b.DeferPrompt }
+
+// Launch implements backend.WorkerLauncher. Each call records a "fake_step"
+// checkpoint before anything else, as a multi-step launcher would.
 func (b *Backend) Launch(ctx context.Context, spec backend.LaunchSpec) (backend.LaunchReceipt, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	seen := map[string]string{}
+	for k, v := range spec.Checkpoints {
+		seen[k] = v
+	}
+	b.LaunchCheckpoints = append(b.LaunchCheckpoints, seen)
+	if spec.Checkpoint != nil {
+		if err := spec.Checkpoint("fake_step", fmt.Sprint(len(b.LaunchCheckpoints))); err != nil {
+			return backend.LaunchReceipt{Outcome: backend.NotSent, Detail: err.Error()}, nil
+		}
+	}
 	if !b.Caps.CreateWorker.Usable() {
 		b.record(Call{Op: "launch", OperationID: spec.OperationID, Correlation: spec.Correlation, Outcome: backend.NotSupported})
 		return backend.LaunchReceipt{Outcome: backend.NotSupported}, nil
@@ -159,6 +182,11 @@ func (b *Backend) Submit(ctx context.Context, req backend.PromptRequest) (backen
 	if !b.Caps.SubmitPrompt.Usable() {
 		b.record(Call{Op: "submit", DispatchID: req.DispatchID, Outcome: backend.NotSupported})
 		return backend.PromptReceipt{Outcome: backend.NotSupported}, nil
+	}
+	if b.SubmitNotReady > 0 {
+		b.SubmitNotReady--
+		b.record(Call{Op: "submit", DispatchID: req.DispatchID, Outcome: backend.NotSent})
+		return backend.PromptReceipt{Outcome: backend.NotSent, Detail: "injected: agent not ready"}, nil
 	}
 	for _, s := range b.Sessions {
 		if s.Ref.Key() == req.Ref.Key() {
