@@ -1,0 +1,56 @@
+# 가짜 gh 시나리오 — #21 status:review+OPEN(merge 됨) · #53 정상 · #64 통합 테스트 실패로 보류
+$ cat issues.json  (전)
+{"21":{"state":"OPEN","labels":["enhancement","status:review"]},"53":{"state":"CLOSED","labels":["status:close"]},"64":{"state":"OPEN","labels":["status:review"]}}
+
+$ close-check 21 53 --hold 64 --comment-dir verify --fix
+{
+  "provider": "github",
+  "confirmed": [
+    {
+      "issue": 53,
+      "state": "CLOSED",
+      "status": [
+        "status:close"
+      ]
+    }
+  ],
+  "fixed": [
+    {
+      "issue": 21,
+      "state": "OPEN",
+      "status": [
+        "status:review"
+      ],
+      "actions": [
+        "status:close",
+        "close",
+        "comment"
+      ]
+    }
+  ],
+  "held": [
+    {
+      "issue": 64,
+      "state": "OPEN",
+      "status": [
+        "status:review"
+      ]
+    }
+  ],
+  "needsFix": [],
+  "failed": [],
+  "summary": "확인 1건 / 보정 1건 / 보류 1건"
+}
+(exit 0)
+$ cat issues.json  (후)
+{"21":{"state":"CLOSED","labels":["enhancement","status:close"],"comments":1},"53":{"state":"CLOSED","labels":["status:close"]},"64":{"state":"OPEN","labels":["status:review"]}}
+
+$ node --test scripts/issue-merge-close-check.test.mjs
+✔ status:review + OPEN 이슈는 --fix 로 status:close + CLOSED 가 되고 결과 코멘트가 남는다 (470.700122ms)
+✔ --hold 로 넘긴 보류 이슈는 상태가 어긋나 있어도 바꾸지 않는다 (292.689244ms)
+✔ --fix 없이는 조회만 하고 보정 필요를 exit 1 로 알린다 (103.673695ms)
+✔ 보류 이슈는 위치 인자에 없어도 보고되고, 이미 닫혀 있으면 경고가 붙는다 (147.248341ms)
+✔ status:close 와 다른 status 라벨이 함께 있으면 다른 status 만 떼어 낸다 (173.174793ms)
+ℹ tests 5
+ℹ pass 5
+ℹ fail 0
