@@ -1,0 +1,1517 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/ipc.schema.json",
+  "title": "Samsara IPC protocol v1",
+  "description": "CLI/Hook ↔ daemon HTTP/JSON over a user-private Unix socket (03 §10.1).",
+  "$defs": {
+    "IPCError": {
+      "description": "Body of a non-2xx IPC response. result carries partial data when the handler returned some.",
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "$ref": "common.schema.json#/$defs/ErrorDetail"
+        },
+        "result": {}
+      }
+    },
+    "Empty": {
+      "type": "object"
+    },
+    "OK": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "const": true
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    },
+    "ProjectRef": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id"
+      ]
+    },
+    "RunRef": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id"
+      ]
+    },
+    "IssueRef": {
+      "type": "object",
+      "properties": {
+        "issue_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "issue_id"
+      ]
+    },
+    "SessionRef": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "CandidateRef": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id"
+      ]
+    },
+    "ProjectCursor": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id"
+      ]
+    },
+    "HookIdentity": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "claude_session_id": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "managed_hint": {
+          "type": "boolean"
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "claude_session_id"
+      ]
+    },
+    "RegisterProjectRequest": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "RegisterProjectResult": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "activation": {
+          "$ref": "common.schema.json#/$defs/ProjectActivation"
+        },
+        "created": {
+          "type": "boolean"
+        },
+        "target_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "root",
+        "activation",
+        "created"
+      ]
+    },
+    "RelinkProjectRequest": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "path"
+      ]
+    },
+    "ListProjectsRequest": {
+      "type": "object",
+      "properties": {
+        "include_archived": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CheckProfileRequest": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeout_sec": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project_id",
+        "name",
+        "argv"
+      ]
+    },
+    "PlanValidation": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        },
+        "plan_digest": {
+          "type": "string"
+        },
+        "project_validated": {
+          "type": "boolean"
+        },
+        "problems": {
+          "type": "array",
+          "items": {
+            "$ref": "plan.schema.json#/$defs/PlanProblem"
+          }
+        },
+        "current_graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "blocking_run_id": {
+          "type": "string"
+        },
+        "resolved_target_ref": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "valid",
+        "plan_digest",
+        "project_validated",
+        "problems"
+      ]
+    },
+    "PlanApplyResult": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "run_state": {
+          "$ref": "common.schema.json#/$defs/RunState"
+        },
+        "run_generation": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "graph_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "plan_digest": {
+          "type": "string"
+        },
+        "issue_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "run_id",
+        "run_state",
+        "run_generation",
+        "graph_version",
+        "plan_digest",
+        "issue_mapping"
+      ]
+    },
+    "CommandResult": {
+      "description": "Accepted command. The effect is observed through events, not this response.",
+      "type": "object",
+      "required": [
+        "command_id",
+        "status",
+        "resource_version",
+        "project_version"
+      ],
+      "properties": {
+        "command_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "resource_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "project_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        }
+      }
+    },
+    "AttachRequest": {
+      "type": "object",
+      "properties": {
+        "claude_session_id": {
+          "type": "string"
+        },
+        "ancestor_pids": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "issue_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "issue_id"
+      ]
+    },
+    "RegisterResult": {
+      "type": "object",
+      "properties": {
+        "managed": {
+          "type": "boolean"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "lease_id": {
+          "type": "string"
+        },
+        "fence": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "context": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "managed"
+      ]
+    },
+    "ObserveRequest": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "claude_session_id": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "managed_hint": {
+          "type": "boolean"
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "tool_use_id": {
+          "type": "string"
+        },
+        "failed": {
+          "type": "boolean"
+        },
+        "notification_type": {
+          "type": "string"
+        },
+        "dispatch_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "claude_session_id"
+      ]
+    },
+    "FinishRequest": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "claude_session_id": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "managed_hint": {
+          "type": "boolean"
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "process_exit": {
+          "type": "boolean"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "launcher_ticket": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "claude_session_id"
+      ]
+    },
+    "ToolCheckRequest": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "claude_session_id": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "managed_hint": {
+          "type": "boolean"
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "lease_id": {
+          "type": "string"
+        },
+        "fence": {
+          "type": "string"
+        },
+        "runtime_epoch": {
+          "type": "string"
+        },
+        "tool_use_id": {
+          "type": "string"
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "affected_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "payload_digest": {
+          "type": "string"
+        },
+        "background": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "claude_session_id",
+        "tool_name"
+      ]
+    },
+    "ToolDecision": {
+      "description": "Hook policy decision. PASS never maps to permissionDecision allow.",
+      "type": "object",
+      "required": [
+        "decision",
+        "reason_code",
+        "message"
+      ],
+      "properties": {
+        "decision": {
+          "enum": [
+            "PASS",
+            "DENY"
+          ]
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "project_version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "current_fence": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "retry_after_ms": {
+          "type": "integer"
+        }
+      }
+    },
+    "RenewRequest": {
+      "type": "object",
+      "properties": {
+        "ticket": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket",
+        "attempt_id"
+      ]
+    },
+    "RenewResult": {
+      "type": "object",
+      "properties": {
+        "renewed": {
+          "type": "boolean"
+        },
+        "lease_id": {
+          "type": "string"
+        },
+        "fence": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "deadline_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "renewed"
+      ]
+    },
+    "OutputSubmitRequest": {
+      "type": "object",
+      "properties": {
+        "ticket": {
+          "type": "string"
+        },
+        "claude_session_id": {
+          "type": "string"
+        },
+        "ancestor_pids": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "fence": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "pull_request": {
+          "type": "string"
+        }
+      }
+    },
+    "OutputSubmitResult": {
+      "type": "object",
+      "properties": {
+        "output_id": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "source_sha": {
+          "type": "string"
+        },
+        "manifest_digest": {
+          "type": "string"
+        },
+        "uncommitted_paths": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "verify_operation_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output_id",
+        "attempt_id",
+        "source_sha",
+        "manifest_digest",
+        "uncommitted_paths",
+        "verify_operation_id"
+      ]
+    },
+    "DispatchAckRequest": {
+      "type": "object",
+      "properties": {
+        "dispatch_id": {
+          "type": "string"
+        },
+        "claude_session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dispatch_id"
+      ]
+    },
+    "DecisionRequest": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "enum": [
+            "APPROVE",
+            "REJECT",
+            "REVOKE"
+          ]
+        },
+        "subject_digest": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision"
+      ]
+    },
+    "IPCDecisionRequest": {
+      "type": "object",
+      "properties": {
+        "approval_id": {
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "APPROVE",
+            "REJECT",
+            "REVOKE"
+          ]
+        },
+        "subject_digest": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "approval_id",
+        "decision"
+      ]
+    },
+    "LinkRequest": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "issue_id": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "external_key": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "provider",
+        "kind",
+        "external_key"
+      ]
+    },
+    "LookupRequest": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ]
+    },
+    "HistoryRequest": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "include_tool_checks": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "project_id"
+      ]
+    },
+    "BackupRequest": {
+      "type": "object",
+      "properties": {
+        "dest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dest"
+      ]
+    },
+    "BackupResult": {
+      "type": "object",
+      "properties": {
+        "dest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dest"
+      ]
+    },
+    "UIBootstrap": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "expires_in": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "expires_in"
+      ]
+    },
+    "StopResult": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "STOPPING"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    },
+    "RunCommandResult": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "state",
+        "version"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "common.schema.json#/$defs/RunState"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Decimal"
+        },
+        "approval_id": {
+          "type": "string"
+        }
+      }
+    },
+    "FocusResult": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "IpcRoutes": {
+      "description": "IPC route catalog: POST <path> with body `request`; 200 body is `response`, any other status is IPCError. Headers: Samsara-Protocol: 1 (required), Samsara-Request-Id, Samsara-Deadline-Ms, Idempotency-Key, If-Match.",
+      "type": "object",
+      "properties": {
+        "/ipc/v1/runtime": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/Empty"
+            },
+            "response": {
+              "$ref": "entities.schema.json#/$defs/RuntimeInfo"
+            }
+          }
+        },
+        "/ipc/v1/projects/register": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RegisterProjectRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/RegisterProjectResult"
+            }
+          }
+        },
+        "/ipc/v1/projects/disable": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ProjectRef"
+            },
+            "response": {
+              "$ref": "entities.schema.json#/$defs/ProjectView"
+            }
+          }
+        },
+        "/ipc/v1/projects/archive": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ProjectRef"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/projects/relink": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RelinkProjectRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/projects/list": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ListProjectsRequest"
+            },
+            "response": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "entities.schema.json#/$defs/ProjectSummary"
+              }
+            }
+          }
+        },
+        "/ipc/v1/projects/snapshot": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ProjectRef"
+            },
+            "response": {
+              "$ref": "snapshot.schema.json#/$defs/ProjectSnapshot"
+            }
+          }
+        },
+        "/ipc/v1/profiles/register": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/CheckProfileRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/plans/validate": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "plan.schema.json#/$defs/Plan"
+            },
+            "response": {
+              "$ref": "#/$defs/PlanValidation"
+            }
+          }
+        },
+        "/ipc/v1/plans/apply": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "plan.schema.json#/$defs/Plan"
+            },
+            "response": {
+              "$ref": "#/$defs/PlanApplyResult"
+            }
+          }
+        },
+        "/ipc/v1/runs/start": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RunRef"
+            },
+            "response": {
+              "$ref": "#/$defs/RunCommandResult"
+            }
+          }
+        },
+        "/ipc/v1/runs/pause": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RunRef"
+            },
+            "response": {
+              "$ref": "#/$defs/RunCommandResult"
+            }
+          }
+        },
+        "/ipc/v1/runs/resume": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RunRef"
+            },
+            "response": {
+              "$ref": "#/$defs/RunCommandResult"
+            }
+          }
+        },
+        "/ipc/v1/runs/cancel": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RunRef"
+            },
+            "response": {
+              "$ref": "#/$defs/RunCommandResult"
+            }
+          }
+        },
+        "/ipc/v1/issues/retry": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/IssueRef"
+            },
+            "response": {
+              "$ref": "entities.schema.json#/$defs/AttemptView"
+            }
+          }
+        },
+        "/ipc/v1/issues/get": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/IssueRef"
+            },
+            "response": {
+              "$ref": "entities.schema.json#/$defs/IssueDetail"
+            }
+          }
+        },
+        "/ipc/v1/sessions/register": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/HookIdentity"
+            },
+            "response": {
+              "$ref": "#/$defs/RegisterResult"
+            }
+          }
+        },
+        "/ipc/v1/sessions/attach": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/AttachRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/RegisterResult"
+            }
+          }
+        },
+        "/ipc/v1/sessions/focus": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/SessionRef"
+            },
+            "response": {
+              "$ref": "#/$defs/FocusResult"
+            }
+          }
+        },
+        "/ipc/v1/sessions/release-input": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/SessionRef"
+            },
+            "response": {
+              "$ref": "#/$defs/CommandResult"
+            }
+          }
+        },
+        "/ipc/v1/sessions/observe": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ObserveRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/sessions/finish": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/FinishRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/tools/check": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ToolCheckRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/ToolDecision"
+            }
+          }
+        },
+        "/ipc/v1/tools/result": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ObserveRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/leases/renew": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/RenewRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/RenewResult"
+            }
+          }
+        },
+        "/ipc/v1/outputs/submit": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/OutputSubmitRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OutputSubmitResult"
+            }
+          }
+        },
+        "/ipc/v1/dispatches/ack": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/DispatchAckRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/approvals/list": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ProjectCursor"
+            },
+            "response": {
+              "$ref": "snapshot.schema.json#/$defs/Page"
+            }
+          }
+        },
+        "/ipc/v1/approvals/decide": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/IPCDecisionRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/CommandResult"
+            }
+          }
+        },
+        "/ipc/v1/merge/queues": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ProjectRef"
+            },
+            "response": {}
+          }
+        },
+        "/ipc/v1/merge/enqueue": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/CandidateRef"
+            },
+            "response": {
+              "$ref": "#/$defs/CommandResult"
+            }
+          }
+        },
+        "/ipc/v1/merge/cancel": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/CandidateRef"
+            },
+            "response": {
+              "$ref": "#/$defs/CommandResult"
+            }
+          }
+        },
+        "/ipc/v1/merge/inspect": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/CandidateRef"
+            },
+            "response": {
+              "$ref": "entities.schema.json#/$defs/CandidateView"
+            }
+          }
+        },
+        "/ipc/v1/links/add": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/LinkRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/OK"
+            }
+          }
+        },
+        "/ipc/v1/lookup": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/LookupRequest"
+            },
+            "response": {}
+          }
+        },
+        "/ipc/v1/history": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/HistoryRequest"
+            },
+            "response": {
+              "$ref": "snapshot.schema.json#/$defs/Page"
+            }
+          }
+        },
+        "/ipc/v1/ui/bootstrap": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/Empty"
+            },
+            "response": {
+              "$ref": "#/$defs/UIBootstrap"
+            }
+          }
+        },
+        "/ipc/v1/daemon/stop": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/Empty"
+            },
+            "response": {
+              "$ref": "#/$defs/StopResult"
+            }
+          }
+        },
+        "/ipc/v1/backup": {
+          "type": "object",
+          "required": [
+            "request",
+            "response"
+          ],
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/BackupRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/BackupResult"
+            }
+          }
+        }
+      },
+      "required": [
+        "/ipc/v1/approvals/decide",
+        "/ipc/v1/approvals/list",
+        "/ipc/v1/backup",
+        "/ipc/v1/daemon/stop",
+        "/ipc/v1/dispatches/ack",
+        "/ipc/v1/history",
+        "/ipc/v1/issues/get",
+        "/ipc/v1/issues/retry",
+        "/ipc/v1/leases/renew",
+        "/ipc/v1/links/add",
+        "/ipc/v1/lookup",
+        "/ipc/v1/merge/cancel",
+        "/ipc/v1/merge/enqueue",
+        "/ipc/v1/merge/inspect",
+        "/ipc/v1/merge/queues",
+        "/ipc/v1/outputs/submit",
+        "/ipc/v1/plans/apply",
+        "/ipc/v1/plans/validate",
+        "/ipc/v1/profiles/register",
+        "/ipc/v1/projects/archive",
+        "/ipc/v1/projects/disable",
+        "/ipc/v1/projects/list",
+        "/ipc/v1/projects/register",
+        "/ipc/v1/projects/relink",
+        "/ipc/v1/projects/snapshot",
+        "/ipc/v1/runs/cancel",
+        "/ipc/v1/runs/pause",
+        "/ipc/v1/runs/resume",
+        "/ipc/v1/runs/start",
+        "/ipc/v1/runtime",
+        "/ipc/v1/sessions/attach",
+        "/ipc/v1/sessions/finish",
+        "/ipc/v1/sessions/focus",
+        "/ipc/v1/sessions/observe",
+        "/ipc/v1/sessions/register",
+        "/ipc/v1/sessions/release-input",
+        "/ipc/v1/tools/check",
+        "/ipc/v1/tools/result",
+        "/ipc/v1/ui/bootstrap"
+      ]
+    }
+  }
+}

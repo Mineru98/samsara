@@ -1,0 +1,743 @@
+openapi: 3.1.0
+info:
+  title: Samsara runtime loopback API
+  version: '1'
+  description: 'Dashboard API bound to 127.0.0.1 (03 §7–9, §11). Host and Origin must be the loopback origin. Every response
+    is Cache-Control: no-store. int64 values are decimal strings. Payload schemas in ./schemas are the single source; TypeScript
+    types are generated from them (ts/samsara-api.gen.ts).'
+servers:
+- url: http://127.0.0.1:{port}
+  variables:
+    port:
+      default: '0'
+      description: Port chosen by the daemon; see `samsara ui`.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+paths:
+  /v1/health:
+    get:
+      operationId: health
+      summary: Liveness and readiness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - status
+                - ready
+                properties:
+                  status:
+                    const: ok
+                  ready:
+                    type: boolean
+        default: &id001
+          $ref: '#/components/responses/Error'
+  /v1/ui/sessions:
+    post:
+      operationId: createUISession
+      summary: Exchange a one-time bootstrap code for a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - code
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - token
+                - expires_at
+                properties:
+                  token:
+                    type: string
+                  expires_at:
+                    $ref: ./schemas/common.schema.json#/$defs/Timestamp
+        default: *id001
+  /v1/ui/sessions/current:
+    delete:
+      operationId: revokeUISession
+      summary: Revoke the current bearer token
+      responses:
+        '204':
+          description: Revoked
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runtime:
+    get:
+      operationId: getRuntime
+      summary: Runtime info with read-only backend probes
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/RuntimeInfo
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects:
+    get:
+      operationId: listProjects
+      parameters:
+      - name: include_archived
+        in: query
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/ProjectList
+        default: *id001
+      security:
+      - bearer: []
+  /v1/catalog/snapshot:
+    get:
+      operationId: getCatalogSnapshot
+      summary: Atomic sidebar snapshot; snapshot_cursor starts /v1/catalog/events
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/CatalogSnapshot
+        default: *id001
+      security:
+      - bearer: []
+  /v1/catalog/events:
+    get:
+      operationId: streamCatalogEvents
+      summary: Catalog change stream
+      description: 'Events: `catalog.change` (data: CatalogEvent), `reset_required` (data: ResetRequired; reload the snapshot).
+        One of `after` or `Last-Event-ID` is required (400 otherwise); start from the snapshot_cursor.'
+      parameters:
+      - $ref: '#/components/parameters/After'
+      - $ref: '#/components/parameters/LastEventID'
+      responses:
+        '200':
+          description: catalog.change / reset_required
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: 'SSE frames. `id` is the cursor to resume from; `: heartbeat` comments keep the stream alive.'
+        default: *id001
+      x-sse-events:
+        catalog.change:
+          $ref: ./schemas/event.schema.json#/$defs/CatalogEvent
+        reset_required:
+          $ref: ./schemas/event.schema.json#/$defs/ResetRequired
+      security:
+      - bearer: []
+  /v1/projects/{project_id}:
+    get:
+      operationId: getProject
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/ProjectView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/snapshot:
+    get:
+      operationId: getProjectSnapshot
+      summary: Atomic dashboard snapshot; snapshot_cursor starts the event stream
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/ProjectSnapshot
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/events:
+    get:
+      operationId: streamProjectEvents
+      summary: Project change stream
+      description: 'Events: `project.change` (data: ProjectEvent), `reset_required` (data: ResetRequired). One of `after`
+        or `Last-Event-ID` is required (400 otherwise); they must agree when both are sent.'
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/After'
+      - $ref: '#/components/parameters/LastEventID'
+      responses:
+        '200':
+          description: project.change / reset_required
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: 'SSE frames. `id` is the cursor to resume from; `: heartbeat` comments keep the stream alive.'
+        default: *id001
+      x-sse-events:
+        project.change:
+          $ref: ./schemas/event.schema.json#/$defs/ProjectEvent
+        reset_required:
+          $ref: ./schemas/event.schema.json#/$defs/ResetRequired
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/issues:
+    get:
+      operationId: listIssues
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/Page
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/runs:
+    get:
+      operationId: listRuns
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/Page
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/approvals:
+    get:
+      operationId: listApprovals
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/Page
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/history:
+    get:
+      operationId: listHistory
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/snapshot.schema.json#/$defs/Page
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/github-history:
+    get:
+      operationId: getGitHubHistory
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - freshness
+                - sync
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  freshness:
+                    $ref: ./schemas/common.schema.json#/$defs/Freshness
+                  sync:
+                    type: string
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/merge-queues:
+    get:
+      operationId: listMergeQueues
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+        default: *id001
+      security:
+      - bearer: []
+  /v1/issues/{id}:
+    get:
+      operationId: getIssue
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/IssueDetail
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}:
+    get:
+      operationId: getRun
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/RunView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/attempts/{id}:
+    get:
+      operationId: getAttempt
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/AttemptView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/sessions/{id}:
+    get:
+      operationId: getSession
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/SessionView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/worktrees/{id}:
+    get:
+      operationId: getWorktree
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/WorktreeView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/approvals/{id}:
+    get:
+      operationId: getApproval
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/ApprovalView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/merge-candidates/{id}:
+    get:
+      operationId: getMergeCandidate
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/CandidateView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/operations/{id}:
+    get:
+      operationId: getOperation
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/OperationView
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}/snapshot:
+    get:
+      operationId: getRunSnapshot
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        default: *id001
+      security:
+      - bearer: []
+  /v1/approvals/{id}/decisions:
+    post:
+      operationId: decideApproval
+      summary: Decide against the exact subject_digest; a changed subject is 412 APPROVAL_SUBJECT_CHANGED
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas/ipc.schema.json#/$defs/DecisionRequest
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/CommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/merge-candidates/{id}/enqueue:
+    post:
+      operationId: enqueueMergeCandidate
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/CommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/merge-candidates/{id}/cancel:
+    post:
+      operationId: cancelMergeCandidate
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/CommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}/pause:
+    post:
+      operationId: pauseRun
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/RunCommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}/resume:
+    post:
+      operationId: resumeRun
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/RunCommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/runs/{id}/cancel:
+    post:
+      operationId: cancelRun
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/RunCommandResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/disable:
+    post:
+      operationId: disableProject
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/entities.schema.json#/$defs/ProjectView
+        default: *id001
+      security:
+      - bearer: []
+  /v1/projects/{project_id}/refresh:
+    post:
+      operationId: refreshProject
+      parameters:
+      - $ref: '#/components/parameters/ProjectID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - status
+                properties:
+                  status:
+                    const: ACCEPTED
+        default: *id001
+      security:
+      - bearer: []
+  /v1/sessions/{id}/focus:
+    post:
+      operationId: focusSession
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/FocusResult
+        default: *id001
+      security:
+      - bearer: []
+  /v1/sessions/{id}/release-input:
+    post:
+      operationId: releaseSessionInput
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '202':
+          description: Accepted; the effect arrives as events
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/ipc.schema.json#/$defs/CommandResult
+        default: *id001
+      security:
+      - bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: In-memory token from POST /v1/ui/sessions. Query-string credentials are refused.
+  parameters:
+    ProjectID:
+      name: project_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+      description: Opaque next_cursor of the previous page.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    After:
+      name: after
+      in: query
+      schema:
+        type: string
+      description: 'Cursor to resume after: snapshot_cursor or the last SSE id.'
+    LastEventID:
+      name: Last-Event-ID
+      in: header
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Required on every command. Same key + same payload replays the result; same key + different payload is
+        409 IDEMPOTENCY_KEY_REUSED.
+    IfMatch:
+      name: If-Match
+      in: header
+      schema:
+        type: string
+      description: ETag the decision is based on (`"<id>:v<version>"`, or a bare version). A mismatch is 412 VERSION_MISMATCH.
+  headers:
+    ETag:
+      description: Strong validator `"<id>:v<version>"` for If-Match.
+      schema:
+        type: string
+        pattern: ^"[^"]+:v[0-9]+"$
+  responses:
+    Error:
+      description: 'Error. Status follows the code: 400 INVALID_REQUEST, CYCLE_DETECTED, PROTOCOL_MISMATCH; 401 SESSION_EXPIRED;
+        403 ACTION_FORBIDDEN, PROJECT_NOT_ENABLED, PROJECT_NOT_TRUSTED, TARGET_CHECKED_OUT; 404 RESOURCE_NOT_FOUND; 409 DEPENDENCY_UNMET,
+        DELIVERY_UNKNOWN, IDEMPOTENCY_KEY_REUSED, CONFLICT, APPROVAL_REQUIRED, RUN_NOT_FINALIZED, OWNERSHIP_CONFLICT, STALE_FENCE;
+        412 VERSION_MISMATCH, APPROVAL_SUBJECT_CHANGED; 422 UNSUPPORTED_CAPABILITY; 429 RATE_LIMITED (Retry-After); 503 RUNTIME_NOT_READY,
+        STORAGE_UNAVAILABLE; 500 otherwise.'
+      content:
+        application/json:
+          schema:
+            $ref: ./schemas/common.schema.json#/$defs/ErrorResponse

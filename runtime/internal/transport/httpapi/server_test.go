@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/api"
+	"github.com/Mineru98/samsara/runtime/api/apitest"
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/backend/standalone"
@@ -83,13 +85,17 @@ func TestBootstrapAuthAndSSE(t *testing.T) {
 	s, pid, url := newServer(t)
 	base := strings.SplitN(url, "/#", 2)[0]
 	code := strings.SplitN(url, "#bootstrap=", 2)[1]
-	if r, _ := do(t, "GET", base+"/v1/projects", "", ""); r.StatusCode != 401 {
+	refErr := api.Ref("common.schema.json", "ErrorResponse")
+	fx := apitest.NewRecorder(t, "http-errors", "HTTP error bodies from the loopback API: missing bearer, foreign origin, disagreeing cursors and a command without Idempotency-Key.", nil)
+	r, b := do(t, "GET", base+"/v1/projects", "", "")
+	if r.StatusCode != 401 {
 		t.Fatalf("NET-01: unauthenticated = %d", r.StatusCode)
 	}
+	fx.AddRaw(refErr, "401 missing bearer token", b)
 	if r, _ := do(t, "GET", base+"/v1/projects?token="+code, "", ""); r.StatusCode != 401 {
 		t.Fatal("NET-02: query credentials must not work")
 	}
-	r, b := do(t, "POST", base+"/v1/ui/sessions", "", `{"code":"`+code+`"}`)
+	r, b = do(t, "POST", base+"/v1/ui/sessions", "", `{"code":"`+code+`"}`)
 	if r.StatusCode != 200 {
 		t.Fatalf("exchange: %d %s", r.StatusCode, b)
 	}
@@ -98,12 +104,30 @@ func TestBootstrapAuthAndSSE(t *testing.T) {
 	if r, _ := do(t, "POST", base+"/v1/ui/sessions", "", `{"code":"`+code+`"}`); r.StatusCode != 401 {
 		t.Fatal("one-time code reused")
 	}
-	if r, _ := do(t, "GET", base+"/v1/projects", tok.Token, "", "Origin", "http://evil.example"); r.StatusCode != 403 {
+	if r, b := do(t, "GET", base+"/v1/projects", tok.Token, "", "Origin", "http://evil.example", "X-Request-Id", "req-1"); r.StatusCode != 403 {
 		t.Fatal("foreign origin accepted")
+	} else {
+		fx.AddRaw(refErr, "403 foreign origin (X-Request-Id echoed)", b)
 	}
 	r, b = do(t, "GET", base+"/v1/projects/"+pid+"/snapshot", tok.Token, "")
 	if r.StatusCode != 200 || r.Header.Get("Cache-Control") != "no-store" {
 		t.Fatalf("snapshot: %d %s", r.StatusCode, b)
+	}
+	if err := api.ValidateStrict(api.Ref("snapshot.schema.json", "ProjectSnapshot"), b); err != nil {
+		t.Fatalf("snapshot contract: %v", err)
+	}
+	for path, ref := range map[string]string{
+		"/v1/runtime":          api.Ref("entities.schema.json", "RuntimeInfo"),
+		"/v1/catalog/snapshot": api.Ref("snapshot.schema.json", "CatalogSnapshot"),
+		"/v1/projects":         api.Ref("snapshot.schema.json", "ProjectList"),
+	} {
+		r, body := do(t, "GET", base+path, tok.Token, "")
+		if r.StatusCode != 200 {
+			t.Fatalf("%s: %d %s", path, r.StatusCode, body)
+		}
+		if err := api.ValidateStrict(ref, body); err != nil {
+			t.Fatalf("%s contract: %v", path, err)
+		}
 	}
 	var snap sqlite.Snapshot
 	_ = json.Unmarshal(b, &snap)
@@ -138,6 +162,9 @@ func TestBootstrapAuthAndSSE(t *testing.T) {
 			break
 		}
 	}
+	if err := api.ValidateStrict(api.Ref("event.schema.json", "ProjectEvent"), []byte(data)); err != nil {
+		t.Fatalf("event contract: %v", err)
+	}
 	var ev sqlite.EventEnvelope
 	if err := json.Unmarshal([]byte(data), &ev); err != nil || id == "" {
 		t.Fatalf("event: %q %v", data, err)
@@ -145,12 +172,17 @@ func TestBootstrapAuthAndSSE(t *testing.T) {
 	if ev.PreviousProjectVersion != snap.ProjectVersion || ev.Type != "project.disable_requested" {
 		t.Fatalf("EVT-02: %+v (snapshot version %s)", ev, snap.ProjectVersion)
 	}
-	if r, _ := do(t, "GET", base+"/v1/projects/"+pid+"/events?after=a", tok.Token, "", "Last-Event-ID", "b"); r.StatusCode != 400 {
+	if r, b := do(t, "GET", base+"/v1/projects/"+pid+"/events?after=a", tok.Token, "", "Last-Event-ID", "b"); r.StatusCode != 400 {
 		t.Fatal("EVT-14: disagreeing cursors must be 400")
+	} else {
+		fx.AddRaw(refErr, "400 after and Last-Event-ID disagree", b)
 	}
-	if r, _ := do(t, "POST", base+"/v1/projects/"+pid+"/disable", tok.Token, ""); r.StatusCode != 400 {
+	if r, b := do(t, "POST", base+"/v1/projects/"+pid+"/disable", tok.Token, ""); r.StatusCode != 400 {
 		t.Fatal("commands require Idempotency-Key")
+	} else {
+		fx.AddRaw(refErr, "400 command without Idempotency-Key", b)
 	}
+	fx.Save()
 	if r, _ := do(t, "DELETE", base+"/v1/ui/sessions/current", tok.Token, ""); r.StatusCode != 204 {
 		t.Fatal("revoke failed")
 	}

@@ -1,0 +1,54 @@
+{
+  "name": "http-errors",
+  "description": "HTTP error bodies from the loopback API: missing bearer, foreign origin, disagreeing cursors and a command without Idempotency-Key.",
+  "payloads": [
+    {
+      "schema": "common.schema.json#/$defs/ErrorResponse",
+      "note": "401 missing bearer token",
+      "data": {
+        "error": {
+          "code": "SESSION_EXPIRED",
+          "message": "missing bearer token",
+          "request_id": "",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "schema": "common.schema.json#/$defs/ErrorResponse",
+      "note": "403 foreign origin (X-Request-Id echoed)",
+      "data": {
+        "error": {
+          "code": "ACTION_FORBIDDEN",
+          "message": "origin not allowed",
+          "request_id": "req-1",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "schema": "common.schema.json#/$defs/ErrorResponse",
+      "note": "400 after and Last-Event-ID disagree",
+      "data": {
+        "error": {
+          "code": "INVALID_REQUEST",
+          "message": "after and Last-Event-ID disagree",
+          "request_id": "",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "schema": "common.schema.json#/$defs/ErrorResponse",
+      "note": "400 command without Idempotency-Key",
+      "data": {
+        "error": {
+          "code": "INVALID_REQUEST",
+          "message": "Idempotency-Key header required for commands",
+          "request_id": "",
+          "retryable": false
+        }
+      }
+    }
+  ]
+}

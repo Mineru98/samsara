@@ -1,0 +1,574 @@
+{
+  "name": "unknown-delivery",
+  "description": "The worker launch ACK was lost: the launch operation stays UNKNOWN and is never turned into success or failure automatically (BE-10).",
+  "payloads": [
+    {
+      "schema": "snapshot.schema.json#/$defs/ProjectSnapshot",
+      "note": "launch outcome unknown",
+      "data": {
+        "database_generation": "dbgen_fx001",
+        "entities": {
+          "approvals": [
+            {
+              "decided_at": "2026-10-28T01:00:00Z",
+              "decision_actor": "policy:auto",
+              "id": "apr_fx001",
+              "kind": "PLAN",
+              "policy_version": "1",
+              "project_id": "prj_fx001",
+              "requested_at": "2026-10-28T01:00:00Z",
+              "run_id": "run_fx001",
+              "state": "APPROVED",
+              "subject": {
+                "graph_version": 1,
+                "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              "subject_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+              "version": "2"
+            }
+          ],
+          "attempts": [
+            {
+              "backend_kind": "tmux",
+              "backend_reason": "{\"selected\":\"tmux\",\"mode\":\"auto\",\"manual\":false,\"rejected\":{\"herdr\":\"UNAVAILABLE\"}}",
+              "id": "att_fx001",
+              "issue_id": "issue_fx001",
+              "project_id": "prj_fx001",
+              "resume_required": false,
+              "run_generation": "1",
+              "run_id": "run_fx001",
+              "state": "STARTING",
+              "updated_at": "2026-10-28T01:00:00Z",
+              "version": "2",
+              "worktree_id": "wt_fx001"
+            }
+          ],
+          "dependencies": [],
+          "gates": [],
+          "integration_targets": [
+            {
+              "authority": "samsara_local",
+              "id": "tgt_fx001",
+              "policy_version": "1",
+              "repository_id": "repo_fx001",
+              "target_ref": "refs/heads/integration",
+              "version": "1"
+            }
+          ],
+          "issues": [
+            {
+              "acceptance_criteria": [],
+              "available_actions": [],
+              "blocking_reasons": [],
+              "check_profile": "",
+              "client_key": "x",
+              "current_attempt_id": "att_fx001",
+              "display_status": "STARTING",
+              "execution_state": "STARTING",
+              "id": "issue_fx001",
+              "lifecycle": "OPEN",
+              "project_id": "prj_fx001",
+              "required_capabilities": [],
+              "resume_required": false,
+              "run_id": "run_fx001",
+              "title": "X",
+              "version": "1"
+            }
+          ],
+          "merge_candidates": [],
+          "runs": [
+            {
+              "alias_mapping": {
+                "x": "issue_fx001"
+              },
+              "created_at": "2026-10-28T01:00:00Z",
+              "graph_version": "1",
+              "id": "run_fx001",
+              "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+              "project_id": "prj_fx001",
+              "run_generation": "1",
+              "started_at": "2026-10-28T01:00:00Z",
+              "state": "ACTIVE",
+              "version": "2"
+            }
+          ],
+          "sessions": [],
+          "worktrees": [
+            {
+              "attempt_id": "att_fx001",
+              "base_sha": "0000000000000000000000000000000000000001",
+              "branch_ref": "refs/heads/samsara/e64a64f4/x/9a36489b",
+              "id": "wt_fx001",
+              "ownership": "managed",
+              "path": "/fixture/wt/e64a64f4/att_fx001",
+              "project_id": "prj_fx001",
+              "repository_id": "repo_fx001",
+              "state": "READY",
+              "version": "2"
+            }
+          ]
+        },
+        "freshness": {
+          "backend_observation": "LIVE",
+          "github": "UNAVAILABLE",
+          "runtime": "LIVE"
+        },
+        "generated_at": "2026-10-28T01:00:00Z",
+        "graph_version": "1",
+        "project": {
+          "activation": "ENABLED",
+          "created_at": "2026-10-28T01:00:00Z",
+          "display_name": "repo",
+          "drain_state": "NONE",
+          "graph_version": "1",
+          "id": "prj_fx001",
+          "last_activity_at": "2026-10-28T01:00:00Z",
+          "policy_version": "1",
+          "project_version": "6",
+          "registry_state": "PRESENT",
+          "root_path": "/fixture/repo",
+          "version": "2"
+        },
+        "project_id": "prj_fx001",
+        "project_version": "6",
+        "runtime_epoch": "epoch_fx001",
+        "schema_version": "1",
+        "snapshot_cursor": "cHJqX2Z4MDAxfGRiZ2VuX2Z4MDAxfDY",
+        "summary": {
+          "approval_pending": 0,
+          "blocked": 0,
+          "integration_pending": 0,
+          "running": 1
+        }
+      }
+    },
+    {
+      "schema": "event.schema.json#/$defs/ProjectEvent",
+      "note": "project.enabled",
+      "data": {
+        "aggregate_id": "prj_fx001",
+        "aggregate_type": "project",
+        "aggregate_version": "0",
+        "event_id": "evt_fx001",
+        "occurred_at": "2026-10-28T01:00:00Z",
+        "payload": {
+          "changes": {
+            "deletes": {},
+            "upserts": {
+              "integration_targets": [
+                {
+                  "authority": "samsara_local",
+                  "id": "tgt_fx001",
+                  "policy_version": "1",
+                  "repository_id": "repo_fx001",
+                  "target_ref": "refs/heads/integration",
+                  "version": "1"
+                }
+              ],
+              "projects": [
+                {
+                  "activation": "ENABLED",
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "display_name": "repo",
+                  "drain_state": "NONE",
+                  "graph_version": "0",
+                  "id": "prj_fx001",
+                  "last_activity_at": "2026-10-28T01:00:00Z",
+                  "policy_version": "1",
+                  "project_version": "0",
+                  "registry_state": "PRESENT",
+                  "root_path": "/fixture/repo",
+                  "version": "1"
+                }
+              ]
+            }
+          }
+        },
+        "previous_project_version": "0",
+        "project_id": "prj_fx001",
+        "project_version": "1",
+        "recorded_at": "2026-10-28T01:00:00Z",
+        "schema_version": "1",
+        "seq": "1",
+        "type": "project.enabled"
+      }
+    },
+    {
+      "schema": "event.schema.json#/$defs/ProjectEvent",
+      "note": "plan.applied",
+      "data": {
+        "aggregate_id": "run_fx001",
+        "aggregate_type": "run",
+        "aggregate_version": "1",
+        "event_id": "evt_fx002",
+        "occurred_at": "2026-10-28T01:00:00Z",
+        "payload": {
+          "changes": {
+            "deletes": {},
+            "upserts": {
+              "issues": [
+                {
+                  "acceptance_criteria": [],
+                  "available_actions": [],
+                  "blocking_reasons": [],
+                  "check_profile": "",
+                  "client_key": "x",
+                  "display_status": "PLANNED",
+                  "id": "issue_fx001",
+                  "lifecycle": "OPEN",
+                  "project_id": "prj_fx001",
+                  "required_capabilities": [],
+                  "resume_required": false,
+                  "run_id": "run_fx001",
+                  "title": "X",
+                  "version": "1"
+                }
+              ],
+              "projects": [
+                {
+                  "activation": "ENABLED",
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "display_name": "repo",
+                  "drain_state": "NONE",
+                  "graph_version": "1",
+                  "id": "prj_fx001",
+                  "last_activity_at": "2026-10-28T01:00:00Z",
+                  "policy_version": "1",
+                  "project_version": "1",
+                  "registry_state": "PRESENT",
+                  "root_path": "/fixture/repo",
+                  "version": "2"
+                }
+              ],
+              "runs": [
+                {
+                  "alias_mapping": {
+                    "x": "issue_fx001"
+                  },
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "graph_version": "1",
+                  "id": "run_fx001",
+                  "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+                  "project_id": "prj_fx001",
+                  "run_generation": "1",
+                  "state": "PLANNED",
+                  "version": "1"
+                }
+              ]
+            }
+          }
+        },
+        "previous_project_version": "1",
+        "project_id": "prj_fx001",
+        "project_version": "2",
+        "recorded_at": "2026-10-28T01:00:00Z",
+        "schema_version": "1",
+        "seq": "2",
+        "type": "plan.applied"
+      }
+    },
+    {
+      "schema": "event.schema.json#/$defs/ProjectEvent",
+      "note": "approval.requested",
+      "data": {
+        "aggregate_id": "apr_fx001",
+        "aggregate_type": "approval",
+        "aggregate_version": "1",
+        "event_id": "evt_fx003",
+        "occurred_at": "2026-10-28T01:00:00Z",
+        "payload": {
+          "changes": {
+            "deletes": {},
+            "upserts": {
+              "approvals": [
+                {
+                  "decided_at": "2026-10-28T01:00:00Z",
+                  "decision_actor": "policy:auto",
+                  "id": "apr_fx001",
+                  "kind": "PLAN",
+                  "policy_version": "1",
+                  "project_id": "prj_fx001",
+                  "requested_at": "2026-10-28T01:00:00Z",
+                  "run_id": "run_fx001",
+                  "state": "APPROVED",
+                  "subject": {
+                    "graph_version": 1,
+                    "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+                  },
+                  "subject_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+                  "version": "2"
+                }
+              ],
+              "issues": [
+                {
+                  "acceptance_criteria": [],
+                  "available_actions": [],
+                  "blocking_reasons": [],
+                  "check_profile": "",
+                  "client_key": "x",
+                  "display_status": "READY",
+                  "id": "issue_fx001",
+                  "lifecycle": "OPEN",
+                  "project_id": "prj_fx001",
+                  "required_capabilities": [],
+                  "resume_required": false,
+                  "run_id": "run_fx001",
+                  "title": "X",
+                  "version": "1"
+                }
+              ],
+              "projects": [
+                {
+                  "activation": "ENABLED",
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "display_name": "repo",
+                  "drain_state": "NONE",
+                  "graph_version": "1",
+                  "id": "prj_fx001",
+                  "last_activity_at": "2026-10-28T01:00:00Z",
+                  "policy_version": "1",
+                  "project_version": "2",
+                  "registry_state": "PRESENT",
+                  "root_path": "/fixture/repo",
+                  "version": "2"
+                }
+              ],
+              "runs": [
+                {
+                  "alias_mapping": {
+                    "x": "issue_fx001"
+                  },
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "graph_version": "1",
+                  "id": "run_fx001",
+                  "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+                  "project_id": "prj_fx001",
+                  "run_generation": "1",
+                  "started_at": "2026-10-28T01:00:00Z",
+                  "state": "ACTIVE",
+                  "version": "2"
+                }
+              ]
+            }
+          }
+        },
+        "previous_project_version": "2",
+        "project_id": "prj_fx001",
+        "project_version": "3",
+        "recorded_at": "2026-10-28T01:00:00Z",
+        "schema_version": "1",
+        "seq": "3",
+        "type": "approval.requested"
+      }
+    },
+    {
+      "schema": "event.schema.json#/$defs/ProjectEvent",
+      "note": "attempt.scheduled",
+      "data": {
+        "aggregate_id": "att_fx001",
+        "aggregate_type": "attempt",
+        "aggregate_version": "1",
+        "event_id": "evt_fx004",
+        "occurred_at": "2026-10-28T01:00:00Z",
+        "payload": {
+          "changes": {
+            "deletes": {},
+            "upserts": {
+              "attempts": [
+                {
+                  "backend_kind": "tmux",
+                  "backend_reason": "{\"selected\":\"tmux\",\"mode\":\"auto\",\"manual\":false,\"rejected\":{\"herdr\":\"UNAVAILABLE\"}}",
+                  "id": "att_fx001",
+                  "issue_id": "issue_fx001",
+                  "project_id": "prj_fx001",
+                  "resume_required": false,
+                  "run_generation": "1",
+                  "run_id": "run_fx001",
+                  "state": "STARTING",
+                  "updated_at": "2026-10-28T01:00:00Z",
+                  "version": "2",
+                  "worktree_id": "wt_fx001"
+                }
+              ],
+              "issues": [
+                {
+                  "acceptance_criteria": [],
+                  "available_actions": [],
+                  "blocking_reasons": [],
+                  "check_profile": "",
+                  "client_key": "x",
+                  "current_attempt_id": "att_fx001",
+                  "display_status": "STARTING",
+                  "execution_state": "STARTING",
+                  "id": "issue_fx001",
+                  "lifecycle": "OPEN",
+                  "project_id": "prj_fx001",
+                  "required_capabilities": [],
+                  "resume_required": false,
+                  "run_id": "run_fx001",
+                  "title": "X",
+                  "version": "1"
+                }
+              ],
+              "operations": [
+                {
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "id": "op_fx001",
+                  "kind": "worktree.create",
+                  "project_id": "prj_fx001",
+                  "resource_key": "worktree:wt_fx001",
+                  "result": {},
+                  "state": "PENDING",
+                  "updated_at": "2026-10-28T01:00:00Z"
+                }
+              ],
+              "worktrees": [
+                {
+                  "attempt_id": "att_fx001",
+                  "base_sha": "",
+                  "branch_ref": "refs/heads/samsara/e64a64f4/x/9a36489b",
+                  "id": "wt_fx001",
+                  "ownership": "managed",
+                  "path": "/fixture/wt/e64a64f4/att_fx001",
+                  "project_id": "prj_fx001",
+                  "repository_id": "repo_fx001",
+                  "state": "CREATING",
+                  "version": "1"
+                }
+              ]
+            }
+          }
+        },
+        "previous_project_version": "3",
+        "project_id": "prj_fx001",
+        "project_version": "4",
+        "recorded_at": "2026-10-28T01:00:00Z",
+        "schema_version": "1",
+        "seq": "4",
+        "type": "attempt.scheduled"
+      }
+    },
+    {
+      "schema": "event.schema.json#/$defs/ProjectEvent",
+      "note": "worktree.ready",
+      "data": {
+        "aggregate_id": "wt_fx001",
+        "aggregate_type": "worktree",
+        "aggregate_version": "2",
+        "event_id": "evt_fx005",
+        "occurred_at": "2026-10-28T01:00:00Z",
+        "payload": {
+          "changes": {
+            "deletes": {},
+            "upserts": {
+              "issues": [
+                {
+                  "acceptance_criteria": [],
+                  "available_actions": [],
+                  "blocking_reasons": [],
+                  "check_profile": "",
+                  "client_key": "x",
+                  "current_attempt_id": "att_fx001",
+                  "display_status": "STARTING",
+                  "execution_state": "STARTING",
+                  "id": "issue_fx001",
+                  "lifecycle": "OPEN",
+                  "project_id": "prj_fx001",
+                  "required_capabilities": [],
+                  "resume_required": false,
+                  "run_id": "run_fx001",
+                  "title": "X",
+                  "version": "1"
+                }
+              ],
+              "operations": [
+                {
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "id": "op_fx001",
+                  "kind": "worktree.create",
+                  "project_id": "prj_fx001",
+                  "resource_key": "worktree:wt_fx001",
+                  "result": {
+                    "base_sha": "0000000000000000000000000000000000000001",
+                    "path": "/fixture/wt/e64a64f4/att_fx001"
+                  },
+                  "state": "SUCCEEDED",
+                  "updated_at": "2026-10-28T01:00:00Z"
+                },
+                {
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "id": "op_fx002",
+                  "kind": "worker.launch",
+                  "project_id": "prj_fx001",
+                  "resource_key": "attempt:att_fx001",
+                  "result": {},
+                  "state": "PENDING",
+                  "updated_at": "2026-10-28T01:00:00Z"
+                }
+              ],
+              "worktrees": [
+                {
+                  "attempt_id": "att_fx001",
+                  "base_sha": "0000000000000000000000000000000000000001",
+                  "branch_ref": "refs/heads/samsara/e64a64f4/x/9a36489b",
+                  "id": "wt_fx001",
+                  "ownership": "managed",
+                  "path": "/fixture/wt/e64a64f4/att_fx001",
+                  "project_id": "prj_fx001",
+                  "repository_id": "repo_fx001",
+                  "state": "READY",
+                  "version": "2"
+                }
+              ]
+            }
+          }
+        },
+        "previous_project_version": "4",
+        "project_id": "prj_fx001",
+        "project_version": "5",
+        "recorded_at": "2026-10-28T01:00:00Z",
+        "schema_version": "1",
+        "seq": "5",
+        "type": "worktree.ready"
+      }
+    },
+    {
+      "schema": "event.schema.json#/$defs/ProjectEvent",
+      "note": "project.changed",
+      "data": {
+        "aggregate_id": "prj_fx001",
+        "aggregate_type": "project",
+        "aggregate_version": "0",
+        "event_id": "evt_fx006",
+        "occurred_at": "2026-10-28T01:00:00Z",
+        "payload": {
+          "changes": {
+            "deletes": {},
+            "upserts": {
+              "operations": [
+                {
+                  "created_at": "2026-10-28T01:00:00Z",
+                  "error": "injected ack loss",
+                  "id": "op_fx002",
+                  "kind": "worker.launch",
+                  "project_id": "prj_fx001",
+                  "resource_key": "attempt:att_fx001",
+                  "result": {},
+                  "state": "UNKNOWN",
+                  "updated_at": "2026-10-28T01:00:00Z"
+                }
+              ]
+            }
+          }
+        },
+        "previous_project_version": "5",
+        "project_id": "prj_fx001",
+        "project_version": "6",
+        "recorded_at": "2026-10-28T01:00:00Z",
+        "schema_version": "1",
+        "seq": "6",
+        "type": "project.changed"
+      }
+    }
+  ]
+}

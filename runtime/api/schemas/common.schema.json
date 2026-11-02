@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/common.schema.json",
+  "title": "Samsara common wire types",
+  "description": "Scalars, enumerations and the error body shared by HTTP, SSE and IPC (03 §3, §7.3, §12.1).",
+  "$defs": {
+    "Decimal": {
+      "description": "int64 counter, version or sequence rendered as a decimal string so JavaScript never loses precision.",
+      "type": "string",
+      "pattern": "^-?[0-9]+$"
+    },
+    "Timestamp": {
+      "description": "RFC 3339 instant.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "OptionalTimestamp": {
+      "description": "RFC 3339 instant, or an empty string when the moment has not happened.",
+      "type": "string",
+      "anyOf": [{ "format": "date-time" }, { "maxLength": 0 }]
+    },
+    "ErrorCode": {
+      "description": "Stable error identifier (03 §7.3).",
+      "enum": [
+        "INVALID_REQUEST", "SESSION_EXPIRED", "ACTION_FORBIDDEN", "RESOURCE_NOT_FOUND", "DEPENDENCY_UNMET",
+        "DELIVERY_UNKNOWN", "IDEMPOTENCY_KEY_REUSED", "CONFLICT", "VERSION_MISMATCH", "APPROVAL_SUBJECT_CHANGED",
+        "APPROVAL_REQUIRED", "UNSUPPORTED_CAPABILITY", "RATE_LIMITED", "RUNTIME_NOT_READY", "STORAGE_UNAVAILABLE",
+        "RUN_NOT_FINALIZED", "PROTOCOL_MISMATCH", "PROJECT_NOT_ENABLED", "PROJECT_NOT_TRUSTED", "CYCLE_DETECTED",
+        "OWNERSHIP_CONFLICT", "TARGET_CHECKED_OUT", "STALE_FENCE", "INTERNAL"
+      ]
+    },
+    "ErrorDetail": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "$ref": "#/$defs/ErrorCode" },
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "details": { "type": "object" }
+      }
+    },
+    "HTTPError": {
+      "description": "HTTP error detail: the shared error plus the echoed X-Request-Id.",
+      "type": "object",
+      "required": ["code", "message", "retryable", "request_id"],
+      "properties": {
+        "code": { "$ref": "#/$defs/ErrorCode" },
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "request_id": { "type": "string" },
+        "details": { "type": "object" }
+      }
+    },
+    "ErrorResponse": {
+      "description": "Body of every non-2xx HTTP response.",
+      "type": "object",
+      "required": ["error"],
+      "properties": { "error": { "$ref": "#/$defs/HTTPError" } }
+    },
+    "ProjectActivation": { "enum": ["UNCONFIGURED", "ENABLED", "DISABLED"] },
+    "RegistryState": { "enum": ["PRESENT", "MISSING", "ARCHIVED"] },
+    "DrainState": { "enum": ["NONE", "REQUESTED", "DRAINING", "COMPLETE", "NEEDS_ATTENTION"] },
+    "RunState": { "enum": ["PLANNED", "ACTIVE", "PAUSED", "COMPLETED", "FAILED", "CANCELLED"] },
+    "IssueLifecycle": { "enum": ["OPEN", "COMPLETED", "CANCELLED"] },
+    "BackendAvailability": { "enum": ["AVAILABLE", "DEGRADED", "UNAVAILABLE"] },
+    "OperationState": { "enum": ["PENDING", "RUNNING", "SUCCEEDED", "FAILED", "UNKNOWN", "CANCELLED"] },
+    "AttemptState": {
+      "enum": ["PENDING", "STARTING", "RUNNING", "PAUSING", "PAUSED", "IMPLEMENTED", "VERIFYING", "VERIFIED", "FAILED", "CANCEL_REQUESTED", "CANCELLED", "LOST"]
+    },
+    "SessionDesiredState": { "enum": ["ACTIVE", "PAUSED", "STOPPED"] },
+    "Liveness": { "enum": ["ALIVE", "EXITED", "UNKNOWN"] },
+    "InputState": { "enum": ["READY", "BUSY", "NATIVE_PERMISSION", "USER_OWNED", "UNKNOWN"] },
+    "LeaseState": { "enum": ["ACTIVE", "REVOKED", "EXPIRED", "RELEASED"] },
+    "ApprovalKind": { "enum": ["PLAN", "RESULT", "MERGE", "RECOVERY"] },
+    "ApprovalState": { "enum": ["PENDING", "APPROVED", "REJECTED", "INVALIDATED", "CANCELLED"] },
+    "CandidateState": {
+      "enum": ["WAITING", "VALIDATING", "READY", "PUBLISHING", "MERGED", "STALE_BASE", "CONFLICT", "FAILED", "CANCELLED"]
+    },
+    "NativeQueueState": { "enum": ["NONE", "REQUESTED", "QUEUED", "VALIDATING", "MERGED", "REMOVED", "UNKNOWN"] },
+    "Milestone": { "enum": ["IMPLEMENTED", "VERIFIED", "RESULT_APPROVED", "INTEGRATED"] },
+    "DownstreamPhase": { "enum": ["EXECUTION", "INTEGRATION"] },
+    "IntegrationAuthority": { "enum": ["manual", "github_queue", "samsara_local"] },
+    "WorktreeState": {
+      "enum": ["CREATING", "READY", "IN_USE", "QUIESCING", "RETAINED", "CLEANUP_ELIGIBLE", "REMOVED", "QUARANTINED"]
+    },
+    "Ownership": { "enum": ["managed", "external"] },
+    "BackendKind": { "enum": ["herdr", "tmux", "standalone", "fake"] },
+    "Freshness": { "enum": ["LIVE", "PARTIAL", "STALE", "UNAVAILABLE"] },
+    "ResetReason": {
+      "description": "Why an event cursor cannot be served; the client must reload the snapshot.",
+      "enum": ["CURSOR_INVALID", "CURSOR_SCOPE_MISMATCH", "DATABASE_GENERATION_CHANGED", "CURSOR_EXPIRED"]
+    }
+  }
+}
