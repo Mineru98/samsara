@@ -51,17 +51,21 @@ type App struct {
 	// GitHub reads (and, when opted in, closes issues on) GitHub through
 	// the user's credential provider. Tests substitute a fake.
 	GitHub github.Client
+	// PolicyChecks publishes samsara/integration-policy with a verified
+	// GitHub App credential. Nil keeps github_queue unsupported (04 §10.9).
+	PolicyChecks PolicyCheckPublisher
 	// RequireHookReadiness makes registration verify that the managed
 	// policy hook is installed in the worker's worktree. Tests may disable.
 	RequireHookReadiness bool
 
-	ready      atomic.Bool
-	wake       chan struct{}
-	ghWake     chan struct{}
-	ghRefresh  sync.Map // project_id -> refresh requested during a pass
-	registryMu sync.Mutex
-	targetMu   sync.Map // target_id -> *sync.Mutex (in-process serialisation)
-	observedAt sync.Map // session_id -> time.Time
+	ready        atomic.Bool
+	wake         chan struct{}
+	ghWake       chan struct{}
+	ghRefresh    sync.Map // project_id -> refresh requested during a pass
+	registryMu   sync.Mutex
+	targetMu     sync.Map // target_id -> *sync.Mutex (in-process serialisation)
+	nativePolled sync.Map // candidate_id -> time.Time of the last merge queue poll
+	observedAt   sync.Map // session_id -> time.Time
 }
 
 // New builds the application. Call Recover before serving commands.
