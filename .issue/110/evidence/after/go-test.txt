@@ -1,0 +1,55 @@
+ok  	github.com/Mineru98/samsara/runtime/api	0.195s
+?   	github.com/Mineru98/samsara/runtime/api/apitest	[no test files]
+?   	github.com/Mineru98/samsara/runtime/cmd/samsara	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/app	8.428s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.008s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/herdr	1.122s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.453s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	0.010s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.011s
+?   	github.com/Mineru98/samsara/runtime/internal/domain	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/github	0.007s
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.335s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.016s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.926s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.091s
+?   	github.com/Mineru98/samsara/runtime/internal/paths	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/plan	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/procinfo	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/project	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	0.299s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.488s
+?   	github.com/Mineru98/samsara/runtime/internal/transport/ipc	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/webui	[no test files]
+=== RUN   TestRunStartAndReviseCommands
+--- PASS: TestRunStartAndReviseCommands (0.11s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.118s
+=== RUN   TestOpenAPIMatchesServer
+--- PASS: TestOpenAPIMatchesServer (0.05s)
+=== RUN   TestTypeScriptUpToDate
+--- PASS: TestTypeScriptUpToDate (0.00s)
+=== RUN   TestIPCNewSchemaFieldsMatchGo
+=== RUN   TestIPCNewSchemaFieldsMatchGo/PlanReviseRequest
+=== RUN   TestIPCNewSchemaFieldsMatchGo/PlanReviseResult
+=== RUN   TestIPCNewSchemaFieldsMatchGo/RunPlan
+=== RUN   TestIPCNewSchemaFieldsMatchGo/CandidateRef
+=== RUN   TestIPCNewSchemaFieldsMatchGo/PrioritizeRequest
+=== RUN   TestIPCNewSchemaFieldsMatchGo/CleanupRequest
+=== RUN   TestIPCNewSchemaFieldsMatchGo/CleanupResult
+=== RUN   TestIPCNewSchemaFieldsMatchGo/CleanupItem
+=== RUN   TestIPCNewSchemaFieldsMatchGo/CommandResult
+--- PASS: TestIPCNewSchemaFieldsMatchGo (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/PlanReviseRequest (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/PlanReviseResult (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/RunPlan (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/CandidateRef (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/PrioritizeRequest (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/CleanupRequest (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/CleanupResult (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/CleanupItem (0.00s)
+    --- PASS: TestIPCNewSchemaFieldsMatchGo/CommandResult (0.00s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/api	0.066s

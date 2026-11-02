@@ -25,12 +25,14 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/backend/tmux"
 	"github.com/Mineru98/samsara/runtime/internal/config"
 	"github.com/Mineru98/samsara/runtime/internal/daemon"
+	"github.com/Mineru98/samsara/runtime/internal/diag"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/gitops"
 	"github.com/Mineru98/samsara/runtime/internal/hooks"
 	"github.com/Mineru98/samsara/runtime/internal/hooks/bridge"
 	"github.com/Mineru98/samsara/runtime/internal/hooks/probe"
+	"github.com/Mineru98/samsara/runtime/internal/ops"
 	"github.com/Mineru98/samsara/runtime/internal/paths"
 	"github.com/Mineru98/samsara/runtime/internal/plan"
 	"github.com/Mineru98/samsara/runtime/internal/procinfo"
@@ -53,7 +55,8 @@ Sessions:  session attach --issue <id> | session inspect|release-input|focus <id
 Approvals: approval list | approval decide <id> --approve|--reject|--revoke
 Work:      output submit | worktree list|inspect | merge queue|inspect|enqueue|cancel
 History:   history | link add
-Runtime:   daemon start|stop|run|status | doctor [--exercise] [--hook-probe] [--write-manifest] | ui | backup --dest f | version
+Runtime:   daemon start|stop|run|status | doctor [--exercise] [--hook-probe] [--write-manifest] [--export f] | ui | metrics | version
+Install:   install | upgrade [--start] [--prune-old] | backup --dest f | restore --from f
 Internal:  hook <event> | launcher -- <argv...>
 `
 
@@ -146,6 +149,14 @@ func run(args []string) int {
 		return c.ui(rest)
 	case "backup":
 		return c.backup(rest)
+	case "restore":
+		return c.restore(rest)
+	case "install":
+		return c.install(rest)
+	case "upgrade":
+		return c.upgrade(rest)
+	case "metrics":
+		return c.callPrint("/ipc/v1/metrics", map[string]any{})
 	}
 	fmt.Fprintf(c.errw, "unknown command %q\n\n%s", cmd, usage)
 	return domain.ExitInput
@@ -873,6 +884,133 @@ func (c *cli) backup(args []string) int {
 	return c.callPrint("/ipc/v1/backup", map[string]string{"dest": abs})
 }
 
+// install copies this binary into the versioned install directory, points
+// the stable link and installed hooks at it (05 §17.1, rollback in §17.3).
+func (c *cli) install(args []string) int {
+	if err := newFlags("install").Parse(args); err != nil {
+		return domain.ExitInput
+	}
+	res, err := ops.Install(c.layout, c.exe, version)
+	if err != nil {
+		return c.fail(err)
+	}
+	// Installed hooks follow the current version, also when rolling back.
+	moved, err := ops.RetargetHooks(c.layout, res.Binary)
+	if err != nil {
+		return c.fail(err)
+	}
+	return c.print(map[string]any{"install": res, "hooks_retargeted": moved, "note": "put " + filepath.Dir(res.Link) + " on PATH; other installed versions are kept until `samsara upgrade --prune-old`"})
+}
+
+// upgrade is run by the new binary: stop, backup, migrate, verify,
+// install, restart (05 §17.2).
+func (c *cli) upgrade(args []string) int {
+	fs := newFlags("upgrade")
+	start := fs.Bool("start", false, "start the daemon afterwards even if none was running")
+	prune := fs.Bool("prune-old", false, "remove other installed versions no hook or managed session still uses (ACT-12)")
+	if err := fs.Parse(args); err != nil {
+		return domain.ExitInput
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	res, err := ops.Upgrade(ctx, c.layout, ops.UpgradeOptions{Self: c.exe, Version: version, Start: *start})
+	out := map[string]any{"upgrade": res}
+	if err != nil {
+		out["error"] = err.Error()
+		c.print(out)
+		return domain.ExitError
+	}
+	if *prune {
+		pr, err := ops.PruneVersions(c.layout, version)
+		if err != nil {
+			out["error"] = err.Error()
+			c.print(out)
+			return domain.ExitError
+		}
+		out["prune"] = pr
+	}
+	return c.print(out)
+}
+
+// restore replaces the database with a backup (05 §17.3). The daemon must
+// be stopped; its next start reconciles before new work.
+func (c *cli) restore(args []string) int {
+	fs := newFlags("restore")
+	from := fs.String("from", "", "backup file written by samsara backup or upgrade")
+	if err := fs.Parse(args); err != nil || *from == "" {
+		fmt.Fprintln(c.errw, "usage: samsara restore --from <backup.db>")
+		return domain.ExitInput
+	}
+	abs, _ := filepath.Abs(*from)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	res, err := ops.Restore(ctx, c.layout, abs)
+	if err != nil {
+		c.print(map[string]any{"restore": res, "error": err.Error()})
+		if errors.Is(err, ops.ErrDaemonRunning) {
+			return domain.ExitBlocked
+		}
+		return domain.ExitError
+	}
+	return c.print(map[string]any{"restore": res})
+}
+
+// writeExport writes the redacted diagnostics bundle (01 §18, R5).
+func (c *cli) writeExport(ctx context.Context, dest string, report map[string]any) (string, int, error) {
+	abs, _ := filepath.Abs(dest)
+	r := &diag.Redactor{}
+	bundle := map[string]any{
+		"schema":           "samsara.diagnostics/v1",
+		"generated_at":     time.Now().UTC().Format(time.RFC3339),
+		"redaction_policy": diag.Policy,
+		"doctor":           r.Any(report),
+		"manifest":         r.Any(daemon.LoadManifest(c.layout)),
+	}
+	if reg, err := project.LoadRegistry(c.layout.RegistryPath()); err == nil {
+		projects := []any{}
+		configs := map[string]any{}
+		for _, p := range reg.Projects {
+			projects = append(projects, r.Any(p))
+			if cfg, _, err := config.Load(p.Root); err != nil {
+				configs[p.ProjectID] = map[string]string{"error": r.String(err.Error())}
+			} else if cfg != nil {
+				configs[p.ProjectID] = r.Any(cfg)
+			}
+		}
+		bundle["registry"] = map[string]any{"projects": projects, "managed_session_count": len(reg.ManagedSessions)}
+		bundle["project_configs"] = configs
+	}
+	if daemon.Ping(ctx, c.layout) {
+		var info app.RuntimeInfo
+		if err := c.client().Call(ctx, "/ipc/v1/runtime", map[string]any{}, &info); err == nil {
+			bundle["runtime"] = r.Any(info)
+		}
+		var m json.RawMessage
+		if err := c.client().Call(ctx, "/ipc/v1/metrics", map[string]any{}, &m); err == nil {
+			var v any
+			_ = json.Unmarshal(m, &v)
+			bundle["metrics"] = r.Value(v)
+		}
+	} else {
+		bundle["runtime"] = "OFFLINE"
+	}
+	bundle["daemon_log_tail"] = r.LogTail(c.layout.LogPath(), 200)
+	bundle["redacted_values"] = r.Count
+	b, err := json.MarshalIndent(bundle, "", "  ")
+	if err != nil {
+		return abs, 0, err
+	}
+	f, err := os.OpenFile(abs, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return abs, 0, err
+	}
+	if _, err := f.Write(append(b, '\n')); err != nil {
+		f.Close()
+		return abs, 0, err
+	}
+	return abs, r.Count, f.Close()
+}
+
 // --- doctor ---------------------------------------------------------------
 
 // githubAppReport describes the GitHub App credential that publishes the
@@ -914,6 +1052,7 @@ func (c *cli) doctor(args []string) int {
 	exercise := fs.Bool("exercise", false, "create and destroy a throwaway tmux session to verify control")
 	write := fs.Bool("write-manifest", false, "write the compatibility manifest")
 	hookProbe := fs.Bool("hook-probe", false, "inject hook failures into the real Claude Code (calls the model) and record the verdict")
+	export := fs.String("export", "", "write a redacted diagnostics bundle (no tokens, prompts or tool input) to this new file")
 	if err := fs.Parse(args); err != nil {
 		return domain.ExitInput
 	}
@@ -1048,6 +1187,15 @@ func (c *cli) doctor(args []string) int {
 	report["claude"] = cl
 	report["claude_fail_closed"] = cl.BlockOnFailure && cl.FailureInjection
 	report["problems"] = problems
+	if *export != "" {
+		path, n, err := c.writeExport(ctx, *export, report)
+		if err != nil {
+			problems = append(problems, "export: "+err.Error())
+			report["problems"] = problems
+		} else {
+			report["export"] = map[string]any{"path": path, "redacted_values": n}
+		}
+	}
 	c.print(report)
 	if len(problems) > 0 {
 		return domain.ExitBlocked

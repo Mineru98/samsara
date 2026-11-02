@@ -1,6 +1,6 @@
 import type { CatalogEvent, CatalogSnapshot, ProjectEvent, ProjectSnapshot, ProjectSummary } from "../api/contract";
 import { ApiError, get } from "../api/http";
-import { cmpDec, isDec } from "../store/decimal";
+import { cmpDec, incDec, isDec } from "../store/decimal";
 import { applyEvent, fromSnapshot, type ProjectState } from "../store/projectStore";
 import type { StepResult, StreamSpec } from "./stream";
 
@@ -32,6 +32,9 @@ export function applyCatalogEvent(state: CatalogState, ev: CatalogEvent): StepRe
   if (ev.schema_version !== "1") return { kind: "incompatible", reason: "catalog schema" };
   if (!isDec(ev.catalog_version)) return { kind: "gap", reason: "MALFORMED_EVENT" };
   if (cmpDec(ev.catalog_version, state.catalogVersion) <= 0) return { kind: "duplicate" };
+  // The catalog stream is unfiltered and the runtime bumps catalog_version by
+  // exactly one per event, so a jump means a missed project summary.
+  if (ev.catalog_version !== incDec(state.catalogVersion)) return { kind: "gap", reason: "CATALOG_VERSION_GAP" };
   const p = ev.payload?.project;
   if (!p?.id || !isDec(p.version)) return { kind: "gap", reason: "MISSING_PROJECT" };
   const prev = state.projects[p.id];
@@ -44,6 +47,7 @@ export const catalogSpec: StreamSpec<CatalogState> = {
   async load(signal) {
     const snap = await get<CatalogSnapshot>("/v1/catalog/snapshot", signal);
     if (snap.schema_version !== "1") throw mismatch(snap.schema_version);
+    if (!isDec(snap.catalog_version)) throw mismatch(`catalog_version ${String(snap.catalog_version)}`);
     const projects: Record<string, ProjectSummary> = {};
     for (const p of snap.projects) projects[p.id] = p;
     return { state: { catalogVersion: snap.catalog_version, projects }, cursor: snap.snapshot_cursor };

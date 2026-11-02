@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
@@ -647,7 +648,9 @@ func deny(code string) *ToolDecision {
 // CheckTool evaluates one tool call against the authoritative state in a
 // single transaction. It never replays a previous PASS (POL-17): every
 // request is re-evaluated. A PASS only means "Samsara does not object".
-func (a *App) CheckTool(ctx context.Context, req ToolCheckRequest) (*ToolDecision, error) {
+func (a *App) CheckTool(ctx context.Context, req ToolCheckRequest) (dec *ToolDecision, err error) {
+	start := time.Now()
+	defer func() { a.recordDecision(dec, time.Since(start)) }()
 	if !a.Ready() {
 		return deny(domain.ReasonEpochChanged), nil
 	}
@@ -676,8 +679,7 @@ func (a *App) CheckTool(ctx context.Context, req ToolCheckRequest) (*ToolDecisio
 			verifiedBinding = preBinding.ID
 		}
 	}
-	var dec *ToolDecision
-	err := a.DB.Write(ctx, func(tx *sqlite.Tx) error {
+	err = a.DB.Write(ctx, func(tx *sqlite.Tx) error {
 		var err error
 		dec, err = a.checkToolTx(ctx, tx, req, verifiedBinding)
 		return err

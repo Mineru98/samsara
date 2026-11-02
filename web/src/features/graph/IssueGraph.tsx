@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -58,16 +58,29 @@ function GroupNode({ data }: NodeProps<Node<GroupData>>) {
 
 const nodeTypes = { issue: IssueNode, gate: GateNode, group: GroupNode };
 
+const ORIGIN = { x: 0, y: 0 };
+const GROUP_SIZE = { width: 280, height: 120 };
+
+type Memo<T> = { deps: unknown[]; value: T };
+
+/** Return the cached value when every dependency is identical. */
+function reuse<T>(prev: Map<string, Memo<T>>, next: Map<string, Memo<T>>, id: string, deps: unknown[], make: () => T): T {
+  const hit = prev.get(id);
+  const m = hit && hit.deps.length === deps.length && hit.deps.every((d, k) => Object.is(d, deps[k])) ? hit : { deps, value: make() };
+  next.set(id, m);
+  return m.value;
+}
+
 export function IssueGraph({ entities, runId, mode, selected, onSelect }: { entities: Entities; runId: string | null; mode: GraphMode; selected: string | null; onSelect: (id: string | null) => void }) {
   const graph = useMemo(() => buildGraph(entities, runId, mode), [entities, runId, mode]);
   // Layout depends only on structure, so status updates keep positions (02 §9.3).
-  const [layout, setLayout] = useState<{ key: string; pos: Positions; failed: boolean }>(() => ({ key: graph.structureKey, pos: simpleLayout(graph), failed: false }));
+  const [layout, setLayout] = useState<{ key: string; pos: Positions; failed: boolean; done: boolean }>(() => ({ key: graph.structureKey, pos: simpleLayout(graph), failed: false, done: false }));
   const structureKey = graph.structureKey;
   useEffect(() => {
     let live = true;
-    setLayout((cur) => (cur.key === structureKey ? cur : { key: structureKey, pos: simpleLayout(graph), failed: false }));
+    setLayout((cur) => (cur.key === structureKey ? cur : { key: structureKey, pos: simpleLayout(graph), failed: false, done: false }));
     layoutInWorker(graph)
-      .then((pos) => live && setLayout({ key: structureKey, pos, failed: false }))
+      .then((pos) => live && setLayout({ key: structureKey, pos, failed: false, done: true }))
       .catch(() => live && setLayout((cur) => (cur.key === structureKey ? { ...cur, failed: true } : cur)));
     return () => {
       live = false;
@@ -76,50 +89,67 @@ export function IssueGraph({ entities, runId, mode, selected, onSelect }: { enti
   }, [structureKey]);
 
   const pos = layout.key === structureKey ? layout.pos : simpleLayout(graph);
+  // Reuse the node/edge object of anything that did not change, so a status
+  // event re-renders one card instead of making React Flow diff every node
+  // of a 1,000-issue graph (02 §22).
+  const cache = useRef<{ nodes: Map<string, Memo<Node>>; edges: Map<string, Memo<Edge>> }>({ nodes: new Map(), edges: new Map() });
+  const nextNodes = new Map<string, Memo<Node>>();
+  const nextEdges = new Map<string, Memo<Edge>>();
   const nodes: Node[] = graph.nodes.map((n) => {
-    const p = pos.pos[n.id] ?? { x: 0, y: 0 };
+    const p = pos.pos[n.id] ?? ORIGIN;
+    const sel = selected === n.id;
     if (n.kind === "group") {
-      const sz = pos.size[n.id] ?? { width: 280, height: 120 };
-      return { id: n.id, type: "group", position: p, data: { label: n.label ?? "" }, style: { width: sz.width, height: sz.height }, className: "wtgroup", selectable: false, draggable: false };
+      const sz = pos.size[n.id] ?? GROUP_SIZE;
+      return reuse(cache.current.nodes, nextNodes, n.id, [p, sz, n.label], () => ({ id: n.id, type: "group", position: p, data: { label: n.label ?? "" }, style: { width: sz.width, height: sz.height }, className: "wtgroup", selectable: false, draggable: false }));
     }
     if (n.kind === "gate") {
       const g = entities.gates[n.gateId!];
-      return {
+      return reuse(cache.current.nodes, nextNodes, n.id, [g, p, n.parent, sel], () => ({
         id: n.id,
         type: "gate",
         position: p,
         parentId: n.parent,
         draggable: false,
-        data: { open: g.open, met: g.members.filter((m) => m.met).length, total: g.members.length, phase: g.downstream_phase, selected: selected === n.id },
+        data: { open: g.open, met: g.members.filter((m) => m.met).length, total: g.members.length, phase: g.downstream_phase, selected: sel },
         ariaLabel: `${g.downstream_phase === "INTEGRATION" ? "통합" : "실행"} 게이트, 조건 ${g.members.length}개 중 ${g.members.filter((m) => m.met).length}개 충족`,
-      };
+      }));
     }
     const i = entities.issues[n.issueId!];
-    const s = displayStatus(i.display_status);
-    return {
-      id: n.id,
-      type: "issue",
-      position: p,
-      parentId: n.parent,
-      extent: n.parent ? ("parent" as const) : undefined,
-      draggable: false,
-      data: { title: i.title, key: i.client_key, status: i.display_status, reason: i.blocking_reasons[0]?.message ?? "", actions: i.available_actions.length, version: i.version, selected: selected === n.id },
-      ariaLabel: `${i.client_key} ${i.title}, ${s.label}${i.blocking_reasons[0] ? `, ${i.blocking_reasons[0].message}` : ""}`,
-    };
+    return reuse(cache.current.nodes, nextNodes, n.id, [i, p, n.parent, sel], () => {
+      const s = displayStatus(i.display_status);
+      return {
+        id: n.id,
+        type: "issue",
+        position: p,
+        parentId: n.parent,
+        extent: n.parent ? ("parent" as const) : undefined,
+        draggable: false,
+        data: { title: i.title, key: i.client_key, status: i.display_status, reason: i.blocking_reasons[0]?.message ?? "", actions: i.available_actions.length, version: i.version, selected: sel },
+        ariaLabel: `${i.client_key} ${i.title}, ${s.label}${i.blocking_reasons[0] ? `, ${i.blocking_reasons[0].message}` : ""}`,
+      };
+    });
   });
-  const edges: Edge[] = graph.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.milestone ? milestoneLabel(e.milestone) : undefined,
-    className: e.met ? "edge-met" : "edge-unmet",
-    animated: false,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    focusable: false,
-  }));
+  const edges: Edge[] = graph.edges.map((e) =>
+    reuse(cache.current.edges, nextEdges, e.id, [e.source, e.target, e.met, e.milestone], () => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.milestone ? milestoneLabel(e.milestone) : undefined,
+      className: e.met ? "edge-met" : "edge-unmet",
+      animated: false,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      focusable: false,
+    })),
+  );
+  cache.current = { nodes: nextNodes, edges: nextEdges };
 
   return (
-    <div className="graph" data-testid="issue-graph" aria-label="이슈 의존성 그래프 (왼쪽에서 오른쪽)">
+    <div
+      className="graph"
+      data-testid="issue-graph"
+      data-layout={layout.key !== structureKey ? "pending" : layout.failed ? "fallback" : layout.done ? "elk" : "pending"}
+      aria-label="이슈 의존성 그래프 (왼쪽에서 오른쪽)"
+    >
       {layout.failed && <div className="graph-note small">자동 배치에 실패해 단순 배치로 표시합니다.</div>}
       <ReactFlow
         nodes={nodes}

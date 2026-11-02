@@ -1,0 +1,87 @@
+{
+  "env": {
+    "cpu": "Intel(R) Core(TM) i5-7500 CPU @ 3.40GHz",
+    "cores": 4,
+    "memGB": 61,
+    "os": "Linux 7.0.0-34-generic",
+    "node": "v24.22.1",
+    "browser": "chromium 156.0.8078.4",
+    "viewport": "1440x900",
+    "build": "vite production (runtime/internal/webui/static)",
+    "seed": 109,
+    "runs": 5,
+    "budget": {
+      "firstScreenMs": 2000,
+      "layoutP95Ms": 1000,
+      "updateP95Ms": 250
+    }
+  },
+  "results": [
+    {
+      "size": 200,
+      "seed": 109,
+      "runs": 5,
+      "domIssueNodes": 146,
+      "layoutKinds": [
+        "elk"
+      ],
+      "firstScreen": {
+        "n": 5,
+        "p50": 330,
+        "p95": 352,
+        "p99": 352,
+        "max": 352
+      },
+      "layout": {
+        "n": 5,
+        "p50": 592,
+        "p95": 810,
+        "p99": 810,
+        "max": 810
+      },
+      "update": {
+        "n": 500,
+        "p50": 10,
+        "p95": 29,
+        "p99": 42,
+        "max": 73,
+        "sent": 500,
+        "missed": 0,
+        "ratePerSec": 50
+      }
+    },
+    {
+      "size": 1000,
+      "seed": 109,
+      "runs": 5,
+      "domIssueNodes": 113,
+      "layoutKinds": [
+        "elk"
+      ],
+      "firstScreen": {
+        "n": 5,
+        "p50": 489,
+        "p95": 838,
+        "p99": 838,
+        "max": 838
+      },
+      "layout": {
+        "n": 5,
+        "p50": 1407,
+        "p95": 1754,
+        "p99": 1754,
+        "max": 1754
+      },
+      "update": {
+        "n": 500,
+        "p50": 24,
+        "p95": 39,
+        "p99": 50,
+        "max": 97,
+        "sent": 500,
+        "missed": 0,
+        "ratePerSec": 50
+      }
+    }
+  ]
+}

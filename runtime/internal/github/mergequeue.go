@@ -212,6 +212,23 @@ func EnqueuePullRequest(ctx context.Context, c Client, pr *PullRequest, sourceSH
 	return out.Enqueue.Entry.ID, nil
 }
 
+// DequeuePullRequest removes the pull request from the merge queue. It is
+// used when the approval subject became permanently invalid, so the entry
+// does not block the queue behind a check that never turns green.
+func DequeuePullRequest(ctx context.Context, c Client, prNode string, now time.Time) error {
+	var out struct {
+		Dequeue struct {
+			Entry *struct {
+				ID string `json:"id"`
+			} `json:"mergeQueueEntry"`
+		} `json:"dequeuePullRequest"`
+	}
+	return graphQL(ctx, c, map[string]string{
+		"query": `mutation($id:ID!){dequeuePullRequest(input:{id:$id}){mergeQueueEntry{id}}}`,
+		"id":    prNode,
+	}, &out, now)
+}
+
 // QueueObservation is the provider state of a delivered pull request.
 type QueueObservation struct {
 	State      string // OPEN, CLOSED, MERGED

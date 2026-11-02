@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ApprovalView, IssueDetail } from "../../api/contract";
 import { get } from "../../api/http";
@@ -10,11 +11,33 @@ const enc = encodeURIComponent;
 
 export function Inspector({ entities, selected, canCommand, offlineReason, onClose }: { entities: Entities; selected: string; canCommand: boolean; offlineReason: string; onClose: () => void }) {
   const [kind, id] = [selected.slice(0, selected.indexOf(":")), selected.slice(selected.indexOf(":") + 1)];
+  // The node or list row that opened this panel gets focus back on close,
+  // and Escape closes it from anywhere (02 §20.1).
+  const opener = useRef<HTMLElement | null>(null);
+  const ref = useRef<HTMLElement>(null);
+  if (opener.current === null && typeof document !== "undefined") opener.current = document.activeElement as HTMLElement | null;
+  const close = useRef(() => {});
+  close.current = () => {
+    const o = opener.current;
+    onClose();
+    if (o && o.isConnected && o !== document.body) o.focus();
+    // The Merge Queue item that opened the panel is re-rendered after close:
+    // find it again by what it opens.
+    else requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-opens="${CSS.escape(selected)}"]`)?.focus());
+  };
+  useEffect(() => {
+    ref.current?.scrollIntoView?.({ block: "nearest" });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) close.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   return (
-    <aside className="inspector" aria-label="상세" data-testid="inspector">
+    <aside ref={ref} className="inspector" aria-label="상세" data-testid="inspector">
       <div className="panel-head">
         <h2>{kind === "gate" ? "게이트 상세" : "이슈 상세"}</h2>
-        <button type="button" className="btn ghost" onClick={onClose} aria-label="상세 닫고 Merge Queue 보기">
+        <button type="button" className="btn ghost" onClick={() => close.current()} aria-label="상세 닫고 Merge Queue 보기">
           닫기
         </button>
       </div>

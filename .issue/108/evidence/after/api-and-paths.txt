@@ -1,0 +1,16 @@
+# after bcc6c1a — provider_validation_id exposure
+$ grep -n provider_validation_id internal/store/sqlite/projection.go api/schemas/entities.schema.json api/ts/samsara-api.gen.ts
+api/schemas/entities.schema.json:869:        "provider_validation_id": {
+internal/store/sqlite/projection.go:200:	ProviderValidationID   string           `json:"provider_validation_id,omitempty"`
+api/ts/samsara-api.gen.ts:359:  provider_validation_id?: string;
+
+$ grep -n "dequeuePullRequest\|github.queue.dequeue" -r internal
+internal/github/mergequeue.go:221:		} `json:"dequeuePullRequest"`
+internal/github/mergequeue.go:224:		"query": `mutation($id:ID!){dequeuePullRequest(input:{id:$id}){mergeQueueEntry{id}}}`,
+internal/app/github_queue.go:538:			_, err = tx.Enqueue(ctx, sqlite.OutboxItem{ProjectID: c.ProjectID, Kind: "github.queue.dequeue",
+internal/app/github_queue.go:540:				DedupeKey: fmt.Sprintf("github.queue.dequeue:%s:%d", c.ID, c.Version), ResourceKey: "target:" + t.ID})
+internal/app/outbox.go:54:	"github.issue.close": true, "github.policy_check": true, "github.queue.dequeue": true,
+internal/app/outbox.go:135:	case "github.queue.dequeue":
+
+$ grep -n "retryableNativeFailures = " internal/app/github_queue.go
+59:var retryableNativeFailures = map[string]bool{"PR_CLOSED": true, "PR_HEAD_CHANGED": true}

@@ -1,0 +1,11 @@
+# base ce655a7 implementation (github_queue.go, outbox.go, mergequeue.go) + #108 fake-provider tests
+$ go test ./internal/app -run "GitHubQueueFailedCandidateReenqueue|GitHubQueueDequeueOnPermanentlyInvalidSubject" -count=1 -v
+=== RUN   TestGitHubQueueFailedCandidateReenqueue
+    github_queue_test.go:448: PR_CLOSED: re-enqueue: CONFLICT: candidate is FAILED; only WAITING candidates are delivered to the merge queue
+--- FAIL: TestGitHubQueueFailedCandidateReenqueue (0.22s)
+=== RUN   TestGitHubQueueDequeueOnPermanentlyInvalidSubject
+    github_queue_test.go:515: the pull request must be dequeued once: []
+--- FAIL: TestGitHubQueueDequeueOnPermanentlyInvalidSubject (0.23s)
+FAIL
+FAIL	github.com/Mineru98/samsara/runtime/internal/app	0.463s
+FAIL

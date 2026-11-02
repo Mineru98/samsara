@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build && node scripts/keep-placeholder.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test --project ui",
+    "perf": "playwright test --project perf"
   },
   "dependencies": {
     "@tanstack/react-query": "5.105.0",
@@ -17,6 +19,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/node": "26.6.6",

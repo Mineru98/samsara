@@ -224,17 +224,17 @@ func queryEdges(ctx context.Context, q Q, query string, args ...any) ([]*Edge, e
 
 type Attempt struct {
 	ID, ProjectID, RunID, IssueID, WorktreeID, State, StateReason, QuarantineReason string
-	BackendKind, BackendReason, OutputID                                            string
+	BackendKind, BackendReason, OutputID, SupersededBy                              string
 	RunGeneration, Version, CreatedAt, UpdatedAt                                    int64
 	ResumeRequired                                                                  bool
 }
 
-const attemptCols = `id,project_id,run_id,issue_id,COALESCE(worktree_id,''),state,state_reason,quarantine_reason,backend_kind,backend_reason,COALESCE(output_id,''),run_generation,version,created_at,updated_at,resume_required`
+const attemptCols = `id,project_id,run_id,issue_id,COALESCE(worktree_id,''),state,state_reason,quarantine_reason,backend_kind,backend_reason,COALESCE(output_id,''),run_generation,version,created_at,updated_at,resume_required,COALESCE(superseded_by,'')`
 
 func scanAttempt(s interface{ Scan(...any) error }) (*Attempt, error) {
 	a := &Attempt{}
 	err := s.Scan(&a.ID, &a.ProjectID, &a.RunID, &a.IssueID, &a.WorktreeID, &a.State, &a.StateReason, &a.QuarantineReason,
-		&a.BackendKind, &a.BackendReason, &a.OutputID, &a.RunGeneration, &a.Version, &a.CreatedAt, &a.UpdatedAt, &a.ResumeRequired)
+		&a.BackendKind, &a.BackendReason, &a.OutputID, &a.RunGeneration, &a.Version, &a.CreatedAt, &a.UpdatedAt, &a.ResumeRequired, &a.SupersededBy)
 	return a, err
 }
 

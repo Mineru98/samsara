@@ -332,6 +332,61 @@ export function downloadImageReference(reference, dir, index, auth) {
   };
 }
 
+// 이슈 #106. Claude Code 런타임이 본문 끝에 붙이는 attribution 푸터와 세션 링크.
+// 세션 URL 은 공개할 이유가 없는 내부 식별자라 GitHub 에 남기지 않는다.
+// 줄 전체가 이 형태일 때만 잡는다. 규칙을 설명하는 문장이나 코드 펜스 안의 예시는 그대로 둔다.
+const ATTRIBUTION_LINE_RES = [
+  /^[_*\s]*(?:🤖\s*)?Generated (?:with|by) \[Claude Code\]\([^)\s]*\)[_*\s]*\.?$/i,
+  /^(?:\[[^\]]*\]\()?<?https?:\/\/claude\.ai\/code\/session_[\w-]+\/?>?\)?\.?$/i,
+];
+// 인용(`>`)·목록(`-` `*` `+` `1.`) 접두어는 벗겨 내고 본다.
+const LINE_PREFIX_RE = /^(?:>\s*)*(?:(?:[-*+]|\d+[.)])\s+)?/;
+const FENCE_RE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+const INDENTED_CODE_RE = /^(?: {4}|\t)/;
+
+export function findAttribution(markdown) {
+  const found = [];
+  let fence = null;
+  let fenced = [];
+  const check = (line, index) => {
+    const text = line.trim().replace(LINE_PREFIX_RE, '').trim();
+    if (ATTRIBUTION_LINE_RES.some((re) => re.test(text))) found.push({ line: index + 1, text: line.trim() });
+  };
+  String(markdown ?? '').split('\n').forEach((line, index) => {
+    const match = line.match(FENCE_RE);
+    if (fence) {
+      // 닫는 펜스는 같은 문자·같거나 긴 길이이고 info string 이 없어야 한다 (CommonMark).
+      if (match && match[1][0] === fence[0] && match[1].length >= fence.length && !match[2].trim()) {
+        fence = null;
+        fenced = [];
+      } else {
+        fenced.push([line, index]);
+      }
+      return;
+    }
+    if (match) {
+      fence = match[1];
+      return;
+    }
+    if (INDENTED_CODE_RE.test(line)) return;
+    check(line, index);
+  });
+  // 닫히지 않은 펜스 뒤에 붙은 푸터를 펜스 안으로 오인해 놓치지 않는다.
+  for (const [line, index] of fenced) {
+    if (!INDENTED_CODE_RE.test(line)) check(line, index);
+  }
+  return found;
+}
+
+export function stripAttribution(markdown) {
+  const source = String(markdown ?? '');
+  const removed = findAttribution(source);
+  if (!removed.length) return { text: source, removed };
+  const drop = new Set(removed.map((item) => item.line - 1));
+  const kept = source.split('\n').filter((_, index) => !drop.has(index));
+  return { text: `${kept.join('\n').trimEnd()}\n`, removed };
+}
+
 export function validateEvidenceReport(markdown, { isPrivate = false } = {}) {
   const refs = collectImageReferences([{
     text: markdown,
@@ -345,6 +400,10 @@ export function validateEvidenceReport(markdown, { isPrivate = false } = {}) {
     && ref.syntax === 'markdown-link'
     && ['raw', 'release', 'blob'].includes(ref.kind);
   const pendingUploads = [];
+
+  for (const item of findAttribution(markdown)) {
+    errors.push(`Claude Code attribution 푸터·세션 링크는 GitHub 에 남기지 않습니다 (${item.line}행): ${item.text}`);
+  }
 
   for (const ref of refs) {
     if (isAuxLink(ref)) continue;

@@ -364,3 +364,6 @@ design/assets/shots/
 # dashboard bundle embedded by the runtime (pnpm -C web build); only the placeholder is tracked
 /runtime/internal/webui/static/*
 !/runtime/internal/webui/static/.gitkeep
+# dashboard browser scenario / perf output (pnpm -C web e2e | perf)
+/web/test-results/
+/web/playwright-report/

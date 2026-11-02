@@ -1,0 +1,16 @@
+# before (origin/dev/0.4.0-alpha ce655a7) — same project page opened in N tabs
+# measured_at 2026-11-02T19:02:35.618Z  tabs=3  (headless chromium, one browser profile)
+tab1: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab2: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab3: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+browser total open /events requests = 6
+server ESTABLISHED tcp on :45759 (ss) = 6
+
+
+# measured_at 2026-11-02T19:03:44.741Z  tabs=4  (headless chromium, one browser profile)
+tab1: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab2: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab3: open /events requests = 2  ["/v1/projects/prj_fe39d08aca61b842119cabec/events","/v1/catalog/events"]  status="런타임 실시간 연결"
+tab4: open /events requests = 0  []  status="LOAD FAILED: page.goto: Timeout 15000ms exceeded."
+browser total open /events requests = 6
+server ESTABLISHED tcp on :45759 (ss) = 6

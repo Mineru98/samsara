@@ -303,3 +303,8 @@ func spawn(l paths.Layout, exe string) error {
 	}
 	return cmd.Process.Release()
 }
+
+// Spawn starts a detached daemon from exe without the start lock; the
+// caller must hold StartLockPath (used by upgrade, which keeps the lock so
+// no hook can start an older binary in the meantime).
+func Spawn(l paths.Layout, exe string) error { return spawn(l, exe) }

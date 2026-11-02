@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS = ['create', 'end', 'merge', 'onboard', 'start', 'sync'];
+const LINK_SKILLS = ['create', 'start', 'merge'];
 
 function fixture(t) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'check-shared-'));
@@ -22,6 +23,10 @@ function fixture(t) {
   for (const skill of SKILLS) {
     const rel = path.join('skills', `issue-${skill}`, 'scripts', 'issue-common.mjs');
     mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    cpSync(path.join(repo, rel), path.join(root, rel));
+  }
+  for (const skill of LINK_SKILLS) {
+    const rel = path.join('skills', `issue-${skill}`, 'scripts', 'issue-links.mjs');
     cpSync(path.join(repo, rel), path.join(root, rel));
   }
   return root;
@@ -134,4 +139,13 @@ test('한쪽 사본의 기준 브랜치 어긋남 판정만 바꾸면 어긋난 
   const r = check(root);
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /base branch drift: baseDrift \(skills\/issue-end\/scripts\/issue-common\.mjs/);
+});
+
+test('issue-links 사본 하나만 바뀌면 drift 로 실패한다 (이슈 #98)', (t) => {
+  const root = fixture(t);
+  const file = path.join(root, 'skills', 'issue-merge', 'scripts', 'issue-links.mjs');
+  writeFileSync(file, `${readFileSync(file, 'utf8')}\n// drift\n`);
+  const r = check(root);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /issue-links drift: skills\/issue-merge\/scripts\/issue-links\.mjs/);
 });

@@ -190,6 +190,8 @@ export function startKey(text) {
   if (c && MONTHS[c[1]]) return [c[6], MONTHS[c[1]], c[2], c[3], c[4], c[5]].map(Number).join('-');
   const nums = t.match(/\d+/g);
   if (nums && nums.length === 6 && nums[0].length === 4) return nums.map(Number).join('-');
+  // procps 의 locale 형식은 연도가 맨 뒤다('화 11월  3 03:09:34 2026')
+  if (nums && nums.length === 6 && nums[5].length === 4) return [nums[5], ...nums.slice(0, 5)].map(Number).join('-');
   return null;
 }
 
