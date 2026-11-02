@@ -219,3 +219,22 @@ func TestGitHubHistoryAndRefreshContract(t *testing.T) {
 		}
 	}
 }
+
+// 01 §18.1: a stream resumed with Last-Event-ID counts as a reconnect and
+// every reset_required is counted by reason.
+func TestSSEReconnectAndResetMetrics(t *testing.T) {
+	s, pid, url := newServer(t)
+	base := strings.SplitN(url, "/#", 2)[0]
+	code := strings.SplitN(url, "#bootstrap=", 2)[1]
+	_, b := do(t, "POST", base+"/v1/ui/sessions", "", `{"code":"`+code+`"}`)
+	var tok struct{ Token string }
+	_ = json.Unmarshal(b, &tok)
+	r, body := do(t, "GET", base+"/v1/projects/"+pid+"/events", tok.Token, "", "Last-Event-ID", "not-a-cursor")
+	if r.StatusCode != 200 || !strings.Contains(string(body), "CURSOR_INVALID") {
+		t.Fatalf("stream: %d %s", r.StatusCode, body)
+	}
+	m := s.App.Metrics
+	if m.SSEConnects.View()["project"] != 1 || m.SSEReconnects.View()["project"] != 1 || m.SSEResets.View()["CURSOR_INVALID"] != 1 {
+		t.Fatalf("connects %v reconnects %v resets %v", m.SSEConnects.View(), m.SSEReconnects.View(), m.SSEResets.View())
+	}
+}

@@ -315,6 +315,7 @@ export interface AttemptView {
   session_id?: string;
   state: Open<AttemptState>;
   state_reason?: string;
+  superseded_by?: string;
   updated_at: Timestamp;
   version: Decimal;
   worktree_id?: string;
@@ -355,6 +356,8 @@ export interface CandidateView {
   native_queue_state: Open<NativeQueueState>;
   output_id: string;
   project_id: string;
+  /** Provider validation group (merge group head/base/entry) the candidate is currently validated in; omitted outside a github_queue group. */
+  provider_validation_id?: string;
   publication_observation?: string;
   queue_position: Decimal;
   resolution_attempt_id?: string;
@@ -561,6 +564,8 @@ export interface RefreshProjectResult {
 
 export interface RunView {
   alias_mapping: Record<string, string> | null;
+  /** Run commands the state allows (START_RUN, PAUSE_RUN, RESUME_RUN, REVISE_PLAN); the command re-checks policy. Absent from older runtimes. */
+  available_actions?: Action[];
   created_at: Timestamp;
   ended_at?: Timestamp;
   graph_version: Decimal;
@@ -882,6 +887,10 @@ export interface IpcRoutes {
     request: CandidateRef;
     response: CommandResult;
   };
+  "/ipc/v1/metrics": {
+    request: Empty;
+    response: MetricsView;
+  };
   "/ipc/v1/outputs/submit": {
     request: OutputSubmitRequest;
     response: OutputSubmitResult;
@@ -992,6 +1001,16 @@ export interface IssueRef {
   issue_id: string;
 }
 
+export interface LatencySummary {
+  count: number;
+  max_ms: number;
+  mean_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  window: number;
+}
+
 export interface LinkRequest {
   external_key: string;
   issue_id?: string;
@@ -1009,6 +1028,33 @@ export interface ListProjectsRequest {
 export interface LookupRequest {
   id: string;
   kind: string;
+}
+
+export interface MetricsView {
+  collected_at: string;
+  gauges: {
+    active_attempts: number;
+    ambiguous_operations: number;
+    event_retention_days: number;
+    merge_queue_depth: number;
+    outbox_lag_ms: number;
+    outbox_pending: number;
+    quarantined_attempts: number;
+    unknown_sessions: number;
+  };
+  hook: {
+    decision_latency: LatencySummary;
+    decisions: Record<string, number>;
+    deny_by_reason: Record<string, number>;
+  };
+  runtime_epoch: string;
+  since: string;
+  sqlite_writer_latency: LatencySummary;
+  sse: {
+    connects: Record<string, number>;
+    reconnects: Record<string, number>;
+    reset_required_by_reason: Record<string, number>;
+  };
 }
 
 export interface OK {
@@ -1153,8 +1199,25 @@ export interface RunCommandResult {
   version: Decimal;
 }
 
+/** GET /v1/runs/{id}/plan: the run's current plan with expected_graph_version set to the project graph version at read time. */
+export interface RunPlan {
+  graph_version: Decimal;
+  plan: Plan;
+  plan_digest: string;
+  run_generation: Decimal;
+  run_id: string;
+  state: Open<RunState>;
+  version: Decimal;
+}
+
 export interface RunRef {
   run_id: string;
+}
+
+/** Body of POST /v1/runs/{id}/revise: PlanReviseRequest with run_id taken from the path. */
+export interface RunReviseRequest {
+  expected_run_generation: Decimal;
+  plan: Plan;
 }
 
 export interface SessionRef {

@@ -52,6 +52,17 @@ var capabilityReasons = map[string]bool{
 	github.ReasonProviderUnreachable: true,
 }
 
+// retryableNativeFailures are FAILED reasons that only lost the delivering
+// pull request; the approved source is unchanged, so the candidate may be
+// enqueued again through an open pull request of the same head. A FAILED
+// caused by a permanently invalid approval subject is not listed.
+var retryableNativeFailures = map[string]bool{"PR_CLOSED": true, "PR_HEAD_CHANGED": true}
+
+// nativeEnqueueable is a candidate state EnqueueCandidate may deliver.
+func nativeEnqueueable(c *sqlite.Candidate) bool {
+	return c.State == domain.CandidateWaiting || (c.State == domain.CandidateFailed && retryableNativeFailures[c.StateReason])
+}
+
 // projectGitHubRepo is the configured repository or the github.com origin.
 func (a *App) projectGitHubRepo(ctx context.Context, p *sqlite.Project) string {
 	repo := projectConfig(p).GitHub.Repository
@@ -105,8 +116,8 @@ func (a *App) prepareNativeEnqueue(ctx context.Context, candidateID string) (*na
 	if t.Authority != domain.AuthorityGitHubQueue {
 		return nil, nil
 	}
-	if c.State != domain.CandidateWaiting {
-		return nil, domain.Errf(domain.CodeConflict, "candidate is %s; only WAITING candidates are delivered to the merge queue", c.State)
+	if !nativeEnqueueable(c) {
+		return nil, domain.Errf(domain.CodeConflict, "candidate is %s(%s); only WAITING candidates and ones that lost their pull request (PR_CLOSED, PR_HEAD_CHANGED) are delivered to the merge queue", c.State, c.StateReason)
 	}
 	// Enqueue decides on a fresh probe, never on a cached one.
 	repo := a.projectGitHubRepo(ctx, p)
@@ -138,8 +149,8 @@ func nativeSupported(t *sqlite.Target) error {
 	return nil
 }
 
-// enqueueNativeTx moves a RESULT-approved, eligible candidate WAITING →
-// PUBLISHING and records the enqueue intent (03 §3.4). PUBLISHING here means
+// enqueueNativeTx moves a RESULT-approved, eligible candidate WAITING (or
+// FAILED that only lost its pull request) → PUBLISHING and records the enqueue intent (03 §3.4). PUBLISHING here means
 // "in the provider queue", never "allowed to merge".
 func (a *App) enqueueNativeTx(ctx context.Context, tx *sqlite.Tx, c *sqlite.Candidate, t *sqlite.Target, n *nativeEnqueue) error {
 	if n == nil {
@@ -148,7 +159,7 @@ func (a *App) enqueueNativeTx(ctx context.Context, tx *sqlite.Tx, c *sqlite.Cand
 	if err := nativeSupported(t); err != nil {
 		return err
 	}
-	if c.State != domain.CandidateWaiting {
+	if !nativeEnqueueable(c) {
 		return domain.Errf(domain.CodeConflict, "candidate is %s", c.State)
 	}
 	results, err := sqlite.ApprovalsWhere(ctx, tx, "kind='RESULT' AND output_id=? AND state='APPROVED'", c.OutputID)
@@ -229,6 +240,69 @@ func (a *App) handleNativeEnqueue(ctx context.Context, p map[string]string) outc
 	default:
 		return done(map[string]string{"unknown": err.Error()}, set(domain.CandidatePublishing, domain.NativeUnknown, "NATIVE_ENQUEUE_UNKNOWN", true))
 	}
+}
+
+// handleNativeDequeue takes a pull request whose approval subject became
+// permanently invalid out of the merge queue. It reads the provider first,
+// so a re-run after a restart or a refusal never claims a removal it did
+// not observe: the candidate is marked REMOVED only once the pull request
+// has no queue entry. Errors are retried; when the retries run out the
+// queue state is UNKNOWN, not REMOVED, so the stuck entry stays visible.
+func (a *App) handleNativeDequeue(ctx context.Context, p map[string]string) outcome {
+	var c *sqlite.Candidate
+	var holder []*sqlite.Candidate
+	if err := a.DB.Read(ctx, func(q sqlite.Q) error {
+		var err error
+		if c, err = sqlite.GetCandidate(ctx, q, p["candidate_id"]); err != nil {
+			return err
+		}
+		holder, err = sqlite.CandidatesWhere(ctx, q, "provider_pr_node=? AND id<>? AND state='PUBLISHING'", p["pr_node"], c.ID)
+		return err
+	}); err != nil {
+		return failed(err.Error(), nil)
+	}
+	if c.State != domain.CandidateFailed || c.NativeQueueState == domain.NativeRemoved {
+		return done(map[string]string{"skipped": c.State}, nil)
+	}
+	mark := func(native, action string) func(tx *sqlite.Tx) error {
+		return func(tx *sqlite.Tx) error {
+			cur, err := sqlite.GetCandidate(ctx, tx, c.ID)
+			if err != nil || cur.State != domain.CandidateFailed || cur.NativeQueueState == domain.NativeRemoved {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET native_queue_state=?, enqueued=?, version=version+1, updated_at=? WHERE id=?",
+				native, native != domain.NativeRemoved, tx.Now, c.ID); err != nil {
+				return err
+			}
+			tx.Touch(c.ProjectID, sqlite.KindCandidate, c.ID)
+			tx.Touch(c.ProjectID, sqlite.KindIssue, c.IssueID)
+			tx.Event(c.ProjectID, "merge_candidate.native_"+strings.ToLower(native), "merge_candidate", c.ID, cur.Version+1)
+			return tx.Audit(ctx, c.ProjectID, "integration-controller", action, "merge_candidate", c.ID, "", p["reason"],
+				map[string]string{"repository": p["repository"], "pull_request_node": p["pr_node"]})
+		}
+	}
+	removed := mark(domain.NativeRemoved, "merge.native_dequeue")
+	// A newer candidate delivered through the same pull request owns its
+	// queue entry now; this candidate's entry is already gone.
+	if len(holder) > 0 {
+		return done(map[string]string{"superseded_by": holder[0].ID}, removed)
+	}
+	again := func(err error) outcome {
+		o := retry(15*time.Second, err)
+		o.finish = mark(domain.NativeUnknown, "merge.native_dequeue_failed")
+		return o
+	}
+	o, err := github.ObservePullRequest(ctx, a.GitHub, p["repository"], c.ProviderPR, a.Clock.Now())
+	if err != nil {
+		return again(err)
+	}
+	if o.EntryID == "" {
+		return done(map[string]string{"not_queued": p["pr_node"]}, removed)
+	}
+	if err := github.DequeuePullRequest(ctx, a.GitHub, p["pr_node"], a.Clock.Now()); err != nil {
+		return again(err)
+	}
+	return done(map[string]string{"dequeued": p["pr_node"]}, removed)
 }
 
 // definiteRefusal is a provider answer that certainly did not queue.
@@ -449,16 +523,22 @@ func (a *App) applyQueueObservation(ctx context.Context, tx *sqlite.Tx, candidat
 			return err
 		} else if stale {
 			// Run or output changes are permanent for this candidate: stop
-			// asking for approvals instead of re-requesting every poll. The
-			// pull request stays queued on GitHub but its policy check never
-			// turns green.
+			// asking for approvals instead of re-requesting every poll, and
+			// take the pull request out of the queue: its policy check would
+			// never turn green and would block the queue.
 			if err := a.invalidateApproval(ctx, tx, ap, reason); err != nil {
 				return err
 			}
 			if err := dropGroup(reason); err != nil {
 				return err
 			}
-			return update("state='FAILED', state_reason=?, provider_validation_id=NULL", reason)
+			if err := update("state='FAILED', state_reason=?, provider_validation_id=NULL", reason); err != nil {
+				return err
+			}
+			_, err = tx.Enqueue(ctx, sqlite.OutboxItem{ProjectID: c.ProjectID, Kind: "github.queue.dequeue",
+				Payload:   map[string]string{"candidate_id": c.ID, "pr_node": c.ProviderPRNode, "repository": repo, "reason": reason},
+				DedupeKey: fmt.Sprintf("github.queue.dequeue:%s:%d", c.ID, c.Version), ResourceKey: "target:" + t.ID})
+			return err
 		}
 		if ap.State != domain.ApprovalApproved {
 			return nil

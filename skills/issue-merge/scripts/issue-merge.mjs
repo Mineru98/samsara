@@ -9,7 +9,8 @@
  *   preflight --branch <b> merge 를 실제로 하지 않고 충돌 파일을 확정한다
  *   resolve --worktree <p> 작업 브랜치 쪽에서 충돌을 해소할 판을 깐다
  *   merge --pr <n>         PR merge 래퍼. 실패 사유를 구조화해 출력
- *   close --issue <n> [--comment-file <f>]  이슈를 닫는다
+ *   close --issue <n> [--comment-file <f>]  이슈를 닫고 후행 이슈 본문의 선행 체크를 [x] 로 바꾼다
+ *   mark-successors --issue <n>            후행 체크만 다시 돌린다 (멱등, close 실패 복구용)
  *   close-check <n> [<n>...]  회차 끝에 merge 된 이슈가 status:close + CLOSED 인지 재확인 (--fix 로 보정)
  *   cleanup                통합이 끝난 워크트리와 base-tree 를 정리
  *
@@ -32,8 +33,9 @@ import {
 import { createTracker, gitHost, setTrackerStatus } from './issue-tracker.mjs';
 import { cmdPhase } from './issue-merge-phase.mjs';
 import { gateAction } from './issue-ontology.mjs';
+import { markSuccessors } from './issue-links.mjs';
 
-const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|close-check|status|cleanup> [options]
+const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|mark-successors|close-check|status|cleanup> [options]
 
   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
   base-tree [--remove]         base 전용 임시 워크트리 생성/정리
@@ -42,6 +44,7 @@ const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflig
   resolve --worktree <path> [--continue [--push] | --abort]
   merge --pr <n> [--method squash|merge|rebase]
   close --issue <n> [--comment-file <f>]
+  mark-successors --issue <n> [--dry-run]
   close-check <n> [<n>...] [--hold <n,...>] [--comment-dir <dir>] [--fix]
   status <n> <open|plan|in-process|review|close>
   cleanup --worktree <path> [--branch <name>]
@@ -554,13 +557,30 @@ function cmdClose(args) {
   }
   const r = tracker.issueClose(args.issue);
   if (!r.ok) fail(`이슈 close 실패: ${r.err}`);
+  // 닫힌 뒤 항상 후행 체크를 돈다(이슈 #98). 실패해도 close 는 되돌리지 않고 mark-successors 로 재시도한다.
+  const successors = markSuccessors(tracker, args.issue);
   console.log(JSON.stringify({
     closed: true,
     provider: tracker.provider,
     issue: Number(args.issue),
     issueKey: tracker.displayKey(args.issue),
     commented: Boolean(args['comment-file']),
+    successors: successors.successors,
+    successorsOk: successors.ok,
+    ...(successors.ok ? {} : {
+      successorsError: successors.error ?? '일부 후행 이슈 갱신 실패',
+      retry: `node issue-merge.mjs mark-successors --issue ${args.issue}`,
+    }),
   }, null, 2));
+  if (!successors.ok) process.exitCode = 5;
+}
+
+/** 후행 이슈 본문의 `- [ ] #n` 을 `- [x] #n` 으로. close 가 자동으로 부르며, 여기서는 재시도용이다. */
+function cmdMarkSuccessors(args) {
+  if (!args.issue) fail('--issue <번호> 가 필요합니다.');
+  const result = markSuccessors(createTracker(repoRoot()), args.issue, { dryRun: args.dryRun });
+  console.log(JSON.stringify({ issue: Number(args.issue), dryRun: Boolean(args.dryRun), ...result }, null, 2));
+  if (!result.ok) process.exit(5);
 }
 
 /* ------------------------------------------------------------ close-check */
@@ -658,6 +678,7 @@ switch (sub) {
   case 'resolve': cmdResolve(args); break;
   case 'merge': cmdMerge(args); break;
   case 'close': cmdClose(args); break;
+  case 'mark-successors': cmdMarkSuccessors(args); break;
   case 'close-check': cmdCloseCheck(args); break;
   case 'status': {
     const result = setTrackerStatus(createTracker(repoRoot(), { repo: args.repo }), args._[0] ?? args.issue, args._[1], { dryRun: args.dryRun });

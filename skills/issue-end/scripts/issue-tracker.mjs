@@ -237,6 +237,12 @@ function githubTracker(root, cfg) {
       return { ok: r.code === 0, err: r.err };
     },
 
+    /** 이슈 본문을 통째로 바꾼다. 선행·후행 연결(issue-links.mjs)이 쓴다. */
+    issueEditBody(number, body) {
+      const r = run('gh', repoArgs(['issue', 'edit', String(number), '--body-file', '-']), { ...opts, input: String(body ?? '') });
+      return { ok: r.code === 0, err: r.err };
+    },
+
     issueClose(number) {
       const r = run('gh', repoArgs(['issue', 'close', String(number)]), opts);
       return { ok: r.code === 0, err: r.err };
@@ -528,6 +534,11 @@ function jiraTracker(cfg) {
     issueComment(number, bodyFile) {
       const body = existsSync(bodyFile) ? readFileSync(bodyFile, 'utf8') : '';
       const r = call('POST', `/issue/${key(number)}/comment`, { body: markdownToAdf(body) });
+      return { ok: r.ok, err: r.ok ? null : `HTTP ${r.status}: ${r.raw ?? ''}` };
+    },
+
+    issueEditBody(number, body) {
+      const r = call('PUT', `/issue/${key(number)}`, { fields: { description: markdownToAdf(String(body ?? '')) } });
       return { ok: r.ok, err: r.ok ? null : `HTTP ${r.status}: ${r.raw ?? ''}` };
     },
 

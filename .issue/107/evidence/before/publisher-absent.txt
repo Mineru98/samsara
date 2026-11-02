@@ -1,0 +1,12 @@
+# base ce655a7 — PolicyChecks 배선 / 게시자 구현 / manifest 검증 검색
+$ grep -rn "PolicyChecks *=" --include="*.go" internal cmd | grep -v _test
+internal/app/github_queue.go:586:	if a.PolicyChecks == nil {
+$ grep -rln "PublishPolicyCheck" --include="*.go" internal | grep -v _test
+internal/app/github_queue.go
+$ grep -rn "merge_group\|check-runs" --include="*.go" internal | grep -v _test
+internal/github/sync.go:214:			if err := get(fmt.Sprintf("repos/%s/commits/%s/check-runs?per_page=100", repo, pr.Head.SHA), &checks); err != nil {
+internal/app/github_queue.go:396:			ev["provider_validation_id"], ev["merge_group_head"], ev["merge_group_base"], ev["merge_queue_entry"], ev["policy_check_run"] =
+internal/app/github_queue.go:474:		map[string]any{"provider_validation_id": g.ID, "merge_group_head": g.HeadSHA, "merge_group_base": g.BaseSHA, "policy_digest": g.PolicyDigest})
+
+# 해석: PolicyChecks 는 nil 비교(github_queue.go:586)만 있고 대입하는 곳이 없다. PublishPolicyCheck 는 인터페이스 호출부뿐이고 구현체가 없다.
+#       check-runs 는 history sync 의 읽기(sync.go:214)뿐이고 게시(POST/PATCH)·merge_group artifact 검증 코드는 없다.

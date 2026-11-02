@@ -56,6 +56,8 @@ type queueGitHub struct {
 	entry     *queueEntry
 	mergeOID  string
 	enqueueOK bool
+	dequeued  []string
+	dequeueNo bool // refuse dequeue and keep the entry (missing permission)
 	calls     []string
 }
 
@@ -71,7 +73,14 @@ func (f *queueGitHub) Do(_ context.Context, method, path string, fields map[stri
 	case method == "GET" && path == "repos/o/r/rules/branches/integration":
 		return ok(f.rules)
 	case method == "GET" && path == "repos/o/r/commits/"+f.source+"/pulls":
-		return ok(fmt.Sprintf(`[{"number":7,"node_id":"PR_7","state":"open","head":{"sha":%q},"base":{"ref":"integration"}}]`, f.source))
+		return ok(fmt.Sprintf(`[{"number":7,"node_id":"PR_7","state":%q,"head":{"sha":%q},"base":{"ref":"integration"}}]`, strings.ToLower(f.prState), f.prHead))
+	case method == "POST" && path == "graphql" && strings.Contains(fields["query"], "dequeuePullRequest"):
+		f.dequeued = append(f.dequeued, fields["id"])
+		if f.dequeueNo {
+			return ok(`{"errors":[{"type":"FORBIDDEN","message":"Resource not accessible by integration"}]}`)
+		}
+		f.entry = nil
+		return ok(`{"data":{"dequeuePullRequest":{"mergeQueueEntry":{"id":"MQE_1"}}}}`)
 	case method == "POST" && path == "graphql" && strings.Contains(fields["query"], "enqueuePullRequest"):
 		if fields["pullRequestId"] != "PR_7" || fields["expectedHeadOid"] != f.source {
 			return ok(`{"errors":[{"message":"bad enqueue request"}]}`)
@@ -397,4 +406,188 @@ func TestGitHubQueueLostIntentAndUnauthorizedMerge(t *testing.T) {
 	if !strings.Contains(evidence, `"policy_authorized":false`) {
 		t.Fatalf("evidence must say the merge was not authorized: %s", evidence)
 	}
+}
+
+// #108: a candidate that only lost its pull request (closed, or its head
+// moved away from the approved source) is enqueued again once an open pull
+// request carries the source; the old group is not reused.
+func TestGitHubQueueFailedCandidateReenqueue(t *testing.T) {
+	e := newEnv(t, queueConfig)
+	gh := &queueGitHub{rules: verifiedRules, prState: "OPEN", enqueueOK: true}
+	e.app.GitHub, e.app.PolicyChecks = gh, &fakeChecks{}
+	c := queueCandidate(t, e)
+	gh.set(func(f *queueGitHub) { f.source, f.prHead = c.SourceSHA, c.SourceSHA })
+	e.tick(1)
+
+	for _, tc := range []struct {
+		reason string
+		lose   func(f *queueGitHub)
+	}{
+		{"PR_CLOSED", func(f *queueGitHub) { f.entry, f.prState = nil, "CLOSED" }},
+		{"PR_HEAD_CHANGED", func(f *queueGitHub) { f.entry, f.prHead = nil, "other" }},
+	} {
+		if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); err != nil {
+			t.Fatalf("%s: enqueue: %v", tc.reason, err)
+		}
+		e.tick(1)
+		gh.set(func(f *queueGitHub) { f.entry = &queueEntry{ID: "MQE_1", Head: "g-" + tc.reason, Base: "b1"} })
+		e.tick(2)
+		before, _ := e.candidate(c.ID)
+		if before.ProviderValidationID == "" {
+			t.Fatalf("%s: no provider group before the pull request was lost", tc.reason)
+		}
+		gh.set(tc.lose)
+		e.tick(2)
+		cur, _ := e.candidate(c.ID)
+		if cur.State != domain.CandidateFailed || cur.StateReason != tc.reason {
+			t.Fatalf("want FAILED(%s), got %s(%s)", tc.reason, cur.State, cur.StateReason)
+		}
+		// No open pull request carries the source: enqueue is refused and
+		// the candidate stays FAILED.
+		if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); !domain.IsCode(err, domain.CodeConflict) {
+			t.Fatalf("%s: enqueue without an open pull request must be refused: %v", tc.reason, err)
+		}
+		gh.set(func(f *queueGitHub) { f.prState, f.prHead = "OPEN", c.SourceSHA })
+		if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); err != nil {
+			t.Fatalf("%s: re-enqueue: %v", tc.reason, err)
+		}
+		cur, _ = e.candidate(c.ID)
+		if cur.State != domain.CandidatePublishing || cur.NativeQueueState != domain.NativeRequested || cur.ProviderValidationID != "" {
+			t.Fatalf("%s: re-enqueue: %s/%s group %q", tc.reason, cur.State, cur.NativeQueueState, cur.ProviderValidationID)
+		}
+		e.tick(1)
+		gh.set(func(f *queueGitHub) { f.entry = &queueEntry{ID: "MQE_2", Head: "h-" + tc.reason, Base: "b2"} })
+		e.tick(2)
+		if cur, _ = e.candidate(c.ID); cur.ProviderValidationID == "" || cur.ProviderValidationID == before.ProviderValidationID {
+			t.Fatalf("%s: re-enqueued candidate must validate in a new group, got %q (old %q)", tc.reason, cur.ProviderValidationID, before.ProviderValidationID)
+		}
+		pendingMerge(t, e, c.ID)
+		// Leave the queue so the next case starts from WAITING.
+		gh.set(func(f *queueGitHub) { f.entry = nil })
+		e.tick(2)
+		if cur, _ = e.candidate(c.ID); cur.State != domain.CandidateWaiting {
+			t.Fatalf("%s: want WAITING after removal, got %s(%s)", tc.reason, cur.State, cur.StateReason)
+		}
+	}
+	if len(gh.dequeued) != 0 {
+		t.Fatalf("a lost pull request is not dequeued by Samsara: %v", gh.dequeued)
+	}
+}
+
+// #108: when the approval subject becomes permanently invalid, the pull
+// request is taken out of the GitHub queue instead of blocking it, and the
+// candidate is not re-enqueued. provider_validation_id is in the API view.
+func TestGitHubQueueDequeueOnPermanentlyInvalidSubject(t *testing.T) {
+	e := newEnv(t, queueConfig)
+	gh := &queueGitHub{rules: verifiedRules, prState: "OPEN", enqueueOK: true}
+	e.app.GitHub, e.app.PolicyChecks = gh, &fakeChecks{}
+	c := queueCandidate(t, e)
+	gh.set(func(f *queueGitHub) { f.source, f.prHead = c.SourceSHA, c.SourceSHA })
+	e.tick(1)
+	if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.tick(1)
+	gh.set(func(f *queueGitHub) { f.entry = &queueEntry{ID: "MQE_1", Head: "g1", Base: "b1"} })
+	e.tick(2)
+	cur, _ := e.candidate(c.ID)
+	var view *sqlite.CandidateView
+	_ = e.db.Read(e.ctx, func(q sqlite.Q) error {
+		var err error
+		view, err = sqlite.CandidateProjection(e.ctx, q, c.ID)
+		return err
+	})
+	if cur.ProviderValidationID == "" || view == nil || view.ProviderValidationID != cur.ProviderValidationID {
+		t.Fatalf("provider_validation_id must be in the candidate view: db %q view %+v", cur.ProviderValidationID, view)
+	}
+	pendingMerge(t, e, c.ID)
+
+	// The run is cancelled: every MERGE approval of this candidate is stale
+	// for good.
+	if err := e.db.Write(e.ctx, func(tx *sqlite.Tx) error {
+		_, err := tx.ExecContext(e.ctx, "UPDATE runs SET state='CANCELLED' WHERE id=?", c.RunID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	e.tick(2)
+	cur, _ = e.candidate(c.ID)
+	if cur.State != domain.CandidateFailed || cur.StateReason != "RUN_CANCELLED" {
+		t.Fatalf("want FAILED(RUN_CANCELLED), got %s(%s)", cur.State, cur.StateReason)
+	}
+	if len(gh.dequeued) != 1 || gh.dequeued[0] != "PR_7" {
+		t.Fatalf("the pull request must be dequeued once: %v", gh.dequeued)
+	}
+	if cur.NativeQueueState != domain.NativeRemoved || cur.Enqueued || cur.ProviderValidationID != "" {
+		t.Fatalf("after dequeue: native %s enqueued=%v group %q", cur.NativeQueueState, cur.Enqueued, cur.ProviderValidationID)
+	}
+	if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); !domain.IsCode(err, domain.CodeConflict) {
+		t.Fatalf("a permanently invalid candidate must not be re-enqueued: %v", err)
+	}
+	e.tick(2)
+	if len(gh.dequeued) != 1 {
+		t.Fatalf("dequeue must not repeat: %v", gh.dequeued)
+	}
+}
+
+// #108: a refused dequeue is never recorded as a removal. Retries re-read
+// the provider; when they run out the queue state is UNKNOWN. A pull
+// request that left the queue is recorded as REMOVED only once observed.
+func TestGitHubQueueDequeueRefused(t *testing.T) {
+	cancelInGroup := func(t *testing.T, gh *queueGitHub) (*env, *sqlite.Candidate) {
+		e := newEnv(t, queueConfig)
+		e.app.GitHub, e.app.PolicyChecks = gh, &fakeChecks{}
+		c := queueCandidate(t, e)
+		gh.set(func(f *queueGitHub) { f.source, f.prHead = c.SourceSHA, c.SourceSHA })
+		e.tick(1)
+		if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); err != nil {
+			t.Fatal(err)
+		}
+		e.tick(1)
+		gh.set(func(f *queueGitHub) { f.entry = &queueEntry{ID: "MQE_1", Head: "g1", Base: "b1"} })
+		e.tick(2)
+		pendingMerge(t, e, c.ID)
+		if err := e.db.Write(e.ctx, func(tx *sqlite.Tx) error {
+			_, err := tx.ExecContext(e.ctx, "UPDATE runs SET state='CANCELLED' WHERE id=?", c.RunID)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return e, c
+	}
+
+	t.Run("refused", func(t *testing.T) {
+		gh := &queueGitHub{rules: verifiedRules, prState: "OPEN", enqueueOK: true, dequeueNo: true}
+		e, c := cancelInGroup(t, gh)
+		e.tick(2)
+		if cur, _ := e.candidate(c.ID); cur.State != domain.CandidateFailed || cur.NativeQueueState == domain.NativeRemoved || !cur.Enqueued {
+			t.Fatalf("a refused dequeue must not be recorded as removed: %s native %s enqueued=%v", cur.State, cur.NativeQueueState, cur.Enqueued)
+		}
+		e.tick(20)
+		cur, _ := e.candidate(c.ID)
+		if cur.NativeQueueState != domain.NativeUnknown || !cur.Enqueued {
+			t.Fatalf("exhausted dequeue: want UNKNOWN, got native %s enqueued=%v", cur.NativeQueueState, cur.Enqueued)
+		}
+		if len(gh.dequeued) < 2 {
+			t.Fatalf("a refused dequeue is retried: %v", gh.dequeued)
+		}
+	})
+
+	t.Run("left the queue after a refusal", func(t *testing.T) {
+		gh := &queueGitHub{rules: verifiedRules, prState: "OPEN", enqueueOK: true, dequeueNo: true}
+		e, c := cancelInGroup(t, gh)
+		e.tick(2)
+		refused := len(gh.dequeued)
+		if cur, _ := e.candidate(c.ID); cur.State != domain.CandidateFailed || cur.NativeQueueState == domain.NativeRemoved || refused == 0 {
+			t.Fatalf("refused: %s native %s dequeues %d", cur.State, cur.NativeQueueState, refused)
+		}
+		// The entry leaves the queue on its own: the next attempt observes
+		// it and records the removal without another dequeue call.
+		gh.set(func(f *queueGitHub) { f.entry = nil })
+		e.tick(2)
+		cur, _ := e.candidate(c.ID)
+		if cur.NativeQueueState != domain.NativeRemoved || cur.Enqueued || len(gh.dequeued) != refused {
+			t.Fatalf("observed removal: native %s enqueued=%v dequeues %d→%d", cur.NativeQueueState, cur.Enqueued, refused, len(gh.dequeued))
+		}
+	})
 }

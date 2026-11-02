@@ -398,6 +398,7 @@ func TestIPCNewSchemaFieldsMatchGo(t *testing.T) {
 	}{
 		{"PlanReviseRequest", plan.Revision{}},
 		{"PlanReviseResult", app.PlanReviseResult{}},
+		{"RunPlan", app.RunPlanView{}},
 		{"CandidateRef", struct {
 			CandidateID string `json:"candidate_id"`
 		}{}},
@@ -409,6 +410,7 @@ func TestIPCNewSchemaFieldsMatchGo(t *testing.T) {
 		{"CleanupResult", app.CleanupResult{}},
 		{"CleanupItem", app.CleanupItem{}},
 		{"CommandResult", app.CommandResult{}},
+		{"MetricsView", app.MetricsView{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			want := map[string]bool{}

@@ -271,9 +271,6 @@ func (a *App) revisePlanTx(ctx context.Context, tx *sqlite.Tx, cmd Cmd, rev *pla
 	if err != nil {
 		return nil, err
 	}
-	if err := checkIfMatch(cmd, r.Version); err != nil {
-		return nil, err
-	}
 	if p.ProjectID != r.ProjectID {
 		return nil, domain.Errf(domain.CodeInvalidRequest, "plan project_id does not match the run's project")
 	}
@@ -290,6 +287,11 @@ func (a *App) revisePlanTx(ctx context.Context, tx *sqlite.Tx, cmd Cmd, rev *pla
 	if exp, _ := domain.ParseDec(rev.ExpectedRunGeneration); exp != r.Generation {
 		return nil, domain.Errf(domain.CodeVersionMismatch, "run generation changed").
 			WithDetails("expected_run_generation", rev.ExpectedRunGeneration, "current_run_generation", domain.Dec(r.Generation))
+	}
+	// After the generation check, so a revision built on an older generation
+	// is refused as such even when its If-Match is stale too.
+	if err := checkIfMatch(cmd, r.Version); err != nil {
+		return nil, err
 	}
 	if exp, _ := domain.ParseDec(p.ExpectedGraphVersion); exp != pr.GraphVersion {
 		return nil, domain.Errf(domain.CodeVersionMismatch, "graph version changed").
@@ -529,6 +531,7 @@ func (a *App) reviseAffectedIssue(ctx context.Context, tx *sqlite.Tx, r *sqlite.
 		return domain.Errf(domain.CodeConflict, "attempt %s is quarantined (%s); resolve it before revise", latest.ID, latest.QuarantineReason).
 			WithDetails("attempt_id", latest.ID, "quarantine_reason", latest.QuarantineReason)
 	}
+	next := "" // the attempt that carries the issue into the new generation
 	switch {
 	case latest == nil:
 	case latest.State == domain.AttemptPending && latest.WorktreeID == "":
@@ -536,12 +539,16 @@ func (a *App) reviseAffectedIssue(ctx context.Context, tx *sqlite.Tx, r *sqlite.
 		if _, err := tx.ExecContext(ctx, "UPDATE execution_attempts SET run_generation=?, version=version+1, updated_at=? WHERE id=?", gen, tx.Now, latest.ID); err != nil {
 			return err
 		}
+		next = latest.ID
 	default:
+		// The cancelled attempt and candidates point at the attempt that
+		// replaces them, so history reads as one line (04 §12).
+		next = domain.NewID("att")
 		if latest.State == domain.AttemptPending || latest.State == domain.AttemptPaused {
 			if err := a.revokeAttemptLease(ctx, tx, latest, domain.LeaseRevoked, "PLAN_REVISED"); err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, "UPDATE execution_attempts SET state='CANCELLED', state_reason='PLAN_REVISED', version=version+1, updated_at=? WHERE id=?", tx.Now, latest.ID); err != nil {
+			if _, err := tx.ExecContext(ctx, "UPDATE execution_attempts SET state='CANCELLED', state_reason='PLAN_REVISED', superseded_by=?, version=version+1, updated_at=? WHERE id=?", next, tx.Now, latest.ID); err != nil {
 				return err
 			}
 			if err := a.releaseAttemptBindings(ctx, tx, latest); err != nil {
@@ -550,9 +557,10 @@ func (a *App) reviseAffectedIssue(ctx context.Context, tx *sqlite.Tx, r *sqlite.
 			tx.Touch(r.ProjectID, sqlite.KindAttempt, latest.ID)
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO execution_attempts(id,project_id,run_id,issue_id,run_generation,state,state_reason,created_at,updated_at)
-			VALUES(?,?,?,?,?,'PENDING','QUEUED',?,?)`, domain.NewID("att"), r.ProjectID, r.ID, issueID, gen, tx.Now, tx.Now); err != nil {
+			VALUES(?,?,?,?,?,'PENDING','QUEUED',?,?)`, next, r.ProjectID, r.ID, issueID, gen, tx.Now, tx.Now); err != nil {
 			return err
 		}
+		tx.Touch(r.ProjectID, sqlite.KindAttempt, next)
 	}
 	rows, err := tx.QueryContext(ctx, "SELECT id FROM output_artifacts WHERE run_id=? AND issue_id=? AND superseded_by IS NULL ORDER BY created_at, id", r.ID, issueID)
 	if err != nil {
@@ -578,9 +586,16 @@ func (a *App) reviseAffectedIssue(ctx context.Context, tx *sqlite.Tx, r *sqlite.
 		}
 		res.SupersededOutputIDs = append(res.SupersededOutputIDs, id)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET state='CANCELLED', state_reason='PLAN_REVISED', version=version+1, updated_at=? WHERE run_id=? AND issue_id=? AND state IN ('WAITING','READY','STALE_BASE','CONFLICT','FAILED')",
-		tx.Now, r.ID, issueID); err != nil {
+	cancelled, err := sqlite.CandidatesWhere(ctx, tx, "run_id=? AND issue_id=? AND state IN ('WAITING','READY','STALE_BASE','CONFLICT','FAILED')", r.ID, issueID)
+	if err != nil {
 		return err
+	}
+	for _, c := range cancelled {
+		if _, err := tx.ExecContext(ctx, "UPDATE merge_candidates SET state='CANCELLED', state_reason='PLAN_REVISED', superseded_by=NULLIF(?,''), version=version+1, updated_at=? WHERE id=?",
+			next, tx.Now, c.ID); err != nil {
+			return err
+		}
+		tx.Touch(r.ProjectID, sqlite.KindCandidate, c.ID)
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE issues SET lifecycle='OPEN', version=version+1, updated_at=? WHERE id=? AND lifecycle='COMPLETED'", tx.Now, issueID); err != nil {
 		return err

@@ -51,7 +51,7 @@ type outboxRow struct {
 // (14.2). prompt.submit and session.interrupt are never resent.
 var resendSafe = map[string]bool{
 	"worktree.create": true, "worker.launch": true, "output.verify": true, "merge.validate": true, "git.publish": true,
-	"github.issue.close": true, "github.policy_check": true,
+	"github.issue.close": true, "github.policy_check": true, "github.queue.dequeue": true,
 }
 
 const maxOutboxAttempts = 8
@@ -132,6 +132,8 @@ func (a *App) runHandler(ctx context.Context, r outboxRow) (o outcome) {
 		return a.handleGitHubIssueClose(ctx, r, payload)
 	case "github.queue.enqueue":
 		return a.handleNativeEnqueue(ctx, payload)
+	case "github.queue.dequeue":
+		return a.handleNativeDequeue(ctx, payload)
 	case "github.policy_check":
 		return a.handlePolicyCheck(ctx, payload)
 	}

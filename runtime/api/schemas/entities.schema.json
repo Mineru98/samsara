@@ -329,6 +329,13 @@
         },
         "ended_at": {
           "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "available_actions": {
+          "description": "Run commands the state allows (START_RUN, PAUSE_RUN, RESUME_RUN, REVISE_PLAN); the command re-checks policy. Absent from older runtimes.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
         }
       }
     },
@@ -383,6 +390,9 @@
           "type": "string"
         },
         "output_id": {
+          "type": "string"
+        },
+        "superseded_by": {
           "type": "string"
         },
         "resume_required": {
@@ -865,6 +875,10 @@
         },
         "native_queue_state": {
           "$ref": "common.schema.json#/$defs/NativeQueueState"
+        },
+        "provider_validation_id": {
+          "type": "string",
+          "description": "Provider validation group (merge group head/base/entry) the candidate is currently validated in; omitted outside a github_queue group."
         },
         "publication_observation": {
           "type": "string"

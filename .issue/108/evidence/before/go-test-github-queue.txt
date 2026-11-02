@@ -1,0 +1,3 @@
+# base ce655a7
+$ go test ./internal/app -run GitHubQueue -count=1
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.104s

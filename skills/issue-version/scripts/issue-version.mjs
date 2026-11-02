@@ -88,6 +88,14 @@ export function repoRoot(cwd = process.cwd()) {
   return result.stdout.trim();
 }
 
+// 릴리즈 노트 임시 파일 위치. `<root>/.git` 은 git worktree 에서 디렉터리가 아니라
+// `gitdir:` 를 담은 파일이라 그 아래에 쓸 수 없다. 실제 git 디렉터리를 git 에게 묻는다.
+export function releaseNotesPath(root, tag) {
+  const gitDir = gitOut(['rev-parse', '--absolute-git-dir'], root);
+  if (!gitDir) fail('git 디렉터리를 찾지 못했다.', 3);
+  return path.join(gitDir, `issue-version-notes-${tag}.md`);
+}
+
 // issue-create/issue-start 와 같은 순서로 기본 브랜치를 정한다.
 export function baseBranch(root) {
   const settingsFile = path.join(root, '.issue', 'settings.json');
@@ -848,6 +856,15 @@ function cmdRelease(root, versionArg, options) {
   }
   requireGh();
 
+  // 노트 파일은 태그보다 먼저 쓴다. 여기서 실패하면 아직 아무것도 만들지 않았으므로
+  // "태그만 원격에 남은" 상태가 생기지 않는다.
+  const notesFile = releaseNotesPath(root, tag);
+  try {
+    writeFileSync(notesFile, body.endsWith('\n') ? body : `${body}\n`);
+  } catch (error) {
+    fail(`릴리즈 노트 파일을 쓰지 못했다 (${notesFile}): ${error.message}. 태그는 만들지 않았다.`, 3);
+  }
+
   const tagged = git(['tag', '-a', tag, '-m', tag], root);
   if (tagged.status !== 0) fail(`태그를 만들지 못했다: ${tagged.stderr.trim()}`, 3);
   const pushed = git(['push', 'origin', tag], root);
@@ -856,8 +873,6 @@ function cmdRelease(root, versionArg, options) {
     fail(`태그를 push 하지 못했다: ${pushed.stderr.trim()}`, 3);
   }
 
-  const notesFile = path.join(root, '.git', `issue-version-notes-${tag}.md`);
-  writeFileSync(notesFile, body.endsWith('\n') ? body : `${body}\n`);
   const released = spawnSync('gh', ['release', 'create', tag, '--title', tag, '--notes-file', notesFile], {
     cwd: root, encoding: 'utf8',
   });

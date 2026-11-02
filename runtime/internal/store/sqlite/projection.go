@@ -74,6 +74,9 @@ type RunView struct {
 	CreatedAt     string            `json:"created_at"`
 	StartedAt     string            `json:"started_at,omitempty"`
 	EndedAt       string            `json:"ended_at,omitempty"`
+	// AvailableActions are the run commands the state allows (03 §13). The
+	// command re-checks activation, approval and quiescence (03 §6.1).
+	AvailableActions []Action `json:"available_actions"`
 }
 
 type AttemptView struct {
@@ -90,6 +93,7 @@ type AttemptView struct {
 	BackendKind      string `json:"backend_kind,omitempty"`
 	BackendReason    string `json:"backend_reason,omitempty"`
 	OutputID         string `json:"output_id,omitempty"`
+	SupersededBy     string `json:"superseded_by,omitempty"`
 	ResumeRequired   bool   `json:"resume_required"`
 	SessionID        string `json:"session_id,omitempty"`
 	LeaseState       string `json:"lease_state,omitempty"`
@@ -197,6 +201,7 @@ type CandidateView struct {
 	State                  string           `json:"state"`
 	StateReason            string           `json:"state_reason,omitempty"`
 	NativeQueueState       string           `json:"native_queue_state"`
+	ProviderValidationID   string           `json:"provider_validation_id,omitempty"`
 	PublicationObservation string           `json:"publication_observation,omitempty"`
 	Enqueued               bool             `json:"enqueued"`
 	QueuePosition          string           `json:"queue_position"`
@@ -369,7 +374,21 @@ func RunProjection(r *Run) RunView {
 	_ = json.Unmarshal([]byte(r.AliasMapping), &m)
 	return RunView{ID: r.ID, ProjectID: r.ProjectID, Version: domain.Dec(r.Version), State: r.State,
 		RunGeneration: domain.Dec(r.Generation), GraphVersion: domain.Dec(r.GraphVersion), PlanDigest: r.PlanDigest,
-		AliasMapping: m, CreatedAt: domain.RFC3339(r.CreatedAt), StartedAt: domain.RFC3339(r.StartedAt), EndedAt: domain.RFC3339(r.EndedAt)}
+		AliasMapping: m, CreatedAt: domain.RFC3339(r.CreatedAt), StartedAt: domain.RFC3339(r.StartedAt), EndedAt: domain.RFC3339(r.EndedAt),
+		AvailableActions: runActions(r.State)}
+}
+
+// runActions maps a run state to the commands it accepts.
+func runActions(state string) []Action {
+	switch state {
+	case domain.RunPlanned:
+		return []Action{{Action: "START_RUN", Enabled: true}}
+	case domain.RunActive:
+		return []Action{{Action: "PAUSE_RUN", Enabled: true}}
+	case domain.RunPaused:
+		return []Action{{Action: "RESUME_RUN", Enabled: true}, {Action: "REVISE_PLAN", Enabled: true}}
+	}
+	return []Action{}
 }
 
 // latestRunOfIssue returns the newest run containing the issue.
@@ -565,7 +584,7 @@ func AttemptProjection(ctx context.Context, q Q, id string) (*AttemptView, error
 	v := &AttemptView{ID: a.ID, ProjectID: a.ProjectID, RunID: a.RunID, IssueID: a.IssueID, Version: domain.Dec(a.Version),
 		State: a.State, StateReason: a.StateReason, QuarantineReason: a.QuarantineReason, RunGeneration: domain.Dec(a.RunGeneration),
 		WorktreeID: a.WorktreeID, BackendKind: a.BackendKind, BackendReason: a.BackendReason, OutputID: a.OutputID,
-		ResumeRequired: a.ResumeRequired, UpdatedAt: domain.RFC3339(a.UpdatedAt)}
+		SupersededBy: a.SupersededBy, ResumeRequired: a.ResumeRequired, UpdatedAt: domain.RFC3339(a.UpdatedAt)}
 	l, err := LatestLeaseForAttempt(ctx, q, a.ID)
 	if err != nil {
 		return nil, err
@@ -663,7 +682,7 @@ func CandidateProjection(ctx context.Context, q Q, id string) (*CandidateView, e
 	v := &CandidateView{ID: c.ID, ProjectID: c.ProjectID, Version: domain.Dec(c.Version), IssueID: c.IssueID, RunID: c.RunID,
 		AttemptID: c.AttemptID, OutputID: c.OutputID, TargetID: c.TargetID, TargetRef: t.TargetRef, Authority: t.Authority,
 		SourceSHA: c.SourceSHA, BaseSHA: c.BaseSHA, CandidateSHA: c.CandidateSHA, Revision: domain.Dec(c.Revision),
-		State: c.State, StateReason: c.StateReason, NativeQueueState: c.NativeQueueState,
+		State: c.State, StateReason: c.StateReason, NativeQueueState: c.NativeQueueState, ProviderValidationID: c.ProviderValidationID,
 		PublicationObservation: c.PublicationObservation, Enqueued: c.Enqueued, QueuePosition: domain.Dec(c.QueuePosition),
 		BlockingReasons: []BlockingReason{}, WaitingSince: domain.RFC3339(c.CreatedAt), RevalidationCount: domain.Dec(c.Revision - 1),
 		StarvationRisk:      c.Revision-1 >= StarvationRevalidations && c.State != domain.CandidateMerged && c.State != domain.CandidateCancelled,

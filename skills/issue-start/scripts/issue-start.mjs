@@ -3,6 +3,7 @@
  * issue-start.mjs — GitHub 이슈 착수 자동화 (저장소 비종속).
  *
  * 서브커맨드
+ *   prereq <n>           본문 '선행 이슈' 를 하나씩 조회해 미완료가 있으면 exit 3 (착수 0단계 필수)
  *   fetch <n>            이슈 본문/코멘트/라벨/첨부 이미지를 .issue/<n>/ 로 수집
  *   worktree <n>         이슈 번호 + 영문 slug 로 브랜치와 워크트리 생성
  *   guard                무확인 커밋 전 안전장치 3종 검사
@@ -58,9 +59,11 @@ import {
 import { runIssueStartPhase } from './issue-start-phase.mjs';
 import { gateAction } from './issue-ontology.mjs';
 import { legacyGateCheck } from './issue-gate.mjs';
+import { prereqStatus } from './issue-links.mjs';
 
 function usage(exitCode = 1) {
   console.error(`Usage:
+  node issue-start.mjs prereq <issue-number> [--repo <owner/name>]
   node issue-start.mjs fetch <issue-number> [--repo <owner/name>]
   node issue-start.mjs worktree <issue-number> [options]
   node issue-start.mjs guard [--issue <n>]
@@ -387,6 +390,38 @@ function cmdGuard(root, opts) {
   if (!ok) process.exit(3);
 }
 
+/* ----------------------------------------------------------------- prereq */
+
+/**
+ * 착수 전 선행 확인 (이슈 #98). 본문 '선행 이슈' 의 각 이슈를 실제로 조회한다.
+ * 체크박스가 아니라 조회한 상태(닫힘 또는 status:close)로 완료를 판정한다.
+ * 미완료·조회 실패가 하나라도 있으면 exit 3 — 진행 여부는 사용자 확인을 받는다.
+ */
+function cmdPrereq(number, tracker) {
+  const result = prereqStatus(tracker, number);
+  if (!result.ok) {
+    console.error(`✗ ${result.error}`);
+    process.exit(4);
+  }
+  if (!result.predecessors.length) {
+    console.log(`✓ #${number} 본문에 선행 이슈가 없습니다.`);
+  } else {
+    console.log(`#${number} 선행 이슈 ${result.predecessors.length}건`);
+    for (const p of result.predecessors) {
+      const state = p.error ? `조회 실패` : `${p.state ?? '?'}${p.status ? ` · ${p.status}` : ''}`;
+      const note = !p.error && p.checked !== p.done ? ` (본문 체크 ${p.checked ? '[x]' : '[ ]'} 와 실제 상태가 다름)` : '';
+      console.log(`  ${p.done ? '✓' : '✗'} #${p.number} ${state}${note}`);
+    }
+  }
+  console.log('');
+  console.log(`PREREQ_TOTAL=${result.predecessors.length}`);
+  console.log(`PREREQ_PENDING=${result.pending.join(',')}`);
+  if (result.pending.length) {
+    console.error(`✗ 완료되지 않은 선행 이슈: ${result.pending.map((n) => `#${n}`).join(', ')} — 진행하려면 사용자 확인을 받으세요.`);
+    process.exit(3);
+  }
+}
+
 /* --------------------------------------------------------------- evidence */
 
 function cmdEvidenceInit(number, root) {
@@ -535,7 +570,7 @@ function cmdMigrate(root, opts) {
 /* ------------------------------------------------------------------- main */
 
 const NEEDS_NUMBER = new Set([
-  'fetch', 'worktree', 'evidence-init', 'evidence-commit', 'evidence-mirror', 'evidence-urls', 'report-check',
+  'prereq', 'fetch', 'worktree', 'evidence-init', 'evidence-commit', 'evidence-mirror', 'evidence-urls', 'report-check',
 ]);
 const MODES = new Set([...NEEDS_NUMBER, 'guard', 'migrate', 'sync-base', 'base', 'status']);
 // 영속 gate 가 걸린 이슈에서는 issue-gate.mjs run 의 자식(fence 일치)만 부수효과를 낼 수 있다
@@ -625,6 +660,17 @@ function main() {
       if (!opts.noStatus && !opts.dryRun) {
         setTrackerStatus(createTracker(root, { repo: opts.repo }), number, 'in-process', { quiet: true });
       }
+      break;
+    }
+    case 'prereq': {
+      const tracker = createTracker(root, { repo: opts.repo });
+      const auth = tracker.auth();
+      if (!auth.ok) {
+        console.error(`✗ ${tracker.provider} 인증 실패: ${auth.detail}`);
+        if (auth.hint) console.error(`  ${auth.hint}`);
+        process.exit(4);
+      }
+      cmdPrereq(number, tracker);
       break;
     }
     case 'guard': cmdGuard(root, { ...opts, issue: number }); break;

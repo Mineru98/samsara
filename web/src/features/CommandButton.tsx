@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { ApiError } from "../api/http";
 import { useCommand } from "../hooks";
 
 const PHASE_TEXT = {
@@ -49,11 +50,26 @@ export function CommandButton({
         {label}
       </button>
       {disabled && disabledReason && <span className="small muted">{disabledReason}</span>}
-      {state.phase !== "idle" && (
+      {state.phase === "failed" && state.error && <CommandError error={state.error} />}
+      {state.phase !== "idle" && state.phase !== "failed" && (
         <span role="status" className={`small cmd-${state.phase}`}>
-          {state.phase === "failed" ? `거절됨: ${state.error?.code} — ${state.error?.message}` : PHASE_TEXT[state.phase]}
+          {PHASE_TEXT[state.phase]}
         </span>
       )}
+    </span>
+  );
+}
+
+/**
+ * A refused command as the CLI prints it: code, message and the details
+ * (approval_id, current_run_generation, …) the user needs to act on.
+ */
+export function CommandError({ error }: { error: ApiError }) {
+  const details = error.details && Object.keys(error.details).length > 0 ? error.details : null;
+  return (
+    <span role="status" className="small cmd-failed cmd-error">
+      거절됨: {error.code} — {error.message}
+      {details && <pre className="subject">{JSON.stringify(details, null, 2)}</pre>}
     </span>
   );
 }
