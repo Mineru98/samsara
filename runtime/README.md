@@ -112,7 +112,36 @@ Claude Code 2.1.311, tmux 3.4, git 2.43, SQLite 3.53.3, Linux 환경에서 실�
 문서의 "확인 전 강제 기능 비활성" 원칙에 따라 다음을 명시적으로 미지원으로 반환한다.
 
 - **herdr**: 설치된 binary의 version과 `herdr api schema --json` hash는 기록한다. 하지만 compatibility manifest에서 protocol 검증(`herdr_protocol_verified`)을 하기 전에는 생성·입력 capability를 `UNSUPPORTED(HERDR_COMPAT_UNVERIFIED)`로 보고한다. 그래서 auto mode는 tmux로 넘어간다. 실제 herdr CLI·socket adapter 구현은 M5 범위다.
-- **GitHub native merge queue(`github_queue`)**: daemon이 target branch rules를 조회해(04 §10.2) Merge Queue·ALLGREEN·build/merge 크기 1·`github.merge_queue.policy_app_id`로 고정된 필수 `samsara/integration-policy` check·check 게시자(GitHub App 자격증명)를 모두 확인한 경우에만 enqueue를 받는다. 하나라도 빠지면 후보는 `WAITING(<사유>)`(예: `MERGE_QUEUE_DISABLED`, `POLICY_PUBLISHER_UNAVAILABLE`)에 머물고 enqueue는 `UNSUPPORTED_CAPABILITY`다. 이 빌드에는 App 자격증명 게시자가 없으므로 실제 환경에서는 미지원 상태가 유지된다. 지원 target에서는 head가 승인된 source인 열린 PR을 GraphQL `enqueuePullRequest`(expectedHeadOid)로 넣고(`WAITING → PUBLISHING`), polling으로 `native_queue_state`를 추적한다. GitHub가 만든 group(entry·head·base)마다 revision을 올려 이전 MERGE 승인을 무효화하고 policy check를 in_progress로 재설정하며, 그 group에 대한 MERGE 승인이 같은 transaction에서 확인될 때만 success를 게시한다. PR이 merge되면 provider 증거로 `MERGED`를 기록한다. 실제 org 시험 저장소·App으로 한 end-to-end 검증은 아직 없다. `manual` authority는 사용자가 외부에서 반영하면 target에 source가 포함된 것을 관찰해 증거를 기록한다.
+- **GitHub native merge queue(`github_queue`)**: daemon이 target branch rules를 조회해(04 §10.2) Merge Queue·ALLGREEN·build/merge 크기 1·`github.merge_queue.policy_app_id`로 고정된 필수 `samsara/integration-policy` check·check 게시자(GitHub App 자격증명)를 모두 확인한 경우에만 enqueue를 받는다. 하나라도 빠지면 후보는 `WAITING(<사유>)`(예: `MERGE_QUEUE_DISABLED`, `POLICY_PUBLISHER_UNAVAILABLE`)에 머물고 enqueue는 `UNSUPPORTED_CAPABILITY`다. check 게시자는 daemon만 보관하는 GitHub App 자격증명(`<state>/github-app.json`, 아래 참고)이며, 없거나 App ID가 `policy_app_id`와 다르면 `POLICY_PUBLISHER_UNAVAILABLE`, `github.merge_queue.manifest_workflow`가 비어 있으면 `MERGE_GROUP_MANIFEST_UNCONFIGURED`로 미지원이 유지된다. 지원 target에서는 head가 승인된 source인 열린 PR을 GraphQL `enqueuePullRequest`(expectedHeadOid)로 넣고(`WAITING → PUBLISHING`), polling으로 `native_queue_state`를 추적한다. GitHub가 만든 group(entry·head·base)마다 revision을 올려 이전 MERGE 승인을 무효화하고 policy check를 in_progress로 재설정하며, 그 group의 `merge_group` manifest(04 §10.8 1~3: 고정 Workflow run·Workflow 정의가 target base와 같음·artifact digest·head/base/run 대조)가 검증되고 그 group에 대한 MERGE 승인이 같은 transaction에서 확인될 때만 success를 게시한다. manifest 검증이 실패하면 check를 failure로 게시한다. PR이 merge되면 provider 증거로 `MERGED`를 기록한다. 실제 org 시험 저장소·App으로 한 end-to-end 검증은 아직 없다(시험 코드는 `go test -tags e2e ./internal/app -run E2E`, 실행 조건은 `internal/app/github_queue_e2e_test.go` 주석). `manual` authority는 사용자가 외부에서 반영하면 target에 source가 포함된 것을 관찰해 증거를 기록한다.
+  GitHub App 자격증명은 `<state>/github-app.json`(0600)에 `{"app_id":N,"installation_id":N,"private_key_path":"/abs/key.pem"}`로 둔다. key 파일도 0600이어야 한다. installation token은 `checks:write`로 좁혀 메모리에만 두고 DB·event·prompt·로그에 남기지 않는다. `samsara doctor`의 `github_app`이 설정 여부와 token 발급 가능 여부를 보고한다(token 값은 출력하지 않는다). manifest collector Workflow는 소스를 checkout·실행하지 않고 event payload만 기록해야 한다. daemon은 이 Workflow 파일 하나가 group head와 target base에서 같은지만 고정하므로, local action(`uses: ./...`)·저장소 스크립트·reusable workflow를 참조하면 안 된다.
+
+  ```yaml
+  # .github/workflows/samsara-merge-group.yml  (github.merge_queue.manifest_workflow)
+  name: samsara-merge-group
+  on:
+    merge_group:
+      types: [checks_requested]
+  permissions: {}
+  jobs:
+    manifest:
+      runs-on: ubuntu-latest
+      steps:
+        - env:
+            REPO: ${{ github.repository }}
+            RUN_ID: ${{ github.run_id }}
+            RUN_ATTEMPT: ${{ github.run_attempt }}
+            HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+            BASE_SHA: ${{ github.event.merge_group.base_sha }}
+            HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          run: |
+            mkdir out
+            jq -n --arg r "$REPO" --argjson id "$RUN_ID" --argjson at "$RUN_ATTEMPT" --arg h "$HEAD_SHA" --arg b "$BASE_SHA" --arg ref "$HEAD_REF" \
+              '{repository:$r,run_id:$id,run_attempt:$at,event:"merge_group",head_sha:$h,base_sha:$b,head_ref:$ref}' > out/manifest.json
+        - uses: actions/upload-artifact@v4
+          with:
+            name: samsara-merge-group-manifest  # github.merge_queue.manifest_artifact
+            path: out/manifest.json
+  ```
 - **GitHub 이력 동기화**: 사용자의 `gh` 로그인으로 issue·PR·commit·check·review를 읽기 전용 조회해 `external_links`에 출처(`source`)·동기화 시각(`synced_at`)과 함께 기록한다. 토큰은 런타임이 읽지도 저장하지도 않는다. cursor(`since`) 증분 조회, rate limit은 reset 시각까지 대기, 그 밖의 장애는 지수 backoff다. 장애·rate limit은 `github-history`의 `sync` 상태(`AUTH_REQUIRED`·`REPO_NOT_FOUND`·`RATE_LIMITED`·`PROVIDER_ERROR`)로만 나타나고 로컬 업무 상태는 바꾸지 않는다. `POST /v1/projects/{id}/refresh`는 다음 동기화를 즉시 실행한다(rate limit 창은 유지). GitHub Enterprise 원격과 PR↔로컬 이슈 자동 연결은 지원하지 않는다.
 - **실행 중 계획 수정(pause+revise)**: 미구현이다. 실행 중 apply는 409를 반환하고, 새 계획은 기존 run을 취소한 뒤 적용한다.
 - **Hook 실패 차단의 실측**: `claude --version` ≥ 2.1.295일 때만 managed execution을 허용한다. `samsara doctor --hook-probe`는 임시 디렉터리에서 실제 Claude(haiku)에 HK-01·03·04·05·06·07·16을 주입하고, `touch marker` 실행 여부로 차단을 판정한다. 결과는 `<state>/hook-failure-probe.json`에 남고, `--write-manifest`를 함께 주면 통과한 Claude 버전만 manifest의 `policy_hook_failure_block_verified=true`로 기록한다. probe 없이 Claude 버전이 바뀌면 이 값은 false로 돌아간다. doctor의 `claude_fail_closed`는 버전 조건과 실측을 모두 통과했을 때만 true다. managed execution 허용 조건은 아직 버전 숫자만 본다. 참고로 Claude는 문법이 깨진 hook stdout(exit 0)을 plain text로 보고 native permission에 맡긴다(HK-07s, 정보 항목). bridge는 JSON을 한 번에 쓰고 실패하면 exit 2로 끝나므로 이 경로를 만들지 않는다.

@@ -242,6 +242,8 @@ export interface Config {
   github?: {
     close_issues?: boolean;
     merge_queue?: {
+      manifest_artifact?: string;
+      manifest_workflow?: string;
       policy_app_id?: number;
     };
     repository?: string;

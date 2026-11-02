@@ -202,6 +202,14 @@
                 "policy_app_id": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "manifest_workflow": {
+                  "type": "string",
+                  "pattern": "^(\\.github/workflows/[A-Za-z0-9._-]+\\.ya?ml)?$"
+                },
+                "manifest_artifact": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]{1,100}$"
                 }
               },
               "additionalProperties": false

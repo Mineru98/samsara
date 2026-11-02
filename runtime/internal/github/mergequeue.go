@@ -23,6 +23,9 @@ const (
 	ReasonPolicyUnpinned      = "POLICY_CHECK_SOURCE_UNPINNED"
 	ReasonPublisherMissing    = "POLICY_PUBLISHER_UNAVAILABLE"
 	ReasonProviderUnreachable = "PROVIDER_UNREACHABLE"
+	// ReasonManifestUnconfigured: no trusted merge_group collector Workflow
+	// is configured, so no group can be verified (04 §10.8).
+	ReasonManifestUnconfigured = "MERGE_GROUP_MANIFEST_UNCONFIGURED"
 )
 
 // QueueCapability is the result of one compatibility probe of a target.

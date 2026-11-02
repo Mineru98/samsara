@@ -26,6 +26,7 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/config"
 	"github.com/Mineru98/samsara/runtime/internal/daemon"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/gitops"
 	"github.com/Mineru98/samsara/runtime/internal/hooks"
 	"github.com/Mineru98/samsara/runtime/internal/hooks/bridge"
@@ -874,6 +875,40 @@ func (c *cli) backup(args []string) int {
 
 // --- doctor ---------------------------------------------------------------
 
+// githubAppReport describes the GitHub App credential that publishes the
+// github_queue policy check. It proves the credential by obtaining an
+// installation token but never prints the token.
+func (c *cli) githubAppReport(ctx context.Context, report map[string]any, problems *[]string) map[string]any {
+	out := map[string]any{"credential_file": filepath.Join(c.layout.StateDir, github.AppCredentialFile)}
+	pub, err := github.LoadAppPublisher(c.layout.StateDir)
+	switch {
+	case err != nil:
+		out["configured"], out["error"] = true, err.Error()
+		*problems = append(*problems, "github app: "+err.Error())
+		return out
+	case pub == nil:
+		out["configured"] = false
+		out["note"] = "no credential: github_queue stays unsupported (" + github.ReasonPublisherMissing + ")"
+		return out
+	}
+	out["configured"], out["app_id"], out["installation_id"] = true, pub.AppID(), pub.InstallationID()
+	if err := pub.Verify(ctx); err != nil {
+		out["installation_token"] = "error"
+		out["error"] = github.AsError(err).Error()
+		*problems = append(*problems, "github app: cannot obtain an installation token: "+github.AsError(err).Error())
+	} else {
+		out["installation_token"] = "ok"
+	}
+	if pr, ok := report["project"].(map[string]any); ok {
+		if cfg, _, err := config.Load(pr["root"].(string)); err == nil && cfg != nil && cfg.Git.IntegrationAuthority == domain.AuthorityGitHubQueue &&
+			cfg.GitHub.MergeQueue.PolicyAppID != pub.AppID() {
+			*problems = append(*problems, fmt.Sprintf("github app: credential is App %d but github.merge_queue.policy_app_id is %d; github_queue stays unsupported",
+				pub.AppID(), cfg.GitHub.MergeQueue.PolicyAppID))
+		}
+	}
+	return out
+}
+
 func (c *cli) doctor(args []string) int {
 	fs := newFlags("doctor")
 	exercise := fs.Bool("exercise", false, "create and destroy a throwaway tmux session to verify control")
@@ -943,6 +978,7 @@ func (c *cli) doctor(args []string) int {
 		}
 		report["project"] = pr
 	}
+	report["github_app"] = c.githubAppReport(ctx, report, &problems)
 	report["daemon_running"] = daemon.Ping(ctx, c.layout)
 	if *exercise {
 		report["tmux_exercise"] = exerciseTmux(ctx, tm)
