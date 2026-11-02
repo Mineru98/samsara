@@ -1,0 +1,49 @@
+# binary: /tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/samsara-after
+# commit: n/a
+# date: 2026-11-02T15:45:11Z
+## samsara init
+{
+  "config": "/tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.CmcG/repo/.samsara/config.yaml",
+  "config_created": true,
+  "hooks_file": "/tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.CmcG/repo/.claude/settings.local.json",
+  "hooks_installed": false,
+  "project": {
+    "project_id": "prj_15a3889f79cd422ac7a17690",
+    "root": "/tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.CmcG/repo",
+    "activation": "ENABLED",
+    "created": t
+project_id=prj_15a3889f79cd422ac7a17690
+## samsara link add (manual)
+{
+  "ok": true
+}
+
+## GET snapshot .freshness
+{
+ "backend_observation": "LIVE",
+ "github": "UNAVAILABLE",
+ "runtime": "LIVE"
+}
+## POST refresh
+{"github":"SCHEDULED","status":"ACCEPTED"}
+
+## GET github-history (summary)
+freshness = LIVE
+sync = "OK"
+items = 214
+by kind = {'pull_request': 41, 'commit': 130, 'issue': 43}
+  {"kind": "issue", "external_key": "Mineru98/samsara#1", "title": "Grok Build 호환 플러그인 지원 및 README 설치 안내 추가", "state": "closed", "source": "github_sync", "synced_at": "2026-11-02T15:45:43.952Z", "observed_at": "2026-11-02T
+  {"kind": "issue", "external_key": "Mineru98/samsara#74", "title": "runtime: macOS 심볼릭 링크 경로에서 세션 등록이 CWD_OUT_OF_SCOPE로 실패", "state": "closed", "source": "github_sync", "synced_at": "2026-11-02T15:45:43.952Z", "observed_a
+  {"kind": "pull_request", "external_key": "Mineru98/samsara#58", "title": "fix(issue-onboard): Windows 실측 프로브·절차 추가와 SystemRoot 기본값 수정", "state": "closed", "source": "github_sync", "synced_at": "2026-11-02T15:45:43.952Z",
+  {"kind": "pull_request", "external_key": "Mineru98/samsara#83", "title": "feat(runtime): doctor --hook-probe 로 실제 Claude hook 실패 차단 실측", "state": "merged", "source": "github_sync", "synced_at": "2026-11-02T15:45:43.952Z"
+  {"kind": "commit", "external_key": "92213b9cc12b48ee59631a2d2754df7cee192d2e", "title": "docs(에이전트): 프로젝트 안내 문서 삭제", "state": "", "source": "github_sync", "synced_at": "2026-11-02T15:45:43.952Z", "observed_at": "2026-11-
+  {"kind": "commit", "external_key": "d27a77daaba6763f525db26458e23fe373a72a2f", "title": "docs(issue-15): 증거 자료 main 반영", "state": "", "source": "github_sync", "synced_at": "2026-11-02T15:45:43.952Z", "observed_at": "2026
+## GET snapshot .freshness (after refresh)
+{
+ "backend_observation": "LIVE",
+ "github": "LIVE",
+ "runtime": "LIVE"
+}
+## token leak check (DB + daemon log)
+files containing gh token: 0
+# workdir: /tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.CmcG

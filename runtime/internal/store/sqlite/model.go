@@ -530,10 +530,12 @@ func GetOutput(ctx context.Context, q Q, id string) (*Output, error) {
 	return orNil(o, err), notFound(err, "output", id)
 }
 
-// CurrentOutput returns the newest non-superseded output of an issue in the
-// given run generation, or nil.
+// CurrentOutput returns the issue's latest non-superseded output valid in the
+// given generation. A plan revision supersedes the outputs of affected
+// issues, so an older-generation output that is still not superseded was
+// carried forward unchanged.
 func CurrentOutput(ctx context.Context, q Q, runID, issueID string, generation int64) (*Output, error) {
-	o, err := scanOutput(q.QueryRowContext(ctx, "SELECT "+outputCols+" FROM output_artifacts WHERE run_id=? AND issue_id=? AND run_generation=? AND superseded_by IS NULL ORDER BY created_at DESC, id DESC LIMIT 1", runID, issueID, generation))
+	o, err := scanOutput(q.QueryRowContext(ctx, "SELECT "+outputCols+" FROM output_artifacts WHERE run_id=? AND issue_id=? AND run_generation<=? AND superseded_by IS NULL ORDER BY created_at DESC, id DESC LIMIT 1", runID, issueID, generation))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -627,17 +629,19 @@ func TargetsOfProject(ctx context.Context, q Q, projectID string) ([]*Target, er
 type Candidate struct {
 	ID, ProjectID, IssueID, RunID, AttemptID, OutputID, TargetID, SourceSHA, BaseSHA, CandidateSHA string
 	CandidateTree, State, StateReason, NativeQueueState, PublicationObservation                    string
+	ConflictFiles, ResolutionAttemptID, SupersededBy                                               string
 	Revision, QueuePosition, Version, CreatedAt, UpdatedAt                                         int64
 	Enqueued                                                                                       bool
 }
 
-const candidateCols = `id,project_id,issue_id,run_id,attempt_id,output_id,target_id,source_sha,base_sha,candidate_sha,candidate_tree,state,state_reason,native_queue_state,publication_observation,revision,queue_position,version,created_at,updated_at,enqueued`
+const candidateCols = `id,project_id,issue_id,run_id,attempt_id,output_id,target_id,source_sha,base_sha,candidate_sha,candidate_tree,state,state_reason,native_queue_state,publication_observation,revision,queue_position,version,created_at,updated_at,enqueued,conflict_files,COALESCE(resolution_attempt_id,''),COALESCE(superseded_by,'')`
 
 func scanCandidate(s interface{ Scan(...any) error }) (*Candidate, error) {
 	c := &Candidate{}
 	err := s.Scan(&c.ID, &c.ProjectID, &c.IssueID, &c.RunID, &c.AttemptID, &c.OutputID, &c.TargetID, &c.SourceSHA, &c.BaseSHA,
 		&c.CandidateSHA, &c.CandidateTree, &c.State, &c.StateReason, &c.NativeQueueState, &c.PublicationObservation,
-		&c.Revision, &c.QueuePosition, &c.Version, &c.CreatedAt, &c.UpdatedAt, &c.Enqueued)
+		&c.Revision, &c.QueuePosition, &c.Version, &c.CreatedAt, &c.UpdatedAt, &c.Enqueued,
+		&c.ConflictFiles, &c.ResolutionAttemptID, &c.SupersededBy)
 	return c, err
 }
 

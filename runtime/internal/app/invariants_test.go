@@ -221,6 +221,12 @@ func TestLaunchAckLossDoesNotDuplicateWorker(t *testing.T) {
 	if state != "UNKNOWN" {
 		t.Fatalf("lost ack must be UNKNOWN, got %s", state)
 	}
+	fx := e.fixture("unknown-delivery", "The worker launch ACK was lost: the launch operation stays UNKNOWN and is never turned into success or failure automatically (BE-10).")
+	fx.Add(refSnapshot, "launch outcome unknown", e.snapshot())
+	for _, ev := range e.events() {
+		fx.Add(refEvent, ev.Type, ev)
+	}
+	fx.Save()
 	e.clock.Advance(time.Minute)
 	e.reconcile(3)
 	if len(e.fake.Sessions) != 1 {

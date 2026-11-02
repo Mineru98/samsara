@@ -360,7 +360,7 @@ func (a *App) tryResumeAttempt(ctx context.Context, att *sqlite.Attempt) error {
 func (a *App) enqueuePrompt(ctx context.Context, tx *sqlite.Tx, att *sqlite.Attempt, sessionID, purpose, text string) error {
 	dispatchID := domain.NewID("dsp")
 	opID, err := tx.Enqueue(ctx, sqlite.OutboxItem{ProjectID: att.ProjectID, Kind: "prompt.submit",
-		Payload:   map[string]string{"attempt_id": att.ID, "session_id": sessionID, "dispatch_id": dispatchID, "text": text + " [samsara-dispatch:" + dispatchID + "]"},
+		Payload:   map[string]string{"attempt_id": att.ID, "session_id": sessionID, "dispatch_id": dispatchID, "purpose": purpose, "text": text + " [samsara-dispatch:" + dispatchID + "]"},
 		DedupeKey: "prompt:" + dispatchID, ResourceKey: "attempt:" + att.ID})
 	if err != nil {
 		return err

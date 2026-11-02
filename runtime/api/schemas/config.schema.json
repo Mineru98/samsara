@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/config.schema.json",
+  "title": "Samsara project policy (.samsara/config.yaml)",
+  "description": "Repository policy file, validated after YAML decoding (01 §4.3). Omitted fields take runtime defaults; unknown fields are errors.",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "BackendName": {
+      "enum": [
+        "herdr",
+        "tmux",
+        "standalone"
+      ]
+    },
+    "ApprovalMode": {
+      "enum": [
+        "manual",
+        "auto"
+      ]
+    },
+    "Config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1,
+          "description": "Defaults to 1."
+        },
+        "runtime": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "autostart": {
+              "type": "boolean"
+            }
+          }
+        },
+        "backend": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": [
+                "auto",
+                "herdr",
+                "tmux",
+                "standalone"
+              ]
+            },
+            "order": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/BackendName"
+              }
+            },
+            "allow_fallback": {
+              "type": "boolean"
+            }
+          }
+        },
+        "execution": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "max_workers": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_workers_per_issue": {
+              "const": 1
+            },
+            "managed_worktree_required": {
+              "type": "boolean"
+            },
+            "unknown_worker_policy": {
+              "const": "quarantine"
+            },
+            "worker_command": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              },
+              "prefixItems": [
+                {
+                  "type": "string",
+                  "pattern": "\\S"
+                }
+              ]
+            },
+            "lease_ttl_seconds": {
+              "type": "integer",
+              "minimum": 5
+            },
+            "heartbeat_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "At most half of lease_ttl_seconds (checked by the runtime)."
+            }
+          }
+        },
+        "approval": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "implementation_start": {
+              "$ref": "#/$defs/ApprovalMode"
+            },
+            "result": {
+              "$ref": "#/$defs/ApprovalMode"
+            },
+            "integration": {
+              "$ref": "#/$defs/ApprovalMode"
+            }
+          }
+        },
+        "git": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "target_ref": {
+              "type": "string",
+              "pattern": "^refs/heads/.+"
+            },
+            "integration_authority": {
+              "$ref": "common.schema.json#/$defs/IntegrationAuthority"
+            },
+            "merge_concurrency_per_target": {
+              "const": 1
+            },
+            "branch_prefix": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "worktree_retention_hours": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "observation": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "collect_terminal_output": {
+              "type": "boolean"
+            },
+            "event_retention_days": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "github": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "sync": {
+              "enum": [
+                "auto",
+                "off"
+              ]
+            },
+            "repository": {
+              "type": "string"
+            },
+            "sync_interval_seconds": {
+              "type": "integer",
+              "minimum": 60
+            },
+            "close_issues": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

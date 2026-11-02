@@ -1,0 +1,363 @@
+{
+  "name": "abc-partial-block",
+  "description": "A and C run; B is blocked until A's result is approved (POL-01).",
+  "payloads": [
+    {
+      "schema": "plan.schema.json",
+      "note": "applied plan",
+      "data": {
+        "dependencies": [
+          {
+            "downstream_phase": "EXECUTION",
+            "predecessor_key": "a",
+            "required_milestone": "RESULT_APPROVED",
+            "successor_key": "b"
+          }
+        ],
+        "expected_graph_version": "0",
+        "issues": [
+          {
+            "acceptance_criteria": [
+              "a works"
+            ],
+            "client_key": "a",
+            "title": "A"
+          },
+          {
+            "acceptance_criteria": [
+              "b works"
+            ],
+            "client_key": "b",
+            "title": "B"
+          },
+          {
+            "acceptance_criteria": [
+              "c works"
+            ],
+            "client_key": "c",
+            "title": "C"
+          }
+        ],
+        "project_id": "prj_fx001",
+        "spec_version": "1"
+      }
+    },
+    {
+      "schema": "config.schema.json",
+      "note": ".samsara/config.yaml as JSON",
+      "data": {
+        "approval": {
+          "implementation_start": "auto",
+          "integration": "auto",
+          "result": "manual"
+        },
+        "backend": {
+          "allow_fallback": true,
+          "mode": "auto",
+          "order": [
+            "herdr",
+            "tmux",
+            "standalone"
+          ]
+        },
+        "git": {
+          "integration_authority": "samsara_local",
+          "target_ref": "refs/heads/integration"
+        },
+        "version": 1
+      }
+    },
+    {
+      "schema": "snapshot.schema.json#/$defs/ProjectSnapshot",
+      "note": "A, C running; B BLOCKED",
+      "data": {
+        "database_generation": "dbgen_fx001",
+        "entities": {
+          "approvals": [
+            {
+              "decided_at": "2026-10-28T01:00:00Z",
+              "decision_actor": "policy:auto",
+              "id": "apr_fx001",
+              "kind": "PLAN",
+              "policy_version": "1",
+              "project_id": "prj_fx001",
+              "requested_at": "2026-10-28T01:00:00Z",
+              "run_id": "run_fx001",
+              "state": "APPROVED",
+              "subject": {
+                "graph_version": 1,
+                "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              "subject_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+              "version": "2"
+            }
+          ],
+          "attempts": [
+            {
+              "backend_kind": "tmux",
+              "backend_reason": "{\"selected\":\"tmux\",\"mode\":\"auto\",\"manual\":false,\"rejected\":{\"herdr\":\"UNAVAILABLE\"}}",
+              "id": "att_fx001",
+              "issue_id": "issue_fx001",
+              "lease_deadline_at": "2026-10-28T01:00:30Z",
+              "lease_fence": "1",
+              "lease_state": "ACTIVE",
+              "project_id": "prj_fx001",
+              "resume_required": false,
+              "run_generation": "1",
+              "run_id": "run_fx001",
+              "session_id": "ses_fx001",
+              "state": "RUNNING",
+              "updated_at": "2026-10-28T01:00:00Z",
+              "version": "3",
+              "worktree_id": "wt_fx001"
+            },
+            {
+              "backend_kind": "tmux",
+              "backend_reason": "{\"selected\":\"tmux\",\"mode\":\"auto\",\"manual\":false,\"rejected\":{\"herdr\":\"UNAVAILABLE\"}}",
+              "id": "att_fx002",
+              "issue_id": "issue_fx002",
+              "lease_deadline_at": "2026-10-28T01:00:30Z",
+              "lease_fence": "1",
+              "lease_state": "ACTIVE",
+              "project_id": "prj_fx001",
+              "resume_required": false,
+              "run_generation": "1",
+              "run_id": "run_fx001",
+              "session_id": "ses_fx002",
+              "state": "RUNNING",
+              "updated_at": "2026-10-28T01:00:00Z",
+              "version": "3",
+              "worktree_id": "wt_fx002"
+            }
+          ],
+          "dependencies": [
+            {
+              "dependency_id": "dep_fx001",
+              "downstream_phase": "EXECUTION",
+              "graph_version": "1",
+              "invalidation_policy": "PAUSE_DESCENDANTS",
+              "met": false,
+              "predecessor_issue_id": "issue_fx002",
+              "project_id": "prj_fx001",
+              "required_milestone": "RESULT_APPROVED",
+              "required_output_id": null,
+              "required_run_generation": "1",
+              "run_id": "run_fx001",
+              "successor_issue_id": "issue_fx003",
+              "version": "1"
+            }
+          ],
+          "gates": [],
+          "integration_targets": [
+            {
+              "authority": "samsara_local",
+              "id": "tgt_fx001",
+              "policy_version": "1",
+              "repository_id": "repo_fx001",
+              "target_ref": "refs/heads/integration",
+              "version": "1"
+            }
+          ],
+          "issues": [
+            {
+              "acceptance_criteria": [
+                "a works"
+              ],
+              "available_actions": [],
+              "blocking_reasons": [],
+              "check_profile": "",
+              "client_key": "a",
+              "current_attempt_id": "att_fx002",
+              "display_status": "RUNNING",
+              "execution_state": "RUNNING",
+              "id": "issue_fx002",
+              "lifecycle": "OPEN",
+              "project_id": "prj_fx001",
+              "required_capabilities": [],
+              "resume_required": false,
+              "run_id": "run_fx001",
+              "title": "A",
+              "version": "1"
+            },
+            {
+              "acceptance_criteria": [
+                "c works"
+              ],
+              "available_actions": [],
+              "blocking_reasons": [],
+              "check_profile": "",
+              "client_key": "c",
+              "current_attempt_id": "att_fx001",
+              "display_status": "RUNNING",
+              "execution_state": "RUNNING",
+              "id": "issue_fx001",
+              "lifecycle": "OPEN",
+              "project_id": "prj_fx001",
+              "required_capabilities": [],
+              "resume_required": false,
+              "run_id": "run_fx001",
+              "title": "C",
+              "version": "1"
+            },
+            {
+              "acceptance_criteria": [
+                "b works"
+              ],
+              "available_actions": [],
+              "blocking_reasons": [
+                {
+                  "code": "DEPENDENCY_NOT_IMPLEMENTED",
+                  "dependency_id": "dep_fx001",
+                  "downstream_phase": "EXECUTION",
+                  "message": "선행 이슈의 산출물이 아직 제출되지 않았습니다.",
+                  "required_milestone": "RESULT_APPROVED",
+                  "source_issue_id": "issue_fx002"
+                }
+              ],
+              "check_profile": "",
+              "client_key": "b",
+              "display_status": "BLOCKED",
+              "id": "issue_fx003",
+              "lifecycle": "OPEN",
+              "project_id": "prj_fx001",
+              "required_capabilities": [],
+              "resume_required": false,
+              "run_id": "run_fx001",
+              "title": "B",
+              "version": "1"
+            }
+          ],
+          "merge_candidates": [],
+          "runs": [
+            {
+              "alias_mapping": {
+                "a": "issue_fx002",
+                "b": "issue_fx003",
+                "c": "issue_fx001"
+              },
+              "created_at": "2026-10-28T01:00:00Z",
+              "graph_version": "1",
+              "id": "run_fx001",
+              "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+              "project_id": "prj_fx001",
+              "run_generation": "1",
+              "started_at": "2026-10-28T01:00:00Z",
+              "state": "ACTIVE",
+              "version": "2"
+            }
+          ],
+          "sessions": [
+            {
+              "attempt_id": "att_fx001",
+              "backend": {
+                "binding_id": "bnd_fx001",
+                "generation": "g2",
+                "instance": "fake",
+                "kind": "tmux",
+                "ref": {
+                  "pane_id": "%2"
+                }
+              },
+              "claude_session_id": "claude-C",
+              "confidence": "MEDIUM",
+              "desired_state": "ACTIVE",
+              "id": "ses_fx001",
+              "input_owner": "automation",
+              "input_state": "UNKNOWN",
+              "last_hook_at": "2026-10-28T01:00:00Z",
+              "liveness": "ALIVE",
+              "managed": true,
+              "observed_at": "2026-10-28T01:00:00Z",
+              "project_id": "prj_fx001",
+              "source": "launcher",
+              "version": "1"
+            },
+            {
+              "attempt_id": "att_fx002",
+              "backend": {
+                "binding_id": "bnd_fx002",
+                "generation": "g1",
+                "instance": "fake",
+                "kind": "tmux",
+                "ref": {
+                  "pane_id": "%1"
+                }
+              },
+              "claude_session_id": "claude-A",
+              "confidence": "MEDIUM",
+              "desired_state": "ACTIVE",
+              "id": "ses_fx002",
+              "input_owner": "automation",
+              "input_state": "BUSY",
+              "last_hook_at": "2026-10-28T01:00:00Z",
+              "liveness": "ALIVE",
+              "managed": true,
+              "observed_at": "2026-10-28T01:00:00Z",
+              "project_id": "prj_fx001",
+              "source": "launcher",
+              "version": "1"
+            }
+          ],
+          "worktrees": [
+            {
+              "attempt_id": "att_fx001",
+              "base_sha": "0000000000000000000000000000000000000001",
+              "branch_ref": "refs/heads/samsara/b0dedea9/c/8e2c5b04",
+              "id": "wt_fx001",
+              "ownership": "managed",
+              "path": "/fixture/wt/b0dedea9/att_fx001",
+              "project_id": "prj_fx001",
+              "repository_id": "repo_fx001",
+              "state": "IN_USE",
+              "version": "3"
+            },
+            {
+              "attempt_id": "att_fx002",
+              "base_sha": "0000000000000000000000000000000000000001",
+              "branch_ref": "refs/heads/samsara/b0dedea9/a/c4f43716",
+              "id": "wt_fx002",
+              "ownership": "managed",
+              "path": "/fixture/wt/b0dedea9/att_fx002",
+              "project_id": "prj_fx001",
+              "repository_id": "repo_fx001",
+              "state": "IN_USE",
+              "version": "3"
+            }
+          ]
+        },
+        "freshness": {
+          "backend_observation": "LIVE",
+          "github": "UNAVAILABLE",
+          "runtime": "LIVE"
+        },
+        "generated_at": "2026-10-28T01:00:00Z",
+        "graph_version": "1",
+        "project": {
+          "activation": "ENABLED",
+          "created_at": "2026-10-28T01:00:00Z",
+          "display_name": "repo",
+          "drain_state": "NONE",
+          "graph_version": "1",
+          "id": "prj_fx001",
+          "last_activity_at": "2026-10-28T01:00:00Z",
+          "policy_version": "1",
+          "project_version": "11",
+          "registry_state": "PRESENT",
+          "root_path": "/fixture/repo",
+          "version": "2"
+        },
+        "project_id": "prj_fx001",
+        "project_version": "11",
+        "runtime_epoch": "epoch_fx001",
+        "schema_version": "1",
+        "snapshot_cursor": "cHJqX2Z4MDAxfGRiZ2VuX2Z4MDAxfDEx",
+        "summary": {
+          "approval_pending": 0,
+          "blocked": 1,
+          "integration_pending": 0,
+          "running": 2
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+--- PASS: TestRevisePausedRun (0.14s)
+--- PASS: TestRevisePlanApprovalRequiredOnResume (0.07s)
+--- PASS: TestReviseCarriesUnaffectedResults (0.18s)
+--- PASS: TestReviseCLIAndIPCAgree (0.04s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.435s

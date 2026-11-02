@@ -16,7 +16,7 @@
 | M2 Fake 정책·lease·승인·복구 | 구현 | A/B/C, revoke, 재시작 epoch, ACK 유실, drain 테스트 |
 | M3 조회 API·snapshot·SSE | 구현 | cursor replay, `reset_required`, bootstrap 인증 |
 | M4 읽기 전용 React UI | 미구현 | [#69](https://github.com/Mineru98/samsara/issues/69) |
-| M5 실제 backend·Git·GitHub 조회 | 부분 | tmux와 로컬 Git 후보는 구현. herdr [#64](https://github.com/Mineru98/samsara/issues/64), GitHub 조회 [#66](https://github.com/Mineru98/samsara/issues/66) |
+| M5 실제 backend·Git·GitHub 조회 | 부분 | tmux, 로컬 Git 후보, GitHub 이력 조회([#66](https://github.com/Mineru98/samsara/issues/66))는 구현. herdr [#64](https://github.com/Mineru98/samsara/issues/64) |
 | M6 승인·중단·재개·통합 제어 | 부분 | API·CLI 제어와 `samsara_local` 통합은 구현. `github_queue` [#65](https://github.com/Mineru98/samsara/issues/65), 제어 UI [#69](https://github.com/Mineru98/samsara/issues/69) |
 | M7 배포·백업·성능·파일럿 | 미구현 | [#72](https://github.com/Mineru98/samsara/issues/72) |
 
@@ -26,7 +26,7 @@
 |---|---|---|---|---|
 | 1 | herdr 어댑터 실제 구현과 protocol 검증 | 01 §5·§7, 05 §9 | version·schema hash만 기록하고, 모든 capability를 `UNSUPPORTED(HERDR_COMPAT_UNVERIFIED)`로 보고 → auto mode는 tmux 선택 | [#64](https://github.com/Mineru98/samsara/issues/64) |
 | 2 | GitHub native merge queue(`github_queue`) | 04 §10, 03 §3.4 | 후보는 `WAITING(GITHUB_QUEUE_NOT_VERIFIED)`, enqueue는 `UNSUPPORTED_CAPABILITY` | [#65](https://github.com/Mineru98/samsara/issues/65) |
-| 3 | GitHub 이슈·PR·commit 이력 동기화, refresh | 01 §17, 04 §15, 02 §12 | `samsara link add` 수동 링크만 제공, freshness `UNAVAILABLE` | [#66](https://github.com/Mineru98/samsara/issues/66) |
+| 3 | GitHub 이슈·PR·commit 이력 동기화, refresh | 01 §17, 04 §15, 02 §12 | `gh` 읽기 전용 증분 동기화(issue·PR·commit·check·review), freshness `LIVE`/`STALE`, refresh 즉시 재조회, `github.close_issues` opt-in 닫기. GitHub Enterprise·PR↔로컬 이슈 자동 연결은 미지원 | [#66](https://github.com/Mineru98/samsara/issues/66) |
 | 4 | 실행 중 계획 수정(pause + revise) | 01 §12.4, 03 §4.6 | 실행 중 apply는 409, run 취소 후 재적용만 가능 | [#67](https://github.com/Mineru98/samsara/issues/67) |
 | 5 | Hook 실패 차단 실측(HK-04~HK-09) | 01 §10.5, 05 §8 | `samsara doctor --hook-probe`로 실제 Claude 실측(HK-01·03·04·05·06·07·16), 통과한 버전만 manifest `policy_hook_failure_block_verified=true`. managed 실행 허용은 아직 버전 숫자 기준 | [#68](https://github.com/Mineru98/samsara/issues/68) |
 | 6 | React 대시보드(읽기 전용 → 제어) | 02 전체 | API·SSE만 있고, `/`는 안내 페이지 | [#69](https://github.com/Mineru98/samsara/issues/69) |

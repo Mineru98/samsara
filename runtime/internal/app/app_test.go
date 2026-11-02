@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/api"
 	"github.com/Mineru98/samsara/runtime/internal/app"
 	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/backend/fake"
@@ -265,6 +266,11 @@ func TestABCPartialBlockingRevokeAndIntegration(t *testing.T) {
 	if d := e.check("ghost", wtA); d.ReasonCode != domain.ReasonSessionNotRegistered {
 		t.Fatalf("ghost: %+v", d)
 	}
+	fx := e.fixture("abc-partial-block", "A and C run; B is blocked until A's result is approved (POL-01).")
+	fx.AddRaw(api.Ref("plan.schema.json", ""), "applied plan", []byte(strings.ReplaceAll(abcPlan, "PROJECT", e.project)))
+	fx.AddRaw(api.Ref("config.schema.json", ""), ".samsara/config.yaml as JSON", configJSON(t, baseConfig))
+	fx.Add(refSnapshot, "A, C running; B BLOCKED", e.snapshot())
+	fx.Save()
 
 	// A implements and submits.
 	e.commitIn(wtA, "a.txt", "A\n")
@@ -344,6 +350,14 @@ func TestABCPartialBlockingRevokeAndIntegration(t *testing.T) {
 	if got := e.attempt(B).State; got != domain.AttemptPaused {
 		t.Fatalf("B should be PAUSED after Stop, got %s", got)
 	}
+	fx = e.fixture("stale-approval", "A's RESULT approval was revoked: it is INVALIDATED, B is paused, C keeps running, and a decision on a stale subject is refused.")
+	fx.Add(refSnapshot, "approval INVALIDATED; B PAUSED; C RUNNING", e.snapshot())
+	_, staleErr := e.app.DecideApproval(e.ctx, e.cmd, approvalID, app.DecisionRequest{Decision: "APPROVE", SubjectDigest: "stale-digest"})
+	if !domain.IsCode(staleErr, domain.CodeApprovalSubjectChanged) {
+		t.Fatalf("stale subject: %v", staleErr)
+	}
+	fx.Add(refError, "decision against a stale subject_digest", domain.AsError(staleErr))
+	fx.Save()
 	// Integration of A: candidate exists after approval; the revoked approval
 	// keeps the old candidate but a new approval is needed for B's gate.
 	// Re-request: approve the new RESULT approval created for the same output.
@@ -393,6 +407,17 @@ func TestABCPartialBlockingRevokeAndIntegration(t *testing.T) {
 	if git(t, e.repo, "rev-parse", "main") == integ {
 		t.Fatal("user branch must not move")
 	}
+	fx = e.fixture("merged-history", "A's candidate is MERGED into refs/heads/integration; the full event history replays from the start.")
+	fx.Add(refSnapshot, "candidate MERGED", e.snapshot())
+	for _, ev := range e.events() {
+		fx.Add(refEvent, ev.Type, ev)
+	}
+	hist, err := e.app.History(e.ctx, e.project, app.PageReq{Limit: 200}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx.Add(refPage, "history page", hist)
+	fx.Save()
 	_ = out
 }
 

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/event.schema.json",
+  "title": "Samsara events",
+  "description": "SSE data payloads (03 §8–9). SSE event names: project.change → ProjectEvent, catalog.change → CatalogEvent, reset_required → ResetRequired. The SSE id is the opaque cursor to resume from.",
+  "$defs": {
+    "ChangeSet": {
+      "description": "Projections to upsert and ids to delete, keyed by entity kind.",
+      "type": "object",
+      "required": ["upserts", "deletes"],
+      "properties": {
+        "upserts": {
+          "type": "object",
+          "properties": {
+            "projects": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/ProjectView" } },
+            "issues": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/IssueView" } },
+            "runs": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/RunView" } },
+            "attempts": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/AttemptView" } },
+            "sessions": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/SessionView" } },
+            "worktrees": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/WorktreeView" } },
+            "dependencies": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/DependencyView" } },
+            "gates": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/GateView" } },
+            "approvals": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/ApprovalView" } },
+            "merge_candidates": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/CandidateView" } },
+            "integration_targets": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/TargetView" } },
+            "operations": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/OperationView" } }
+          }
+        },
+        "deletes": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } }
+      }
+    },
+    "ProjectEventPayload": {
+      "type": "object",
+      "required": ["changes"],
+      "properties": { "changes": { "$ref": "#/$defs/ChangeSet" } }
+    },
+    "ProjectEvent": {
+      "description": "Project event envelope. seq is global and may have gaps within one project.",
+      "type": "object",
+      "required": ["schema_version", "event_id", "seq", "project_id", "previous_project_version", "project_version", "type", "aggregate_type", "aggregate_id", "aggregate_version", "occurred_at", "recorded_at", "payload"],
+      "properties": {
+        "schema_version": { "const": "1" },
+        "event_id": { "type": "string" },
+        "seq": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "project_id": { "type": "string" },
+        "previous_project_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "project_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "type": { "type": "string" },
+        "aggregate_type": { "type": "string" },
+        "aggregate_id": { "type": "string" },
+        "aggregate_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "occurred_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "recorded_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "payload": { "$ref": "#/$defs/ProjectEventPayload" }
+      }
+    },
+    "CatalogEventPayload": {
+      "type": "object",
+      "required": ["project"],
+      "properties": { "project": { "$ref": "entities.schema.json#/$defs/ProjectSummary" } }
+    },
+    "CatalogEvent": {
+      "type": "object",
+      "required": ["schema_version", "seq", "catalog_version", "project_id", "recorded_at", "payload"],
+      "properties": {
+        "schema_version": { "const": "1" },
+        "seq": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "catalog_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "project_id": { "type": "string" },
+        "recorded_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "payload": { "$ref": "#/$defs/CatalogEventPayload" }
+      }
+    },
+    "ResetRequired": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": { "reason": { "$ref": "common.schema.json#/$defs/ResetReason" } }
+    }
+  }
+}

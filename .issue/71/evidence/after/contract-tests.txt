@@ -1,0 +1,50 @@
+$ git rev-parse --short HEAD
+37a4e04
+$ ls runtime/api
+api.go api_test.go apitest fixtures openapi.yaml schemas ts tsgen.go 
+$ find runtime -name "*.schema.json" -o -name "openapi.*" -o -name "*.gen.ts" | wc -l
+9
+$ cd runtime && go test ./... 2>&1
+ok  	github.com/Mineru98/samsara/runtime/api	0.191s
+?   	github.com/Mineru98/samsara/runtime/api/apitest	[no test files]
+?   	github.com/Mineru98/samsara/runtime/cmd/samsara	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.739s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.004s
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/herdr	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.413s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	0.010s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.016s
+?   	github.com/Mineru98/samsara/runtime/internal/domain	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.106s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.004s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.006s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.012s
+?   	github.com/Mineru98/samsara/runtime/internal/paths	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/plan	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/procinfo	[no test files]
+?   	github.com/Mineru98/samsara/runtime/internal/project	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	0.112s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.259s
+?   	github.com/Mineru98/samsara/runtime/internal/transport/ipc	[no test files]
+$ cd runtime && go test ./api/ -v 2>&1 | grep -E "^(--- |ok)"
+--- PASS: TestSchemasCompile (0.07s)
+--- PASS: TestStrictRejectsUndeclaredFields (0.00s)
+--- PASS: TestFixtures (0.03s)
+--- PASS: TestEnumsMatchDomain (0.00s)
+--- PASS: TestOpenAPIMatchesServer (0.00s)
+--- PASS: TestIPCRoutesMatchServer (0.00s)
+--- PASS: TestTypeScriptUpToDate (0.00s)
+ok  	github.com/Mineru98/samsara/runtime/api	0.120s
+$ node --test runtime/api/ts/contract.test.ts
+✔ every scenario fixture is present (1.147379ms)
+✔ int64 values arrive as decimal strings (0.802559ms)
+✔ runtime-emitted enum values are all known to this build (3.511264ms)
+✔ scenario facts are visible to the client (0.332287ms)
+✔ error bodies carry a stable code (0.174675ms)
+✔ unknown enum values from a newer runtime degrade to unknown instead of failing (0.225752ms)
+✔ additive optional fields are ignored by clients (0.146859ms)
+ℹ tests 7
+ℹ pass 7
+ℹ fail 0

@@ -1,0 +1,9 @@
+# commit: c5e2e97  herdr: herdr 0.9.3  go: go version go1.27.1 linux/amd64
+$ go test ./internal/backend/... ./internal/daemon/... ./internal/app/
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	(cached)
+?   	github.com/Mineru98/samsara/runtime/internal/backend/fake	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/herdr	(cached)
+?   	github.com/Mineru98/samsara/runtime/internal/backend/standalone	[no test files]
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	(cached)
+ok  	github.com/Mineru98/samsara/runtime/internal/app	(cached)

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://samsara.local/schemas/snapshot.schema.json",
+  "title": "Samsara snapshots and pages",
+  "description": "Atomic project and catalog snapshots (03 §8.1) and cursor pages. snapshot_cursor is the replay start for the matching event stream.",
+  "$defs": {
+    "SnapshotEntities": {
+      "type": "object",
+      "required": ["issues", "runs", "attempts", "sessions", "worktrees", "dependencies", "gates", "approvals", "merge_candidates", "integration_targets"],
+      "properties": {
+        "issues": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/IssueView" } },
+        "runs": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/RunView" } },
+        "attempts": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/AttemptView" } },
+        "sessions": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/SessionView" } },
+        "worktrees": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/WorktreeView" } },
+        "dependencies": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/DependencyView" } },
+        "gates": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/GateView" } },
+        "approvals": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/ApprovalView" } },
+        "merge_candidates": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/CandidateView" } },
+        "integration_targets": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/TargetView" } }
+      }
+    },
+    "SnapshotFreshness": {
+      "type": "object",
+      "required": ["runtime", "backend_observation", "github"],
+      "properties": {
+        "runtime": { "$ref": "common.schema.json#/$defs/Freshness" },
+        "backend_observation": { "$ref": "common.schema.json#/$defs/Freshness" },
+        "github": { "$ref": "common.schema.json#/$defs/Freshness" }
+      }
+    },
+    "SnapshotSummary": {
+      "type": "object",
+      "required": ["running", "blocked", "approval_pending", "integration_pending"],
+      "properties": {
+        "running": { "type": "integer", "minimum": 0 },
+        "blocked": { "type": "integer", "minimum": 0 },
+        "approval_pending": { "type": "integer", "minimum": 0 },
+        "integration_pending": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ProjectSnapshot": {
+      "type": "object",
+      "required": ["schema_version", "project_id", "project_version", "graph_version", "runtime_epoch", "database_generation", "snapshot_cursor", "generated_at", "freshness", "project", "entities", "summary"],
+      "properties": {
+        "schema_version": { "const": "1" },
+        "project_id": { "type": "string" },
+        "project_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "graph_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "runtime_epoch": { "type": "string" },
+        "database_generation": { "type": "string" },
+        "snapshot_cursor": { "type": "string" },
+        "generated_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "freshness": { "$ref": "#/$defs/SnapshotFreshness" },
+        "project": { "$ref": "entities.schema.json#/$defs/ProjectView" },
+        "entities": { "$ref": "#/$defs/SnapshotEntities" },
+        "summary": { "$ref": "#/$defs/SnapshotSummary" }
+      }
+    },
+    "CatalogSnapshot": {
+      "type": "object",
+      "required": ["schema_version", "catalog_version", "database_generation", "snapshot_cursor", "projects"],
+      "properties": {
+        "schema_version": { "const": "1" },
+        "catalog_version": { "$ref": "common.schema.json#/$defs/Decimal" },
+        "database_generation": { "type": "string" },
+        "snapshot_cursor": { "type": "string" },
+        "projects": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/ProjectSummary" } }
+      }
+    },
+    "Page": {
+      "description": "Keyset page. Item shape depends on the endpoint.",
+      "type": "object",
+      "required": ["items"],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "object" } },
+        "next_cursor": { "type": "string" }
+      }
+    },
+    "ProjectList": {
+      "type": "object",
+      "required": ["items"],
+      "properties": { "items": { "type": "array", "items": { "$ref": "entities.schema.json#/$defs/ProjectSummary" } } }
+    }
+  }
+}

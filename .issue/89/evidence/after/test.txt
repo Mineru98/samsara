@@ -1,0 +1,20 @@
+$ git rev-parse --short HEAD
+249741f
+$ locale -a | grep -i ko
+(없음)
+$ node --test --test-name-pattern="locale independent" skills/issue-start/scripts/issue-gate.test.mjs
+﹣ owner liveness is locale independent (ko worker vs C controller, legacy localized locks) (1609.826219ms) # ko_KR.UTF-8 locale unavailable: ps lstart rendered "Tue Nov  3 01:17:32 2026"
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 1675.19416
+
+$ node --test skills/issue-start/scripts/issue-gate.test.mjs  (요약)
+ℹ tests 24
+ℹ pass 23
+ℹ fail 0
+ℹ skipped 1
