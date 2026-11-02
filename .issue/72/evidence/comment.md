@@ -8,7 +8,7 @@ release tarball 만으로 격리된 홈에서 돌린 drill 34단계가 모두 �
 
 | 전 | 후 |
 | --- | --- |
-| ![운영 명령 - 전](BEFORE_URL) | ![운영 명령 - 후](AFTER_URL) |
+| ![운영 명령 - 전](https://raw.githubusercontent.com/Mineru98/samsara/dev/0.4.0-alpha/.issue/72/evidence/before/ops.webp) | ![운영 명령 - 후](https://raw.githubusercontent.com/Mineru98/samsara/dev/0.4.0-alpha/.issue/72/evidence/after/ops.webp) |
 
 빨간 박스가 변경 구간입니다.
 - 전: restore·upgrade·install·metrics 는 `unknown command`, `doctor --export` 는 없는 flag 였습니다. retention 은 7일 고정이었고, `RotateDatabaseGeneration` 은 호출하는 곳이 없었습니다.
