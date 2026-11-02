@@ -1,0 +1,108 @@
+{
+  "claude_code_version": "2.1.316",
+  "model": "haiku",
+  "ran_at": "2026-11-02T13:45:59Z",
+  "passed": true,
+  "results": [
+    {
+      "id": "HK-01a",
+      "title": "PASS hook, command pre-approved: tool runs",
+      "expect": "RAN",
+      "outcome": "RAN",
+      "marker_created": true,
+      "hook_ran": true,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "(Bash completed with no output)"
+    },
+    {
+      "id": "HK-01b",
+      "title": "PASS hook, not pre-approved: Claude's native permission still decides",
+      "expect": "BLOCKED",
+      "outcome": "BLOCKED",
+      "marker_created": false,
+      "hook_ran": true,
+      "native_permission_denied": true,
+      "pass": true,
+      "detail": "touch in '/tmp/samsara-hook-probe-2386440390/HK-01b/work/marker' needs approval. The path is inside the working directories for this session ('/tmp/samsara-hook-probe-2386440390/HK-01b/work'), and Claude Code asks before a shell command creates, changes or removes files there."
+    },
+    {
+      "id": "HK-03",
+      "title": "managed session, daemon not running: bridge denies",
+      "expect": "BLOCKED",
+      "outcome": "BLOCKED",
+      "marker_created": false,
+      "hook_ran": false,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "PreToolUse:Bash hook error: SAMSARA_RUNTIME_UNAVAILABLE: 삼사라 런타임에 연결할 수 없어 관리 작업의 도구 실행을 차단합니다."
+    },
+    {
+      "id": "HK-04",
+      "title": "hook binary missing",
+      "expect": "BLOCKED",
+      "outcome": "BLOCKED",
+      "marker_created": false,
+      "hook_ran": false,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "PreToolUse:Bash hook error: [/tmp/samsara-hook-probe-2386440390/HK-04/bin/samsara hook pre-tool-use]: failed; blocking because onFailure is \"block\"\nError occurred while executing hook command: ENOENT: no such file or directory, posix_spawn '/tmp/samsara-hook-probe-2386440390/HK-04/bin/samsara'"
+    },
+    {
+      "id": "HK-05",
+      "title": "hook binary not executable",
+      "expect": "BLOCKED",
+      "outcome": "BLOCKED",
+      "marker_created": false,
+      "hook_ran": false,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "PreToolUse:Bash hook error: [/tmp/samsara-hook-probe-2386440390/HK-05/bin/samsara hook pre-tool-use]: failed; blocking because onFailure is \"block\"\nError occurred while executing hook command: EACCES: permission denied, posix_spawn '/tmp/samsara-hook-probe-2386440390/HK-05/bin/samsara'"
+    },
+    {
+      "id": "HK-06",
+      "title": "hook exceeds its timeout",
+      "expect": "BLOCKED",
+      "outcome": "BLOCKED",
+      "marker_created": false,
+      "hook_ran": true,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "PreToolUse:Bash hook error: [/tmp/samsara-hook-probe-2386440390/HK-06/bin/samsara hook pre-tool-use]: timed out; blocking because onFailure is \"block\""
+    },
+    {
+      "id": "HK-07",
+      "title": "hook prints schema-invalid control JSON",
+      "expect": "BLOCKED",
+      "outcome": "BLOCKED",
+      "marker_created": false,
+      "hook_ran": true,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "PreToolUse:Bash hook error: [/tmp/samsara-hook-probe-2386440390/HK-07/bin/samsara hook pre-tool-use]: failed; blocking because onFailure is \"block\"\nHook JSON output validation failed — hookSpecificOutput.permissionDecision: Invalid option: expected one of \"allow\"|\"deny\"|\"ask\"|\"defer\"\n\nThe hook's output was: {\n  \"hookSpecificOutput\": {\n    \"hookEventName\": \"PreToolUse\",\n    \"permissionDecision\": "
+    },
+    {
+      "id": "HK-07s",
+      "title": "hook prints syntactically broken JSON with exit 0 (Claude treats it as plain text)",
+      "expect": "RAN",
+      "outcome": "RAN",
+      "marker_created": true,
+      "hook_ran": true,
+      "native_permission_denied": false,
+      "pass": true,
+      "informational": true,
+      "detail": "(Bash completed with no output)"
+    },
+    {
+      "id": "HK-16",
+      "title": "install path with Korean, spaces and parentheses",
+      "expect": "RAN",
+      "outcome": "RAN",
+      "marker_created": true,
+      "hook_ran": true,
+      "native_permission_denied": false,
+      "pass": true,
+      "detail": "(Bash completed with no output)"
+    }
+  ]
+}
