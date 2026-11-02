@@ -28,6 +28,7 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/gitops"
 	"github.com/Mineru98/samsara/runtime/internal/hooks"
 	"github.com/Mineru98/samsara/runtime/internal/hooks/bridge"
+	"github.com/Mineru98/samsara/runtime/internal/hooks/probe"
 	"github.com/Mineru98/samsara/runtime/internal/paths"
 	"github.com/Mineru98/samsara/runtime/internal/plan"
 	"github.com/Mineru98/samsara/runtime/internal/procinfo"
@@ -50,7 +51,7 @@ Sessions:  session attach --issue <id> | session inspect|release-input|focus <id
 Approvals: approval list | approval decide <id> --approve|--reject|--revoke
 Work:      output submit | worktree list|inspect | merge queue|inspect|enqueue|cancel
 History:   history | link add
-Runtime:   daemon start|stop|run|status | doctor [--exercise] [--write-manifest] | ui | backup --dest f | version
+Runtime:   daemon start|stop|run|status | doctor [--exercise] [--hook-probe] [--write-manifest] | ui | backup --dest f | version
 Internal:  hook <event> | launcher -- <argv...>
 `
 
@@ -835,6 +836,7 @@ func (c *cli) doctor(args []string) int {
 	fs := newFlags("doctor")
 	exercise := fs.Bool("exercise", false, "create and destroy a throwaway tmux session to verify control")
 	write := fs.Bool("write-manifest", false, "write the compatibility manifest")
+	hookProbe := fs.Bool("hook-probe", false, "inject hook failures into the real Claude Code (calls the model) and record the verdict")
 	if err := fs.Parse(args); err != nil {
 		return domain.ExitInput
 	}
@@ -854,7 +856,6 @@ func (c *cli) doctor(args []string) int {
 		_ = os.Remove(tmpdb + suffix)
 	}
 	cl := daemon.DetectClaude(daemon.LoadManifest(c.layout))
-	report["claude"] = cl
 	if !cl.BlockOnFailure {
 		problems = append(problems, "claude: version "+cl.Version+" lacks onFailure:block (need >= "+hooks.MinBlockVersion+"); managed execution disabled, observe-only")
 	}
@@ -896,13 +897,36 @@ func (c *cli) doctor(args []string) int {
 	if *exercise {
 		report["tmux_exercise"] = exerciseTmux(ctx, tm)
 	}
-	report["problems"] = problems
+	var probePassed *bool
+	if *hookProbe {
+		pctx, pcancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		pr := probe.Run(pctx, probe.Options{Samsara: c.exe, ClaudeVersion: cl.Version})
+		pcancel()
+		passed := pr.Passed && cl.BlockOnFailure
+		if after := daemon.DetectClaude(daemon.Manifest{}); after.Version != cl.Version {
+			passed = false
+			problems = append(problems, "hook probe: Claude version changed during the probe ("+cl.Version+" -> "+after.Version+")")
+		}
+		probePassed = &passed
+		report["hook_failure_probe"] = pr
+		if !passed {
+			problems = append(problems, "hook probe: Claude "+cl.Version+" did not block every injected hook failure; not fail-closed")
+		}
+		_ = c.layout.Ensure()
+		path := filepath.Join(c.layout.StateDir, "hook-failure-probe.json")
+		b, _ := json.MarshalIndent(pr, "", "  ")
+		if err := os.WriteFile(path, b, 0o600); err != nil {
+			problems = append(problems, "hook probe: "+err.Error())
+		}
+		report["hook_failure_probe_file"] = path
+	}
 	if *write {
 		m := daemon.LoadManifest(c.layout)
 		m.VerifiedAt = time.Now().UTC().Format("2006-01-02")
 		m.Platform = runtime.GOOS + "/" + runtime.GOARCH
 		m.SamsaraBuild = version
-		m.ClaudeCodeVersion = cl.Version
+		m.RecordClaude(cl.Version, probePassed)
+		cl.FailureInjection = m.PolicyHookFailureBlockVerified && m.ClaudeCodeVersion == cl.Version
 		m.TmuxVersion = tprobe.Version
 		m.HerdrCLIVersion = hprobe.Version
 		if hprobe.SchemaSHA256 != "" {
@@ -921,8 +945,11 @@ func (c *cli) doctor(args []string) int {
 			problems = append(problems, "manifest: "+err.Error())
 		}
 		report["manifest"] = daemon.ManifestPath(c.layout)
-		report["manifest_note"] = "policy_hook_failure_block_verified and herdr_protocol_verified are set only after manual failure-injection / protocol fixture verification"
+		report["manifest_note"] = "policy_hook_failure_block_verified is set only by doctor --hook-probe for the probed Claude version; herdr_protocol_verified only after protocol fixture verification"
 	}
+	report["claude"] = cl
+	report["claude_fail_closed"] = cl.BlockOnFailure && cl.FailureInjection
+	report["problems"] = problems
 	c.print(report)
 	if len(problems) > 0 {
 		return domain.ExitBlocked

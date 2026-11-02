@@ -28,7 +28,7 @@
 | 2 | GitHub native merge queue(`github_queue`) | 04 §10, 03 §3.4 | 후보는 `WAITING(GITHUB_QUEUE_NOT_VERIFIED)`, enqueue는 `UNSUPPORTED_CAPABILITY` | [#65](https://github.com/Mineru98/samsara/issues/65) |
 | 3 | GitHub 이슈·PR·commit 이력 동기화, refresh | 01 §17, 04 §15, 02 §12 | `samsara link add` 수동 링크만 제공, freshness `UNAVAILABLE` | [#66](https://github.com/Mineru98/samsara/issues/66) |
 | 4 | 실행 중 계획 수정(pause + revise) | 01 §12.4, 03 §4.6 | 실행 중 apply는 409, run 취소 후 재적용만 가능 | [#67](https://github.com/Mineru98/samsara/issues/67) |
-| 5 | Hook 실패 차단 실측(HK-04~HK-09) | 01 §10.5, 05 §8 | Claude 버전(≥ 2.1.295)만 확인, manifest `policy_hook_failure_block_verified=false` | [#68](https://github.com/Mineru98/samsara/issues/68) |
+| 5 | Hook 실패 차단 실측(HK-04~HK-09) | 01 §10.5, 05 §8 | `samsara doctor --hook-probe`로 실제 Claude 실측(HK-01·03·04·05·06·07·16), 통과한 버전만 manifest `policy_hook_failure_block_verified=true`. managed 실행 허용은 아직 버전 숫자 기준 | [#68](https://github.com/Mineru98/samsara/issues/68) |
 | 6 | React 대시보드(읽기 전용 → 제어) | 02 전체 | API·SSE만 있고, `/`는 안내 페이지 | [#69](https://github.com/Mineru98/samsara/issues/69) |
 | 7 | Worktree 정리 수명주기, 충돌 해결 흐름, 큐 우선순위 | 04 §6.3·§8.3·§12 | `RETAINED`까지만 관리, `CONFLICT`는 표시와 취소만 가능 | [#70](https://github.com/Mineru98/samsara/issues/70) |
 | 8 | OpenAPI·JSON Schema·TS 타입·계약 fixture | 03 §12.2 | wire 타입은 Go struct로만 존재 | [#71](https://github.com/Mineru98/samsara/issues/71) |
