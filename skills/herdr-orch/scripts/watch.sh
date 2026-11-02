@@ -13,7 +13,7 @@ except Exception: print("gone")')
     printf '%s %s %s\n' "$(date +%H:%M:%S)" "$a" "$st"
     # A Claude session waiting on its own background shells reads as done/idle; not a stop point.
     if [ "$st" = done ] || [ "$st" = idle ]; then
-      if herdr agent read "$a" --source visible 2>/dev/null | tail -4 | grep -qE "shells? still running|[0-9]+ shells?$"; then
+      if herdr agent read "$a" --source visible 2>/dev/null | tail -4 | grep -qE "shells? still running|[0-9]+ shells?( |·|$)"; then
         printf '%s %s %s\n' "$(date +%H:%M:%S)" "$a" "waiting-on-background"; continue
       fi
     fi
