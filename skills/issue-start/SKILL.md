@@ -500,7 +500,7 @@ gh issue comment {issue_number} --body-file .issue/{issue_number}/evidence/comme
 node <skill>/scripts/issue-start.mjs sync-base
 ```
 
-안전할 때만 받아온다. 막히면 아무것도 하지 않고 사유만 돌려준다. 저장 안 된 변경(`skipped: "dirty"`)에 막혔으면 **묻지 않고** `stash push -u` → `sync-base` → `stash pop` 으로 치워두고 받은 뒤 되돌려 놓는다. `stash pop` 이 충돌하거나 두 번째 `sync-base` 도 실패할 때, 그리고 그 밖의 사유(`conflict`·`other-branch`·`error`·`no-main-checkout`)일 때만 AskUserQuestion 으로 함께 정한다. 세부는 `references/evidence-capture.md` 의 `9. 메인 체크아웃 최신화`.
+안전할 때만 받아온다. 막히면 아무것도 하지 않고 사유만 돌려준다. 저장 안 된 변경(`skipped: "dirty"`)에 막혔으면 **묻지 않고** `stash push -u` → `sync-base` → `stash pop` 으로 치워두고 받은 뒤 되돌려 놓는다. `stash pop` 이 충돌하거나 두 번째 `sync-base` 도 실패할 때, 그리고 `conflict`·`other-branch`·`error` 일 때만 AskUserQuestion 으로 함께 정한다. `no-main-checkout` 은 지금처럼 한 줄만 알리고 넘어간다. 세부는 `references/evidence-capture.md` 의 `9. 메인 체크아웃 최신화`.
 
 ## 13단계 — 다음 행동
 
