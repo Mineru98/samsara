@@ -22,9 +22,9 @@
 | `catalog_version` 공백 → 재조회 (테스트) | 신규 테스트 3개가 수정 전 코드에서 실패, 수정 후 통과 |
 | 같은 프로젝트 여러 탭에서 SSE 연결 감소 (측정) | 2N → 2 |
 
-원본 출력:
-- 전: [`before/sse-connections.txt`](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/111/evidence/before/sse-connections.txt), [`before/catalog-gap.txt`](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/111/evidence/before/catalog-gap.txt)
-- 후: [`after/sse-connections.txt`](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/111/evidence/after/sse-connections.txt), [`after/test-suite.txt`](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/111/evidence/after/test-suite.txt)
+원본 출력(`dev/0.4.0-alpha` 브랜치의 `.issue/111/evidence/`):
+- 전: `before/sse-connections.txt`, `before/catalog-gap.txt`
+- 후: `after/sse-connections.txt`, `after/test-suite.txt`
 
 ## 변경 파일
 
