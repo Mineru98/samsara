@@ -74,6 +74,9 @@ type RunView struct {
 	CreatedAt     string            `json:"created_at"`
 	StartedAt     string            `json:"started_at,omitempty"`
 	EndedAt       string            `json:"ended_at,omitempty"`
+	// AvailableActions are the run commands the state allows (03 §13). The
+	// command re-checks activation, approval and quiescence (03 §6.1).
+	AvailableActions []Action `json:"available_actions"`
 }
 
 type AttemptView struct {
@@ -371,7 +374,21 @@ func RunProjection(r *Run) RunView {
 	_ = json.Unmarshal([]byte(r.AliasMapping), &m)
 	return RunView{ID: r.ID, ProjectID: r.ProjectID, Version: domain.Dec(r.Version), State: r.State,
 		RunGeneration: domain.Dec(r.Generation), GraphVersion: domain.Dec(r.GraphVersion), PlanDigest: r.PlanDigest,
-		AliasMapping: m, CreatedAt: domain.RFC3339(r.CreatedAt), StartedAt: domain.RFC3339(r.StartedAt), EndedAt: domain.RFC3339(r.EndedAt)}
+		AliasMapping: m, CreatedAt: domain.RFC3339(r.CreatedAt), StartedAt: domain.RFC3339(r.StartedAt), EndedAt: domain.RFC3339(r.EndedAt),
+		AvailableActions: runActions(r.State)}
+}
+
+// runActions maps a run state to the commands it accepts.
+func runActions(state string) []Action {
+	switch state {
+	case domain.RunPlanned:
+		return []Action{{Action: "START_RUN", Enabled: true}}
+	case domain.RunActive:
+		return []Action{{Action: "PAUSE_RUN", Enabled: true}}
+	case domain.RunPaused:
+		return []Action{{Action: "RESUME_RUN", Enabled: true}, {Action: "REVISE_PLAN", Enabled: true}}
+	}
+	return []Action{}
 }
 
 // latestRunOfIssue returns the newest run containing the issue.

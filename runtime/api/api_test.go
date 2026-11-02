@@ -398,6 +398,7 @@ func TestIPCNewSchemaFieldsMatchGo(t *testing.T) {
 	}{
 		{"PlanReviseRequest", plan.Revision{}},
 		{"PlanReviseResult", app.PlanReviseResult{}},
+		{"RunPlan", app.RunPlanView{}},
 		{"CandidateRef", struct {
 			CandidateID string `json:"candidate_id"`
 		}{}},

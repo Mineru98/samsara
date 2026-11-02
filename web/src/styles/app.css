@@ -94,6 +94,11 @@ select, input[type="search"] { height: 30px; padding: 0 10px; border-radius: 7px
 .cmd { display: inline-flex; flex-direction: column; gap: 2px; }
 .cmd-accepted { color: var(--ok); }
 .cmd-failed, .cmd-unknown { color: var(--wait); }
+.cmd > .btn { align-self: flex-start; }
+.cmd-error { max-width: 440px; }
+.cmd-error .subject { margin: 4px 0 0; color: var(--fg-2); }
+.revise { gap: 10px; }
+.plan-editor { width: 100%; min-height: 220px; max-height: 50vh; resize: vertical; font: 12px/1.45 var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: 6px; padding: 8px; }
 
 .app { min-height: 100%; display: flex; flex-direction: column; }
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 16px; min-height: 48px; border-bottom: 1px solid var(--line); background: var(--bg-top); }

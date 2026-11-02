@@ -11,6 +11,7 @@ import (
 
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/github"
+	"github.com/Mineru98/samsara/runtime/internal/plan"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
 )
 
@@ -685,6 +686,47 @@ func (a *App) RunSnapshot(ctx context.Context, runID string) (map[string]any, er
 		out = map[string]any{"schema_version": "1", "view_kind": "HISTORICAL", "run_id": r.ID, "project_id": r.ProjectID,
 			"run_generation": domain.Dec(r.Generation), "ended_at": domain.RFC3339(r.EndedAt), "final_version": domain.Dec(r.Version),
 			"final_state": r.State, "plan": plan, "summary": summary}
+		return nil
+	})
+	return out, err
+}
+
+// RunPlanView is the editable plan of a live run (dashboard revise, #110).
+type RunPlanView struct {
+	RunID         string          `json:"run_id"`
+	Version       string          `json:"version"`
+	State         string          `json:"state"`
+	RunGeneration string          `json:"run_generation"`
+	GraphVersion  string          `json:"graph_version"`
+	PlanDigest    string          `json:"plan_digest"`
+	Plan          json.RawMessage `json:"plan"`
+}
+
+// RunPlan returns the run's current plan as the starting point of a revise.
+// expected_graph_version is the project graph version at read time, so a
+// revision built from it is rejected if the graph moves on before submit.
+func (a *App) RunPlan(ctx context.Context, runID string) (*RunPlanView, error) {
+	var out *RunPlanView
+	err := a.DB.Read(ctx, func(q sqlite.Q) error {
+		r, err := sqlite.GetRun(ctx, q, runID)
+		if err != nil {
+			return err
+		}
+		p, err := sqlite.GetProject(ctx, q, r.ProjectID)
+		if err != nil {
+			return err
+		}
+		pl, err := plan.Parse([]byte(r.PlanSnapshot))
+		if err != nil {
+			return err
+		}
+		pl.ExpectedGraphVersion = domain.Dec(p.GraphVersion)
+		raw, err := json.Marshal(pl)
+		if err != nil {
+			return err
+		}
+		out = &RunPlanView{RunID: r.ID, Version: domain.Dec(r.Version), State: r.State, RunGeneration: domain.Dec(r.Generation),
+			GraphVersion: domain.Dec(p.GraphVersion), PlanDigest: r.PlanDigest, Plan: raw}
 		return nil
 	})
 	return out, err
