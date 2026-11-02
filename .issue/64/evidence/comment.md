@@ -15,7 +15,7 @@ worker 생성 방식은 착수 중 확인한 사실에 따라 정했습니다. h
 | contract suite (실제 herdr) | 없음 | **13/13 PASS** (BE-01~BE-11 + 보조 2) |
 | contract suite (가짜 서버, CI) | 없음 | **13/13 PASS** |
 
-측정: 격리된 herdr 0.9.3 서버(별도 `XDG_CONFIG_HOME`, `/bin/sh` pane, 입력을 그대로 출력하는 stand-in `claude`)에서 실행했고, 사용자의 herdr 세션은 건드리지 않았습니다. 원본은 `.issue/64/evidence/{before,after}/` 에 있습니다.
+측정: 격리된 herdr 0.9.3 서버(별도 `XDG_CONFIG_HOME`, `/bin/sh` pane, 입력을 그대로 출력하는 stand-in `claude`)에서 실행했고, 사용자의 herdr 세션은 건드리지 않았습니다. 원본: before [go-test](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/64/evidence/before/go-test.txt) · [doctor-herdr](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/64/evidence/before/doctor-herdr.txt) / after [go-test](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/64/evidence/after/go-test.txt) · [doctor-herdr](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/64/evidence/after/doctor-herdr.txt) · [contract-real-herdr](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/64/evidence/after/contract-real-herdr.txt)
 
 | BE | 확인 내용 (실제 herdr) |
 | --- | --- |
