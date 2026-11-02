@@ -1,0 +1,13 @@
+# after bcc6c1a — #108 fake-provider tests
+$ go test ./internal/app -run "GitHubQueueFailedCandidateReenqueue|GitHubQueueDequeueOnPermanentlyInvalidSubject|GitHubQueueDequeueRefused" -count=1 -v
+=== RUN   TestGitHubQueueFailedCandidateReenqueue
+--- PASS: TestGitHubQueueFailedCandidateReenqueue (0.35s)
+=== RUN   TestGitHubQueueDequeueOnPermanentlyInvalidSubject
+--- PASS: TestGitHubQueueDequeueOnPermanentlyInvalidSubject (0.16s)
+=== RUN   TestGitHubQueueDequeueRefused
+=== RUN   TestGitHubQueueDequeueRefused/refused
+=== RUN   TestGitHubQueueDequeueRefused/left_the_queue_after_a_refusal
+--- PASS: TestGitHubQueueDequeueRefused (0.31s)
+    --- PASS: TestGitHubQueueDequeueRefused/refused (0.17s)
+    --- PASS: TestGitHubQueueDequeueRefused/left_the_queue_after_a_refusal (0.15s)
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.840s

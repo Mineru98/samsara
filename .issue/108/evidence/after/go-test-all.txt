@@ -1,0 +1,17 @@
+# after bcc6c1a
+$ go vet ./... && go test ./... -count=1
+ok  	github.com/Mineru98/samsara/runtime/api	0.195s
+ok  	github.com/Mineru98/samsara/runtime/internal/app	9.578s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.009s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/herdr	1.151s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.406s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	0.004s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.006s
+ok  	github.com/Mineru98/samsara/runtime/internal/github	0.011s
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.208s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.006s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.605s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.113s
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	0.268s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.387s
+

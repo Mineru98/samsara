@@ -1,0 +1,9 @@
+# base ce655a7 — provider_validation_id exposure
+$ grep -n provider_validation_id internal/store/sqlite/projection.go api/schemas/entities.schema.json api/ts/samsara-api.gen.ts
+(exit 1 — no match: not exposed)
+
+$ grep -n "dequeuePullRequest\|github.queue.dequeue" -r internal
+(exit 1 — no dequeue path)
+
+$ grep -n "only WAITING candidates" internal/app/github_queue.go
+109:		return nil, domain.Errf(domain.CodeConflict, "candidate is %s; only WAITING candidates are delivered to the merge queue", c.State)
