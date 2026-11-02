@@ -28,7 +28,8 @@
 
 - `node --test skills/issue-start/scripts/base-drift.test.mjs scripts/check-shared.test.mjs` — 20/20 통과
 - `sh scripts/check-shared.sh` — 3개 검사 통과
-- 이 워크트리 안에서 `issue-start.mjs base` → `BASE=dev/0.4.0-alpha`, 신호 둘 다 `dev/0.4.0-alpha` (이번 미러도 이 경로로 올라감)
+- 이 워크트리 안에서 `issue-start.mjs base` → `BASE=dev/0.4.0-alpha`, 신호 둘 다 `dev/0.4.0-alpha`
+- 이번 증거 미러도 워크트리 안에서 `--base` 없이 실행해 `dev/0.4.0-alpha` 로 올라갔습니다(`mirrorRef: dev/0.4.0-alpha`)
 - 원본: `.issue/90/evidence/after/tests.txt`
 
 ## 남은 이슈
