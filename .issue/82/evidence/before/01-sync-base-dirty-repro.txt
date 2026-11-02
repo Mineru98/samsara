@@ -1,0 +1,22 @@
+== 메인 폴더 변경 (시작)
+ M notes.txt
+?? untracked.txt
+== sync-base (1차)
+{
+  "ok": false,
+  "base": "main",
+  "path": "<tmp>/main",
+  "branch": "main",
+  "skipped": "dirty",
+  "reason": "주 체크아웃에 저장하지 않은 변경이 있습니다.",
+  "received": 0,
+  "dirtyPaths": [
+    "notes.txt"
+  ]
+}
+== 결과
+HEAD: a9dc562 init
+app.txt: v1
+ M notes.txt
+?? untracked.txt
+stash: 0
