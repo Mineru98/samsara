@@ -530,10 +530,12 @@ func GetOutput(ctx context.Context, q Q, id string) (*Output, error) {
 	return orNil(o, err), notFound(err, "output", id)
 }
 
-// CurrentOutput returns the newest non-superseded output of an issue in the
-// given run generation, or nil.
+// CurrentOutput returns the issue's latest non-superseded output valid in the
+// given generation. A plan revision supersedes the outputs of affected
+// issues, so an older-generation output that is still not superseded was
+// carried forward unchanged.
 func CurrentOutput(ctx context.Context, q Q, runID, issueID string, generation int64) (*Output, error) {
-	o, err := scanOutput(q.QueryRowContext(ctx, "SELECT "+outputCols+" FROM output_artifacts WHERE run_id=? AND issue_id=? AND run_generation=? AND superseded_by IS NULL ORDER BY created_at DESC, id DESC LIMIT 1", runID, issueID, generation))
+	o, err := scanOutput(q.QueryRowContext(ctx, "SELECT "+outputCols+" FROM output_artifacts WHERE run_id=? AND issue_id=? AND run_generation<=? AND superseded_by IS NULL ORDER BY created_at DESC, id DESC LIMIT 1", runID, issueID, generation))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

@@ -150,6 +150,9 @@ func (s *Server) routes() {
 	m.HandleFunc("/ipc/v1/plans/apply", handle(func(r *http.Request, req json.RawMessage) (any, error) {
 		return a.ApplyPlan(r.Context(), cmdFrom(r), req)
 	}))
+	m.HandleFunc("/ipc/v1/plans/revise", handle(func(r *http.Request, req json.RawMessage) (any, error) {
+		return a.RevisePlan(r.Context(), cmdFrom(r), req)
+	}))
 	type runReq struct {
 		RunID string `json:"run_id"`
 	}

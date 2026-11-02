@@ -6,6 +6,7 @@ import (
 
 	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/plan"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
 )
 
@@ -17,9 +18,31 @@ type RunCommandResult struct {
 	ApprovalID string `json:"approval_id,omitempty"`
 }
 
+// planSpec binds the PLAN approval to the plan's execution meaning and the
+// run generation. Titles are excluded so a metadata-only revision keeps it.
 func planSpec(p *sqlite.Project, r *sqlite.Run) approvalSpec {
+	digest := r.PlanDigest
+	if snap, err := plan.Parse([]byte(r.PlanSnapshot)); err == nil {
+		digest = snap.SemanticDigest()
+	}
 	return approvalSpec{Kind: domain.ApprovalPlan, ProjectID: p.ID, RunID: r.ID, RunGeneration: r.Generation, PolicyVersion: p.PolicyVersion,
-		Subject: map[string]any{"plan_digest": r.PlanDigest, "graph_version": r.GraphVersion}}
+		Subject: map[string]any{"plan_semantic_digest": digest}}
+}
+
+// ensurePlanApproval returns the PLAN approval of the run's current
+// generation, creating it and applying the auto policy when configured.
+func (a *App) ensurePlanApproval(ctx context.Context, tx *sqlite.Tx, p *sqlite.Project, r *sqlite.Run) (*sqlite.Approval, error) {
+	ap, err := a.requestApproval(ctx, tx, planSpec(p, r))
+	if err != nil {
+		return nil, err
+	}
+	if projectConfig(p).Approval.ImplementationStart == "auto" {
+		if err := a.approveAutomatically(ctx, tx, ap); err != nil {
+			return nil, err
+		}
+		ap.State = domain.ApprovalApproved
+	}
+	return ap, nil
 }
 
 // StartRun moves a PLANNED run to ACTIVE after re-checking activation, drain
@@ -56,16 +79,9 @@ func (a *App) StartRun(ctx context.Context, cmd Cmd, runID string) (*RunCommandR
 			if p.Activation != domain.ActivationEnabled || p.RegistryState != domain.RegistryPresent {
 				return nil, domain.Errf(domain.CodeProjectNotEnabled, "project is %s/%s", p.Activation, p.RegistryState)
 			}
-			cfg := projectConfig(p)
-			ap, err := a.requestApproval(ctx, tx, planSpec(p, r))
+			ap, err := a.ensurePlanApproval(ctx, tx, p, r)
 			if err != nil {
 				return nil, err
-			}
-			if cfg.Approval.ImplementationStart == "auto" {
-				if err := a.approveAutomatically(ctx, tx, ap); err != nil {
-					return nil, err
-				}
-				ap.State = domain.ApprovalApproved
 			}
 			if ap.State != domain.ApprovalApproved {
 				// Keep the PENDING approval but report the blocked start. The
@@ -174,7 +190,42 @@ func (a *App) pauseAttempt(ctx context.Context, tx *sqlite.Tx, att *sqlite.Attem
 
 // ResumeRun re-activates the run; paused attempts are re-evaluated by the
 // scheduler (dependency, quota, backend, liveness) before any new lease.
+// A revision changes the generation, so a revised run (generation > 1)
+// needs the PLAN approval of its current generation before resuming
+// (POL-07). Unrevised runs keep the approval checked by run start.
 func (a *App) ResumeRun(ctx context.Context, cmd Cmd, runID string) (*RunCommandResult, error) {
+	if err := a.requireReady(); err != nil {
+		return nil, err
+	}
+	// The PENDING approval must survive a blocked resume, so it is ensured
+	// in its own transaction before the command.
+	var blocked *RunCommandResult
+	var approvalID string
+	err := a.DB.Write(ctx, func(tx *sqlite.Tx) error {
+		r, err := sqlite.GetRun(ctx, tx, runID)
+		if err != nil || r.State != domain.RunPaused || r.Generation <= 1 {
+			return err
+		}
+		p, err := sqlite.GetProject(ctx, tx, r.ProjectID)
+		if err != nil {
+			return err
+		}
+		ap, err := a.ensurePlanApproval(ctx, tx, p, r)
+		if err != nil {
+			return err
+		}
+		approvalID = ap.ID
+		if ap.State != domain.ApprovalApproved {
+			blocked = &RunCommandResult{RunID: r.ID, State: r.State, Version: domain.Dec(r.Version), ApprovalID: ap.ID}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if blocked != nil {
+		return blocked, domain.Errf(domain.CodeApprovalRequired, "PLAN approval required before resume").WithDetails("approval_id", approvalID)
+	}
 	return a.runCommand(ctx, cmd, "run.resume", runID, func(tx *sqlite.Tx, r *sqlite.Run) error {
 		if r.State != domain.RunPaused {
 			return domain.Errf(domain.CodeConflict, "run is %s", r.State)
@@ -185,6 +236,15 @@ func (a *App) ResumeRun(ctx context.Context, cmd Cmd, runID string) (*RunCommand
 		}
 		if p.Activation != domain.ActivationEnabled {
 			return domain.Errf(domain.CodeProjectNotEnabled, "project is %s", p.Activation)
+		}
+		if r.Generation > 1 {
+			ap, err := a.requestApproval(ctx, tx, planSpec(p, r))
+			if err != nil {
+				return err
+			}
+			if ap.State != domain.ApprovalApproved {
+				return domain.Errf(domain.CodeApprovalRequired, "PLAN approval required before resume").WithDetails("approval_id", ap.ID)
+			}
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE runs SET state='ACTIVE', version=version+1 WHERE id=?", r.ID); err != nil {
 			return err

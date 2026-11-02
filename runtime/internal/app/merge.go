@@ -318,7 +318,11 @@ func (a *App) advanceLocalTarget(ctx context.Context, t *sqlite.Target) error {
 			return err
 		}
 		if approvalRequired {
-			ap, err := a.requestApproval(ctx, tx, mergeSpec(p, c, t))
+			r, err := sqlite.GetRun(ctx, tx, c.RunID)
+			if err != nil {
+				return err
+			}
+			ap, err := a.requestApproval(ctx, tx, mergeSpec(p, r, c, t))
 			if err != nil {
 				return err
 			}
@@ -353,8 +357,8 @@ func (a *App) advanceLocalTarget(ctx context.Context, t *sqlite.Target) error {
 	})
 }
 
-func mergeSpec(p *sqlite.Project, c *sqlite.Candidate, t *sqlite.Target) approvalSpec {
-	return approvalSpec{Kind: domain.ApprovalMerge, ProjectID: p.ID, RunID: c.RunID, IssueID: c.IssueID, OutputID: c.OutputID,
+func mergeSpec(p *sqlite.Project, r *sqlite.Run, c *sqlite.Candidate, t *sqlite.Target) approvalSpec {
+	return approvalSpec{Kind: domain.ApprovalMerge, ProjectID: p.ID, RunID: c.RunID, RunGeneration: r.Generation, IssueID: c.IssueID, OutputID: c.OutputID,
 		CandidateID: c.ID, CandidateRev: c.Revision, PolicyVersion: p.PolicyVersion,
 		Subject: map[string]any{"candidate_sha": c.CandidateSHA, "base_sha": c.BaseSHA, "source_sha": c.SourceSHA, "target_ref": t.TargetRef, "target_policy": t.PolicyVersion}}
 }

@@ -45,7 +45,7 @@ const usage = `samsara — local orchestration runtime for Claude Code work
 Usage: samsara [--json] <command> [args]
 
 Project:   init | enable | disable | status | project list|relink|archive
-Plans:     plan validate|apply --file plan.json | profile add
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
 Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
 Sessions:  session attach --issue <id> | session inspect|release-input|focus <id>
 Approvals: approval list | approval decide <id> --approve|--reject|--revoke
@@ -508,12 +508,14 @@ func (c *cli) profile(args []string) int {
 
 func (c *cli) planCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara plan validate|apply --file plan.json")
+		fmt.Fprintln(c.errw, "usage: samsara plan validate|apply --file plan.json | plan revise --run <run_id> --expected-run-generation N --file plan.json")
 		return domain.ExitInput
 	}
 	fs := newFlags("plan")
 	file := fs.String("file", "", "plan JSON file ('-' for stdin)")
-	key := fs.String("idempotency-key", "", "idempotency key (apply)")
+	key := fs.String("idempotency-key", "", "idempotency key (apply, revise)")
+	runID := fs.String("run", "", "run to revise (revise)")
+	runGen := fs.String("expected-run-generation", "", "current run generation (revise)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return domain.ExitInput
 	}
@@ -560,6 +562,16 @@ func (c *cli) planCmd(args []string) int {
 			k = "plan:" + domain.DigestBytes(raw)
 		}
 		return c.callPrint("/ipc/v1/plans/apply", json.RawMessage(raw), ipc.CallOpts{IdempotencyKey: k})
+	case "revise":
+		body, err := json.Marshal(plan.Revision{RunID: *runID, ExpectedRunGeneration: *runGen, Plan: json.RawMessage(raw)})
+		if err != nil {
+			return c.fail(domain.Errf(domain.CodeInvalidRequest, "%v", err))
+		}
+		k := *key
+		if k == "" {
+			k = "plan-revise:" + domain.DigestBytes(body)
+		}
+		return c.callPrint("/ipc/v1/plans/revise", json.RawMessage(body), ipc.CallOpts{IdempotencyKey: k})
 	}
 	return domain.ExitInput
 }
