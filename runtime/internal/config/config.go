@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Mineru98/samsara/runtime/internal/domain"
@@ -28,6 +29,7 @@ type Config struct {
 	Approval    Approval    `yaml:"approval" json:"approval"`
 	Git         Git         `yaml:"git" json:"git"`
 	Observation Observation `yaml:"observation" json:"observation"`
+	GitHub      GitHub      `yaml:"github" json:"github"`
 }
 
 type Runtime struct {
@@ -69,6 +71,18 @@ type Observation struct {
 	EventRetentionDays    int  `yaml:"event_retention_days" json:"event_retention_days"`
 }
 
+// GitHub configures the read-only history sync (01 §17) and the opt-in
+// issue close write (03 §4.5). Credentials come from the user's own `gh`
+// login; nothing here holds a token.
+type GitHub struct {
+	Sync                string `yaml:"sync" json:"sync"`
+	Repository          string `yaml:"repository" json:"repository"`
+	SyncIntervalSeconds int    `yaml:"sync_interval_seconds" json:"sync_interval_seconds"`
+	CloseIssues         bool   `yaml:"close_issues" json:"close_issues"`
+}
+
+var githubRepoRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
+
 // Default returns the documented defaults.
 func Default() *Config {
 	return &Config{
@@ -80,6 +94,7 @@ func Default() *Config {
 		Approval:    Approval{ImplementationStart: "manual", Result: "manual", Integration: "manual"},
 		Git:         Git{TargetRef: "refs/heads/main", IntegrationAuthority: domain.AuthorityManual, MergeConcurrencyPerTarget: 1, BranchPrefix: "samsara"},
 		Observation: Observation{CollectTerminalOutput: false, EventRetentionDays: 7},
+		GitHub:      GitHub{Sync: "auto", SyncIntervalSeconds: 300},
 	}
 }
 
@@ -176,6 +191,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Observation.EventRetentionDays < 1 {
 		add("observation.event_retention_days must be >= 1")
+	}
+	if c.GitHub.Sync != "auto" && c.GitHub.Sync != "off" {
+		add("github.sync must be auto|off")
+	}
+	if c.GitHub.Repository != "" && !githubRepoRe.MatchString(c.GitHub.Repository) {
+		add("github.repository must be owner/name")
+	}
+	if c.GitHub.SyncIntervalSeconds < 60 {
+		add("github.sync_interval_seconds must be >= 60")
 	}
 	if len(problems) > 0 {
 		return domain.Errf(domain.CodeInvalidRequest, "config invalid: %s", strings.Join(problems, "; ")).WithDetails("problems", problems)

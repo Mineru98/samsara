@@ -19,6 +19,7 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/config"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/gitops"
 	"github.com/Mineru98/samsara/runtime/internal/paths"
 	"github.com/Mineru98/samsara/runtime/internal/project"
@@ -47,12 +48,17 @@ type App struct {
 	SelfExe  string
 	Log      *slog.Logger
 	Claude   func() ClaudeSupport
+	// GitHub reads (and, when opted in, closes issues on) GitHub through
+	// the user's credential provider. Tests substitute a fake.
+	GitHub github.Client
 	// RequireHookReadiness makes registration verify that the managed
 	// policy hook is installed in the worker's worktree. Tests may disable.
 	RequireHookReadiness bool
 
 	ready      atomic.Bool
 	wake       chan struct{}
+	ghWake     chan struct{}
+	ghRefresh  sync.Map // project_id -> refresh requested during a pass
 	registryMu sync.Mutex
 	targetMu   sync.Map // target_id -> *sync.Mutex (in-process serialisation)
 	observedAt sync.Map // session_id -> time.Time
@@ -69,7 +75,8 @@ func New(db *sqlite.DB, layout paths.Layout, backends *backend.Set, log *slog.Lo
 	// root itself is not followed: a symlinked root is still refused by Ensure.
 	layout.WorktreeRoot = filepath.Join(resolveExistingPrefix(filepath.Dir(layout.WorktreeRoot)), filepath.Base(layout.WorktreeRoot))
 	return &App{DB: db, Clock: db.Clock, Layout: layout, Backends: backends, Git: gitops.New(), Log: log, SelfExe: exe,
-		Epoch: domain.NewID("epoch"), wake: make(chan struct{}, 1), RequireHookReadiness: true,
+		Epoch: domain.NewID("epoch"), wake: make(chan struct{}, 1), ghWake: make(chan struct{}, 1), RequireHookReadiness: true,
+		GitHub: github.NewCLI(),
 		Claude: func() ClaudeSupport { return ClaudeSupport{} }}
 }
 
