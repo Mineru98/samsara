@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError, command, newIdempotencyKey } from "./api/http";
 import type { Observable } from "./store/projectStore";
-import type { StreamController, StreamSpec, StreamView } from "./realtime/stream";
-import { StreamController as Controller } from "./realtime/stream";
+import type { StreamSpec, StreamView } from "./realtime/stream";
+import { SharedStream, type StreamHandle } from "./realtime/shared";
 
 export function useObservable<T>(o: Observable<T>): T {
   return useSyncExternalStore(o.subscribe, o.get, o.get);
 }
 
 /**
- * One controller per key. Effects create and stop it so React StrictMode's
- * double mount never leaves a second stream open (02 §14.1, §15.4).
+ * One stream per key, shared across tabs (02 §15.5). Effects create and stop
+ * it so React StrictMode's double mount never leaves a second stream open
+ * (02 §14.1, §15.4).
  */
-export function useStream<S>(key: string | null, makeSpec: (key: string) => StreamSpec<S>): { view: StreamView<S> | null; controller: StreamController<S> | null } {
-  const [controller, setController] = useState<StreamController<S> | null>(null);
+export function useStream<S>(key: string | null, makeSpec: (key: string) => StreamSpec<S>): { view: StreamView<S> | null; controller: StreamHandle<S> | null } {
+  const [controller, setController] = useState<StreamHandle<S> | null>(null);
   const specRef = useRef(makeSpec);
   specRef.current = makeSpec;
   useEffect(() => {
@@ -21,7 +22,7 @@ export function useStream<S>(key: string | null, makeSpec: (key: string) => Stre
       setController(null);
       return;
     }
-    const c = new Controller<S>(specRef.current(key));
+    const c = new SharedStream<S>(`samsara-stream:${key}`, specRef.current(key));
     setController(c);
     c.start();
     return () => c.stop();
