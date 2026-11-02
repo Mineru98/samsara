@@ -197,6 +197,7 @@ type CandidateView struct {
 	State                  string           `json:"state"`
 	StateReason            string           `json:"state_reason,omitempty"`
 	NativeQueueState       string           `json:"native_queue_state"`
+	ProviderValidationID   string           `json:"provider_validation_id,omitempty"`
 	PublicationObservation string           `json:"publication_observation,omitempty"`
 	Enqueued               bool             `json:"enqueued"`
 	QueuePosition          string           `json:"queue_position"`
@@ -663,7 +664,7 @@ func CandidateProjection(ctx context.Context, q Q, id string) (*CandidateView, e
 	v := &CandidateView{ID: c.ID, ProjectID: c.ProjectID, Version: domain.Dec(c.Version), IssueID: c.IssueID, RunID: c.RunID,
 		AttemptID: c.AttemptID, OutputID: c.OutputID, TargetID: c.TargetID, TargetRef: t.TargetRef, Authority: t.Authority,
 		SourceSHA: c.SourceSHA, BaseSHA: c.BaseSHA, CandidateSHA: c.CandidateSHA, Revision: domain.Dec(c.Revision),
-		State: c.State, StateReason: c.StateReason, NativeQueueState: c.NativeQueueState,
+		State: c.State, StateReason: c.StateReason, NativeQueueState: c.NativeQueueState, ProviderValidationID: c.ProviderValidationID,
 		PublicationObservation: c.PublicationObservation, Enqueued: c.Enqueued, QueuePosition: domain.Dec(c.QueuePosition),
 		BlockingReasons: []BlockingReason{}, WaitingSince: domain.RFC3339(c.CreatedAt), RevalidationCount: domain.Dec(c.Revision - 1),
 		StarvationRisk:      c.Revision-1 >= StarvationRevalidations && c.State != domain.CandidateMerged && c.State != domain.CandidateCancelled,
