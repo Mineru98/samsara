@@ -1,0 +1,3 @@
+# after bcc6c1a
+$ go test ./internal/app -run GitHubQueue -count=1
+ok  	github.com/Mineru98/samsara/runtime/internal/app	2.410s
