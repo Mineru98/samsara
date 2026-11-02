@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { ProjectSummary } from "../api/contract";
 import { useStream } from "../hooks";
 import { projectSpec } from "../realtime/specs";
@@ -6,13 +6,14 @@ import { setParams, useRoute } from "../router";
 import { stateLabel } from "../status";
 import { Badge, Mono, relative } from "../components/ui";
 import { ConnectionBanner } from "./ConnectionBanner";
-import { CommandButton } from "./CommandButton";
 import { ActivityDock, type DockTab } from "./dock/ActivityDock";
 import { IssueGraph } from "./graph/IssueGraph";
 import { defaultRunId, issuesOf } from "./graph/model";
 import { Inspector } from "./inspector/Inspector";
 import { IssueTable } from "./IssueTable";
 import { MergeQueuePanel } from "./queue/MergeQueuePanel";
+import { RevisePlanPanel } from "./RevisePlanPanel";
+import { RunControls } from "./RunControls";
 
 type View = "issues" | "worktrees" | "list";
 const VIEWS: { key: View; label: string }[] = [
@@ -20,7 +21,6 @@ const VIEWS: { key: View; label: string }[] = [
   { key: "worktrees", label: "Worktree 묶음" },
   { key: "list", label: "목록" },
 ];
-const enc = encodeURIComponent;
 
 export function ProjectPage({ projectId, summary }: { projectId: string; summary: ProjectSummary | undefined }) {
   const { view: stream, controller } = useStream(projectId, projectSpec);
@@ -29,6 +29,7 @@ export function ProjectPage({ projectId, summary }: { projectId: string; summary
   const selected = params.get("sel");
   const tab = (params.get("tab") as DockTab) || "sessions";
   const select = useCallback((id: string | null) => setParams({ sel: id }, { replace: true }), []);
+  const [revising, setRevising] = useState<string | null>(null);
 
   if (!stream || (stream.status === "connecting" && !stream.data)) {
     return <div className="center muted">프로젝트를 불러오는 중…</div>;
@@ -83,14 +84,10 @@ export function ProjectPage({ projectId, summary }: { projectId: string; summary
                 ))}
               </select>
             </label>
-            {run && run.state === "ACTIVE" && (
-              <CommandButton label="일시 정지 요청" path={`/v1/runs/${enc(run.id)}/pause`} ifMatch={`${run.id}:v${run.version}`} disabled={!canCommand} disabledReason={offlineReason} />
-            )}
-            {run && run.state === "PAUSED" && (
-              <CommandButton label="재개 요청" path={`/v1/runs/${enc(run.id)}/resume`} ifMatch={`${run.id}:v${run.version}`} disabled={!canCommand} disabledReason={offlineReason} />
-            )}
+            {run && <RunControls run={run} canCommand={canCommand} offlineReason={offlineReason} revising={revising === run.id} onRevise={() => setRevising(revising === run.id ? null : run.id)} />}
           </div>
         </div>
+        {run && revising === run.id && run.available_actions?.some((x) => x.action === "REVISE_PLAN") && <RevisePlanPanel key={run.id} runId={run.id} canCommand={canCommand} offlineReason={offlineReason} onClose={() => setRevising(null)} />}
         <div className="metrics" data-testid="metrics">
           <Metric label="실행 중" value={summary?.running} tone="run" />
           <Metric label="승인 대기" value={summary?.approval_pending} tone="approval" />
