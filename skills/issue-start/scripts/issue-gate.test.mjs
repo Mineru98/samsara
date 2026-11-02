@@ -624,8 +624,11 @@ test('owner liveness is locale independent (ko worker vs C controller, legacy lo
   const { startKey } = await import(GATE);
   assert.equal(startKey('2026년 10월 29일 목요일 08시 04분 02초'), startKey('Thu Oct 29 08:04:02 2026  '));
   assert.notEqual(startKey('2026년 10월 29일 목요일 08시 04분 03초'), startKey('Thu Oct 29 08:04:02 2026'));
+  assert.equal(startKey('목 10월 29 08:04:02 2026'), startKey('Thu Oct 29 08:04:02 2026'));
+  // procps 는 ko 로캘에서 '화 11월  3 03:09:34 2026', BSD/macOS 는 '2026년 10월 29일 ...' 로 찍는다. 한글이 있으면 로캘이 쓰인 것이다
+  const hangul = /[\uAC00-\uD7A3]/;
   const probe = sh('ps', ['-o', 'lstart=', '-p', String(process.pid)], f.base, { env: { ...f.env, ...ko } }).out;
-  if (!/년/.test(probe)) {
+  if (!hangul.test(probe)) {
     t.skip(`ko_KR.UTF-8 locale unavailable: ps lstart rendered "${probe.trim()}"`);
     return;
   }
@@ -633,7 +636,7 @@ test('owner liveness is locale independent (ko worker vs C controller, legacy lo
   const asWorker = { env: { ...s.env, ...ko } };
   assert.equal(f.gate(['begin', '--phase', 'implement'], asWorker).code, 0);
   const koStart = sh('ps', ['-o', 'lstart=', '-p', String(s.pid)], f.base, { env: { ...f.env, ...ko } }).out;
-  assert.match(koStart, /년/, 'the platform renders a localized lstart');
+  assert.match(koStart, hangul, 'the platform renders a localized lstart');
   const lockPath = path.join(f.store(), 'lock.json');
   for (const stored of ['as-recorded', 'legacy-ko']) {
     if (stored === 'legacy-ko') {
