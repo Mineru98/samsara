@@ -1,0 +1,44 @@
+# binary: /tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/samsara-before
+# commit: n/a
+# date: 2026-11-02T15:19:15Z
+## samsara init
+{
+  "config": "/tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.0iiv/repo/.samsara/config.yaml",
+  "config_created": true,
+  "hooks_file": "/tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.0iiv/repo/.claude/settings.local.json",
+  "hooks_installed": false,
+  "project": {
+    "project_id": "prj_feb99b42ada578a24bfd38ae",
+    "root": "/tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.0iiv/repo",
+    "activation": "ENABLED",
+    "created": t
+project_id=prj_feb99b42ada578a24bfd38ae
+## samsara link add (manual)
+{
+  "ok": true
+}
+
+## GET snapshot .freshness
+{
+ "backend_observation": "LIVE",
+ "github": "UNAVAILABLE",
+ "runtime": "LIVE"
+}
+## POST refresh
+{"status":"ACCEPTED"}
+
+## GET github-history (summary)
+freshness = UNAVAILABLE
+sync = "NOT_CONFIGURED"
+items = 1
+by kind = {'issue': 1}
+  {"kind": "issue", "external_key": "Mineru98/samsara#66", "title": "manual-link", "observed_at": "2026-11-02T15:19:15.868Z"}
+## GET snapshot .freshness (after refresh)
+{
+ "backend_observation": "LIVE",
+ "github": "UNAVAILABLE",
+ "runtime": "LIVE"
+}
+## token leak check (DB + daemon log)
+files containing gh token: 0
+# workdir: /tmp/claude-1000/-home-mineru-workspace-samsara/83dd776c-7841-49bb-8c09-172575f2fa1c/scratchpad/probe.0iiv
