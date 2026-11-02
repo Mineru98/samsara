@@ -1,0 +1,13 @@
+$ grep -n "GITHUB_QUEUE_NOT_VERIFIED\|github_queue integration requires" internal/app/merge.go
+59:		reason = "GITHUB_QUEUE_NOT_VERIFIED"
+101:			return domain.Errf(domain.CodeUnsupportedCapability, "github_queue integration requires a verified provider policy check; not available in this build")
+
+$ go test ./internal/app -run GitHubQueue
+# github.com/Mineru98/samsara/runtime/internal/app_test [github.com/Mineru98/samsara/runtime/internal/app.test]
+internal/app/github_queue_test.go:112:13: undefined: app.PolicyCheck
+internal/app/github_queue_test.go:115:66: undefined: app.PolicyCheck
+internal/app/github_queue_test.go:197:11: e.app.PolicyChecks undefined (type *app.App has no field or method PolicyChecks)
+internal/app/github_queue_test.go:220:22: e.app.PolicyChecks undefined (type *app.App has no field or method PolicyChecks)
+internal/app/github_queue_test.go:316:22: e.app.PolicyChecks undefined (type *app.App has no field or method PolicyChecks)
+FAIL	github.com/Mineru98/samsara/runtime/internal/app [build failed]
+FAIL

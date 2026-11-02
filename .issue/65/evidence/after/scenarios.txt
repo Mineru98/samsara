@@ -1,0 +1,13 @@
+$ go test ./internal/app -run GitHubQueue -count=1 -v
+--- PASS: TestGitHubQueueUnsupportedStaysWaiting (0.65s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/no_queue (0.10s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/ambiguous_rulesets (0.09s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/headgreen (0.09s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/group_size (0.09s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/no_policy_check (0.09s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/unpinned_source (0.09s)
+    --- PASS: TestGitHubQueueUnsupportedStaysWaiting/no_publisher (0.10s)
+--- PASS: TestGitHubQueueEnqueueGroupApprovalMerged (0.13s)
+--- PASS: TestGitHubQueueRemovedAndRejected (0.11s)
+--- PASS: TestGitHubQueueLostIntentAndUnauthorizedMerge (0.10s)
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.004s

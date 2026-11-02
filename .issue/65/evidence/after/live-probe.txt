@@ -1,0 +1,4 @@
+$ SAMSARA_LIVE_PROBE=1 go test ./internal/github -run TestZZLiveProbe   # 실제 gh 로그인, 일회성
+probe Mineru98/samsara dev/0.4.0-alpha: {"supported":false,"reason":"MERGE_QUEUE_DISABLED","repository":"Mineru98/samsara","branch":"dev/0.4.0-alpha","merge_queue":false,"policy_check_required":false}
+observe PR #85: state=MERGED head=859bbf9 merge=4b90f03 entry="" err=<nil>
+ok  	github.com/Mineru98/samsara/runtime/internal/github	0.929s
