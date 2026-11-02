@@ -385,6 +385,9 @@
         "output_id": {
           "type": "string"
         },
+        "superseded_by": {
+          "type": "string"
+        },
         "resume_required": {
           "type": "boolean"
         },

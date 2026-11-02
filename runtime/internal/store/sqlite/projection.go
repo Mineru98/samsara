@@ -90,6 +90,7 @@ type AttemptView struct {
 	BackendKind      string `json:"backend_kind,omitempty"`
 	BackendReason    string `json:"backend_reason,omitempty"`
 	OutputID         string `json:"output_id,omitempty"`
+	SupersededBy     string `json:"superseded_by,omitempty"`
 	ResumeRequired   bool   `json:"resume_required"`
 	SessionID        string `json:"session_id,omitempty"`
 	LeaseState       string `json:"lease_state,omitempty"`
@@ -565,7 +566,7 @@ func AttemptProjection(ctx context.Context, q Q, id string) (*AttemptView, error
 	v := &AttemptView{ID: a.ID, ProjectID: a.ProjectID, RunID: a.RunID, IssueID: a.IssueID, Version: domain.Dec(a.Version),
 		State: a.State, StateReason: a.StateReason, QuarantineReason: a.QuarantineReason, RunGeneration: domain.Dec(a.RunGeneration),
 		WorktreeID: a.WorktreeID, BackendKind: a.BackendKind, BackendReason: a.BackendReason, OutputID: a.OutputID,
-		ResumeRequired: a.ResumeRequired, UpdatedAt: domain.RFC3339(a.UpdatedAt)}
+		SupersededBy: a.SupersededBy, ResumeRequired: a.ResumeRequired, UpdatedAt: domain.RFC3339(a.UpdatedAt)}
 	l, err := LatestLeaseForAttempt(ctx, q, a.ID)
 	if err != nil {
 		return nil, err

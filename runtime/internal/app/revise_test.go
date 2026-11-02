@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -461,4 +463,111 @@ func mustMarshal(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// resolveThenRevise requests a resolution for a CONFLICT candidate and
+// revises the paused run before the resolution attempt starts (#96).
+func resolveThenRevise(t *testing.T, e *env, edit func(wt string)) (cand *sqlite.Candidate, resolution, next *sqlite.Attempt, wtID string) {
+	t.Helper()
+	issueID, wt := startSingle(t, e)
+	e.commitIn(wt, "shared.txt", "worker\n")
+	e.submitAndApprove(issueID)
+	candID := e.candidates(issueID)[0].ID
+	e.advanceIntegration("shared.txt", "target\n")
+	if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, candID); err != nil {
+		t.Fatal(err)
+	}
+	e.reconcile(4)
+	e.exitWorker(issueID)
+	first := e.attempt(issueID)
+	e.clock.Advance(time.Second)
+	if _, err := e.app.ResolveConflict(e.ctx, e.cmd, candID); err != nil {
+		t.Fatal(err)
+	}
+	if edit != nil {
+		edit(wt)
+	}
+	if _, err := e.app.PauseRun(e.ctx, e.cmd, first.RunID); err != nil {
+		t.Fatal(err)
+	}
+	revised := strings.Replace(singlePlan, `"expected_graph_version":"0"`, `"expected_graph_version":"1"`, 1)
+	revised = strings.Replace(revised, `"title":"X"`, `"title":"X", "acceptance_criteria":["changed"]`, 1)
+	e.clock.Advance(time.Second)
+	if _, err := e.revise(first.RunID, "1", revised); err != nil {
+		t.Fatal(err)
+	}
+	cand, _ = e.candidate(candID)
+	next = e.attempt(issueID)
+	if err := e.db.Read(e.ctx, func(q sqlite.Q) error {
+		var err error
+		resolution, err = sqlite.GetAttempt(e.ctx, q, cand.ResolutionAttemptID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return cand, resolution, next, first.WorktreeID
+}
+
+func TestReviseLinksResolutionToNextAttempt(t *testing.T) {
+	e := newEnv(t, baseConfig)
+	cand, resolution, next, wtID := resolveThenRevise(t, e, nil)
+
+	if next.ID == resolution.ID || next.State != domain.AttemptPending {
+		t.Fatalf("revise must queue a new attempt: %s %s", next.ID, next.State)
+	}
+	if cand.State != domain.CandidateCancelled || cand.StateReason != "PLAN_REVISED" || cand.SupersededBy != next.ID {
+		t.Fatalf("candidate %s/%s superseded_by=%q, want %s", cand.State, cand.StateReason, cand.SupersededBy, next.ID)
+	}
+	if resolution.State != domain.AttemptCancelled || resolution.StateReason != "PLAN_REVISED" || resolution.SupersededBy != next.ID {
+		t.Fatalf("resolution %s/%s superseded_by=%q, want %s", resolution.State, resolution.StateReason, resolution.SupersededBy, next.ID)
+	}
+
+	// The issue history reads CONFLICT -> resolution -> PLAN_REVISED -> next.
+	d, err := e.app.GetIssueDetail(e.ctx, cand.IssueID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cv *sqlite.CandidateView
+	for _, c := range d.Candidates {
+		if c.ID == cand.ID {
+			cv = c
+		}
+	}
+	if cv == nil || cv.ResolutionAttemptID != resolution.ID || cv.SupersededBy != next.ID {
+		t.Fatalf("candidate view: %+v", cv)
+	}
+	views := map[string]*sqlite.AttemptView{}
+	for _, a := range d.Attempts {
+		views[a.ID] = a
+	}
+	if v := views[resolution.ID]; v == nil || v.SupersededBy != next.ID || v.StateReason != "PLAN_REVISED" {
+		t.Fatalf("resolution view: %+v", v)
+	}
+	if v := views[next.ID]; v == nil || v.SupersededBy != "" {
+		t.Fatalf("next attempt view: %+v", v)
+	}
+
+	// A resolution that never ran left nothing behind: its worktree is
+	// eligible at once and the unmerged branch stays.
+	dry := e.cleanup(app.CleanupRequest{WorktreeIDs: []string{wtID}, DryRun: true})
+	if !dry.Eligible || len(dry.Reasons) != 0 {
+		t.Fatalf("cleanup of an untouched resolution worktree: %+v", dry)
+	}
+	done := e.cleanup(app.CleanupRequest{WorktreeIDs: []string{wtID}, DeleteBranch: true})
+	if !done.WorktreeRemoved || done.BranchRemoved || done.BranchKeptReason != "UNMERGED_COMMITS" {
+		t.Fatalf("cleanup must keep the unmerged branch: %+v", done)
+	}
+}
+
+func TestReviseKeepsResolutionWorkInWorktree(t *testing.T) {
+	e := newEnv(t, baseConfig)
+	_, _, _, wtID := resolveThenRevise(t, e, func(wt string) {
+		if err := os.WriteFile(filepath.Join(wt, "shared.txt"), []byte("resolved\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	})
+	dry := e.cleanup(app.CleanupRequest{WorktreeIDs: []string{wtID}, DryRun: true})
+	if dry.Eligible || !reflect.DeepEqual(dry.Reasons, []string{"DIRTY_TRACKED"}) {
+		t.Fatalf("cleanup must keep uncommitted resolution work: %+v", dry)
+	}
 }
