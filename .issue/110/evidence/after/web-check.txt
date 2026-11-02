@@ -1,0 +1,27 @@
+$ tsc --noEmit
+$ vitest run
+
+ RUN  v5.0.5 web
+
+
+ Test Files  6 passed (6)
+      Tests  33 passed (33)
+   Start at  04:23:53
+   Duration  2.59s (environment 85%, tests 9%, import 5%, worker 1%, transform 1%)
+
+Environment  jsdom was created 6 times · 5.20s total, 85% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+$ vite build && node scripts/keep-placeholder.mjs
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 241 modules transformed.
+rendering chunks...
+computing gzip size...
+../runtime/internal/webui/static/index.html                            0.45 kB │ gzip:   0.31 kB
+../runtime/internal/webui/static/assets/layout.worker-HicAFhF6.js  1,464.68 kB
+../runtime/internal/webui/static/assets/index-BXHVjSZk.css            25.85 kB │ gzip:   5.30 kB
+../runtime/internal/webui/static/assets/index-DsTojw2f.js            492.41 kB │ gzip: 155.02 kB
+
+✓ built in 908ms
