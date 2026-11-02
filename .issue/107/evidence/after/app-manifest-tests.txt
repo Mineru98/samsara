@@ -1,0 +1,41 @@
+# f07f97d — go test ./internal/github -run 'AppPublisher|LoadAppPublisher|VerifyMergeGroupManifest' -v -count=1
+=== RUN   TestAppPublisherCreatesThenUpdatesSameGroup
+--- PASS: TestAppPublisherCreatesThenUpdatesSameGroup (0.06s)
+=== RUN   TestAppPublisherNeverLeaksToken
+--- PASS: TestAppPublisherNeverLeaksToken (0.11s)
+=== RUN   TestAppPublisherWrongKeyIsAuthRequired
+--- PASS: TestAppPublisherWrongKeyIsAuthRequired (0.29s)
+=== RUN   TestLoadAppPublisher
+--- PASS: TestLoadAppPublisher (0.08s)
+=== RUN   TestVerifyMergeGroupManifest
+=== RUN   TestVerifyMergeGroupManifest/no_run_yet
+=== RUN   TestVerifyMergeGroupManifest/run_failed
+=== RUN   TestVerifyMergeGroupManifest/workflow_rewritten
+=== RUN   TestVerifyMergeGroupManifest/stale_attempt
+=== RUN   TestVerifyMergeGroupManifest/digest_mismatch
+=== RUN   TestVerifyMergeGroupManifest/other_head
+=== RUN   TestVerifyMergeGroupManifest/other_base
+=== RUN   TestVerifyMergeGroupManifest/other_branch_queue
+=== RUN   TestVerifyMergeGroupManifest/run_in_progress
+=== RUN   TestVerifyMergeGroupManifest/workflow_absent
+=== RUN   TestVerifyMergeGroupManifest/digest_missing
+=== RUN   TestVerifyMergeGroupManifest/other_run
+=== RUN   TestVerifyMergeGroupManifest/unknown_field
+=== RUN   TestVerifyMergeGroupManifest/extra_file
+--- PASS: TestVerifyMergeGroupManifest (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/no_run_yet (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/run_failed (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/workflow_rewritten (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/stale_attempt (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/digest_mismatch (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/other_head (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/other_base (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/other_branch_queue (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/run_in_progress (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/workflow_absent (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/digest_missing (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/other_run (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/unknown_field (0.00s)
+    --- PASS: TestVerifyMergeGroupManifest/extra_file (0.00s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/github	0.560s

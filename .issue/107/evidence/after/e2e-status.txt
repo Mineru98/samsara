@@ -1,0 +1,11 @@
+# 시험 저장소 e2e — 미실행(사용자 결정, 2026-11-03)
+github_queue 는 핵심 경로(samsara_local, 04 §9)가 아닌 선택 모드(04 §5.2·단계 3)로 확인되어
+App·org 시험 저장소 준비 없이 마무리한다. 시험 코드는 커밋에 포함되어 있다.
+
+  SAMSARA_E2E_REPO=<org/name> SAMSARA_E2E_STATE=<github-app.json 디렉터리> \
+  SAMSARA_E2E_LOG=<file> go test -tags e2e ./internal/app -run E2E -v -timeout 60m
+
+e2e 에서만 확인 가능한 남은 위험:
+- enqueue 전에 GitHub 가 PR HEAD 에 required check 통과를 요구하는지(04 §10.7 사전검사 미구현)
+- gh api 의 artifact zip 302 redirect 다운로드
+- workflow run·artifact 목록 100개 초과 시 다음 페이지 미조회

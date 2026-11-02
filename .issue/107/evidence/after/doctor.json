@@ -1,0 +1,109 @@
+{
+  "claude": {
+    "version": "2.1.316",
+    "block_on_failure": true,
+    "failure_injection_verified": false
+  },
+  "claude_fail_closed": false,
+  "daemon_running": false,
+  "git": "git version 2.53.0",
+  "github_app": {
+    "configured": false,
+    "credential_file": "/home/mineru/.local/state/samsara/github-app.json",
+    "note": "no credential: github_queue stays unsupported (POLICY_PUBLISHER_UNAVAILABLE)"
+  },
+  "herdr": {
+    "kind": "herdr",
+    "availability": "DEGRADED",
+    "version": "herdr 0.9.3",
+    "instance": "/home/mineru/.config/herdr/herdr.sock",
+    "capabilities": {
+      "create_worker": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "attach_session": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "submit_prompt": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "observe_process": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "observe_agent": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "read_output": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "request_interrupt": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "restore_conversation": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      }
+    },
+    "reasons": [
+      "HERDR_COMPAT_UNVERIFIED"
+    ],
+    "schema_sha256": "sha256:9e2af207e9aa8183d4aeca5fde9cc48e7909bb40cdbd7cf21608a6d3ea78075b",
+    "probed_at": "0001-01-01T00:00:00Z"
+  },
+  "platform": "linux/amd64",
+  "problems": [],
+  "project": {
+    "activation": "UNCONFIGURED",
+    "config": "absent",
+    "is_git": true,
+    "policy_hook_installed": false,
+    "root": "/home/mineru/workspace/samsara"
+  },
+  "samsara": "0.1.0-dev",
+  "sqlite_version": "3.53.3",
+  "tmux": {
+    "kind": "tmux",
+    "availability": "AVAILABLE",
+    "version": "tmux 3.6",
+    "instance": "samsara-1000",
+    "capabilities": {
+      "create_worker": {
+        "level": "SUPPORTED"
+      },
+      "attach_session": {
+        "level": "CONDITIONAL",
+        "reason_code": "EXPLICIT_SOCKET_AND_PANE"
+      },
+      "submit_prompt": {
+        "level": "CONDITIONAL",
+        "reason_code": "HOOK_READINESS_AND_INPUT_OWNERSHIP"
+      },
+      "observe_process": {
+        "level": "SUPPORTED"
+      },
+      "observe_agent": {
+        "level": "CONDITIONAL",
+        "reason_code": "HOOK_EVENTS"
+      },
+      "read_output": {
+        "level": "CONDITIONAL",
+        "reason_code": "OPT_IN_CAPTURE"
+      },
+      "request_interrupt": {
+        "level": "SUPPORTED"
+      },
+      "restore_conversation": {
+        "level": "UNSUPPORTED",
+        "reason_code": "SEPARATE_RESUME_LAUNCHER"
+      }
+    },
+    "probed_at": "0001-01-01T00:00:00Z"
+  }
+}

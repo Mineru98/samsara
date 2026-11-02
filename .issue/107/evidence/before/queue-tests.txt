@@ -1,0 +1,18 @@
+# base ce655a7 — go test ./internal/app -run GitHubQueue -v
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/no_queue
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/ambiguous_rulesets
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/headgreen
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/group_size
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/no_policy_check
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/unpinned_source
+=== RUN   TestGitHubQueueUnsupportedStaysWaiting/no_publisher
+--- PASS: TestGitHubQueueUnsupportedStaysWaiting (0.74s)
+=== RUN   TestGitHubQueueEnqueueGroupApprovalMerged
+--- PASS: TestGitHubQueueEnqueueGroupApprovalMerged (0.15s)
+=== RUN   TestGitHubQueueRemovedAndRejected
+--- PASS: TestGitHubQueueRemovedAndRejected (0.12s)
+=== RUN   TestGitHubQueueLostIntentAndUnauthorizedMerge
+--- PASS: TestGitHubQueueLostIntentAndUnauthorizedMerge (0.11s)
+PASS
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.132s
