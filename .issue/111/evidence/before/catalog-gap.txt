@@ -1,0 +1,17 @@
+# before: new catalog gap tests run against unmodified specs.ts (ce655a7)
+     × a skipped catalog_version is a gap, not an apply 9ms
+     × the gap check carries across decimal digits without number conversion 3ms
+     × a catalog_version gap reloads the catalog snapshot 2006ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/realtime/specs.test.ts > applyCatalogEvent > a skipped catalog_version is a gap, not an apply
+AssertionError: expected { kind: 'applied', state: { …(2) } } to deeply equal { kind: 'gap', …(1) }
+- Expected
++ Received
+ FAIL  src/realtime/specs.test.ts > applyCatalogEvent > the gap check carries across decimal digits without number conversion
+AssertionError: expected 'applied' to be 'gap' // Object.is equality
+Expected: "gap"
+Received: "applied"
+ FAIL  src/realtime/specs.test.ts > catalog stream (02 §15.2) > a catalog_version gap reloads the catalog snapshot
+Error: timeout
+     31|     if (Date.now() - t0 > ms) throw new Error("timeout");
+      Tests  3 failed | 2 passed (5)
