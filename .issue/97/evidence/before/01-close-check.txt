@@ -1,0 +1,18 @@
+$ node skills/issue-merge/scripts/issue-merge.mjs close-check 97 --fix
+Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|status|cleanup> [options]
+
+  inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
+  base-tree [--remove]         base 전용 임시 워크트리 생성/정리
+  plan-dir <n> [<n>...]        .issue/merge/<번호들>/ 생성
+  preflight --branch <b> [--onto <commit>]
+  resolve --worktree <path> [--continue [--push] | --abort]
+  merge --pr <n> [--method squash|merge|rebase]
+  close --issue <n> [--comment-file <f>]
+  status <n> <open|plan|in-process|review|close>
+  cleanup --worktree <path> [--branch <name>]
+
+  --base <branch>   기준 브랜치 고정
+(exit 1)
+
+$ grep -n "close-check\|close 확인" skills/issue-merge/SKILL.md skills/issue-merge/references/verify-and-close.md skills/issue-merge/references/ask.md
+(exit 1 — 일치 없음)
