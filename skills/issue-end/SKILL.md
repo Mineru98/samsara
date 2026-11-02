@@ -46,7 +46,7 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
     <rule>현재 워크트리에서 브랜치를 갈아타지 않는다. 기본 브랜치 작업은 임시 워크트리에서 한다.</rule>
     <rule>이슈 번호를 확정하지 못한 상태에서 임의의 이슈에 코멘트하지 않는다.</rule>
     <rule>측정값과 캡처를 지어내지 않는다. 악화된 지표도 그대로 적는다.</rule>
-    <rule>미러 push 뒤 메인 체크아웃 최신화를 시도한다. 막히면 사용자와 함께 정하고, 확인 없이 치워두거나 브랜치를 갈아타지 않는다.</rule>
+    <rule>미러 push 뒤 메인 체크아웃 최신화를 시도한다. 저장 안 된 변경(`dirty`)에 막히면 묻지 않고 치워두고 받은 뒤 되돌려 놓는다. 되돌리기가 충돌하거나 다시 막히면, 그리고 `conflict`·`other-branch`·`error` 로 막히면 사용자와 함께 정한다(`no-main-checkout` 은 한 줄만 알린다). 확인 없이 `reset --hard`·브랜치 전환을 하지 않는다.</rule>
     <rule>사용자에게 말을 걸 때는 — 전이 보고든 질문이든 — 현재 단계를 반드시 함께 밝힌다.
       본문이 5줄 미만이면 앞에, 5줄 이상이면 마지막 줄에 둔다. 형식은 `# 현재 단계 밝히기` 를 따른다.</rule>
   </hard-rules>
@@ -153,7 +153,10 @@ flowchart TD
     G --> H[증거 커밋 + 브랜치 push]
     H --> I[evidence mirror --push]
     I --> I1[sync-base: 메인 체크아웃 최신화]
-    I1 -- 막힘 --> I2[AskUserQuestion: 어떻게 받아올지] --> J
+    I1 -- dirty --> I3[묻지 않고 stash push -u → sync-base → stash pop]
+    I3 -- 복원 완료 --> J
+    I3 -- 실패 --> I2
+    I1 -- 그 밖에 막힘 --> I2[AskUserQuestion: 어떻게 받아올지] --> J
     I1 -- 성공 --> J[gh issue comment 갱신]
     F -- 예 --> K{게시 리포트 승인됨?}
     J --> K
@@ -349,7 +352,7 @@ TodoWrite 로 아래 11개를 만든다. private 저장소에서는 7.5 단계�
 node <skill>/scripts/issue-end.mjs status {issue_number} review
 ```
 
-7단계(메인 체크아웃 최신화)는 흐름을 막지 않는다. 안전하지 않아 건너뛰었으면 사용자와 함께 정하고, 결정이 늦어지면 나머지를 먼저 끝낸 뒤 마무리 보고에 결과를 적는다.
+7단계(메인 체크아웃 최신화)는 흐름을 막지 않는다. `dirty` 는 묻지 않고 치워두고 받은 뒤 되돌려 놓는다. `conflict`·`other-branch`·`error` 로 건너뛰었거나 자동 처리가 실패했으면 사용자와 함께 정하고, 결정이 늦어지면 나머지를 먼저 끝낸 뒤 마무리 보고에 결과를 적는다.
 
 ## 11단계 — 다음 행동
 
