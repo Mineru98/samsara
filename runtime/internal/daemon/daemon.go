@@ -111,6 +111,19 @@ type Manifest struct {
 	HerdrProtocolVerified          bool   `json:"herdr_protocol_verified"`
 }
 
+// RecordClaude stores the detected Claude version. The fail-closed flag is
+// only ever set from a failure-injection probe run against that same
+// version (probePassed != nil); a version change without a probe clears it so
+// a verdict never carries over to an unverified client.
+func (m *Manifest) RecordClaude(version string, probePassed *bool) {
+	if probePassed != nil {
+		m.PolicyHookFailureBlockVerified = *probePassed && version != ""
+	} else if m.ClaudeCodeVersion != version {
+		m.PolicyHookFailureBlockVerified = false
+	}
+	m.ClaudeCodeVersion = version
+}
+
 // ManifestPath is where the compatibility manifest is stored.
 func ManifestPath(l paths.Layout) string { return filepath.Join(l.StateDir, "compatibility.json") }
 

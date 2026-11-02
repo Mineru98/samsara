@@ -23,6 +23,7 @@ go test -race ./internal/app/
 ```bash
 samsara init                       # .samsara/config.yaml 생성(없을 때), .claude/settings.local.json에 관리 hook 추가, 로컬 trust 등록
 samsara doctor --exercise          # claude/tmux/herdr/git/SQLite 버전, hook 설치, tmux 생성·종료 실측
+samsara doctor --hook-probe --write-manifest   # 실제 Claude에 hook 실패를 주입해 fail-closed 실측(모델 호출 발생)
 samsara profile add --name unit -- go test ./...   # 검증 명령은 trust 등록한 profile만 실행
 samsara plan validate --file plan.json             # 변경 없음
 samsara plan apply --file plan.json                # PLANNED run 접수(worker 생성 없음)
@@ -105,6 +106,6 @@ Claude Code 2.1.311, tmux 3.4, git 2.43, SQLite 3.53.3, Linux 환경에서 실�
 - **GitHub native merge queue(`github_queue`)**: provider 정책 검사 연동을 검증하기 전이므로 enqueue 요청에 `UNSUPPORTED_CAPABILITY`를 반환한다. `manual` authority는 사용자가 외부에서 반영하면 target에 source가 포함된 것을 관찰해 증거를 기록한다.
 - **GitHub 이력 동기화**: `samsara link add`로 기록한 issue·PR·commit 링크만 제공한다. 원격 동기화는 하지 않고, freshness를 `UNAVAILABLE`로 표시한다.
 - **실행 중 계획 수정(pause+revise)**: 미구현이다. 실행 중 apply는 409를 반환하고, 새 계획은 기존 run을 취소한 뒤 적용한다.
-- **Hook 실패 차단의 실측**: `claude --version` ≥ 2.1.295일 때만 managed execution을 허용한다. 실제 Claude에 missing binary·timeout을 주입하는 검증(HK-04~06)은 수동 절차이며, 결과는 manifest의 `policy_hook_failure_block_verified`에 기록한다. 이 값을 자동으로 true로 설정하지 않는다.
+- **Hook 실패 차단의 실측**: `claude --version` ≥ 2.1.295일 때만 managed execution을 허용한다. `samsara doctor --hook-probe`는 임시 디렉터리에서 실제 Claude(haiku)에 HK-01·03·04·05·06·07·16을 주입하고, `touch marker` 실행 여부로 차단을 판정한다. 결과는 `<state>/hook-failure-probe.json`에 남고, `--write-manifest`를 함께 주면 통과한 Claude 버전만 manifest의 `policy_hook_failure_block_verified=true`로 기록한다. probe 없이 Claude 버전이 바뀌면 이 값은 false로 돌아간다. doctor의 `claude_fail_closed`는 버전 조건과 실측을 모두 통과했을 때만 true다. managed execution 허용 조건은 아직 버전 숫자만 본다. 참고로 Claude는 문법이 깨진 hook stdout(exit 0)을 plain text로 보고 native permission에 맡긴다(HK-07s, 정보 항목). bridge는 JSON을 한 번에 쓰고 실패하면 exit 2로 끝나므로 이 경로를 만들지 않는다.
 - **Windows, 원격 호스트, OS sandbox**: 범위 밖이다(ADR 23). Hook과 lease는 협력적 정책 경계이며, 같은 OS 사용자의 임의 프로세스를 격리하지 않는다.
 - **대시보드 UI 번들**: `/`에는 안내 페이지만 있다. React 앱은 02 문서의 별도 작업이다.
