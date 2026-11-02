@@ -51,7 +51,7 @@
 | `policy_hook_failure_block_verified` | true (9개 case 기준) | true (18개 case 기준) |
 | async PreToolUse 에 대한 doctor 표시 | 없음 (`policy_hook_installed=false` 만 표시) | problem 으로 표시, exit 4 |
 
-원본: [before/hk-coverage.txt](https://github.com/Mineru98/samsara/blob/main/.issue/88/evidence/before/hk-coverage.txt) · [after/hook-failure-probe.json](https://github.com/Mineru98/samsara/blob/main/.issue/88/evidence/after/hook-failure-probe.json) · [after/compat-manifest.json](https://github.com/Mineru98/samsara/blob/main/.issue/88/evidence/after/compat-manifest.json) · [after/doctor.txt](https://github.com/Mineru98/samsara/blob/main/.issue/88/evidence/after/doctor.txt) · [after/doctor-async-hook.txt](https://github.com/Mineru98/samsara/blob/main/.issue/88/evidence/after/doctor-async-hook.txt)
+원본: [before/hk-coverage.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/88/evidence/before/hk-coverage.txt) · [after/hook-failure-probe.json](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/88/evidence/after/hook-failure-probe.json) · [after/compat-manifest.json](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/88/evidence/after/compat-manifest.json) · [after/doctor.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/88/evidence/after/doctor.txt) · [after/doctor-async-hook.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/88/evidence/after/doctor-async-hook.txt)
 
 ## 변경 파일
 
@@ -64,7 +64,7 @@
 
 ## 검증
 
-- `go vet ./...`, `go test ./...`, `go test -race ./internal/hooks/...` 통과 ([after/go-test.txt](https://github.com/Mineru98/samsara/blob/main/.issue/88/evidence/after/go-test.txt))
+- `go vet ./...`, `go test ./...`, `go test -race ./internal/hooks/...` 통과 ([after/go-test.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/88/evidence/after/go-test.txt))
 - `SAMSARA_HOME=<임시> samsara doctor --hook-probe --write-manifest` 를 실제 Claude 2.1.316 으로 실행: `passed: true`, `problems: []`
 - 판정 강화 전후로 두 번 실측했고, 두 번 모두 전부 통과했습니다
 
