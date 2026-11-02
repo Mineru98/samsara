@@ -1,0 +1,102 @@
+# samsara doctor (after) — isolated herdr 0.9.3 server, SAMSARA_HOME=temp
+## 1) doctor  (no manifest yet)
+{
+  "herdr": {
+    "kind": "herdr",
+    "availability": "DEGRADED",
+    "version": "herdr 0.9.3",
+    "capabilities": {
+      "create_worker": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "attach_session": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "submit_prompt": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "observe_process": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "observe_agent": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "read_output": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "request_interrupt": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      },
+      "restore_conversation": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_COMPAT_UNVERIFIED"
+      }
+    },
+    "reasons": [
+      "HERDR_COMPAT_UNVERIFIED"
+    ],
+    "schema_sha256": "sha256:9e2af207e9aa8183d4aeca5fde9cc48e7909bb40cdbd7cf21608a6d3ea78075b"
+  }
+}
+## 2) doctor --exercise --write-manifest
+{
+  "herdr_exercise": {
+    "close": "DELIVERED",
+    "observed": "ALIVE",
+    "ok": true,
+    "server_version": "0.9.3"
+  },
+  "herdr": {
+    "kind": "herdr",
+## manifest herdr fields
+  "herdr_cli_version": "herdr 0.9.3",
+  "herdr_server_version": "0.9.3",
+  "herdr_schema_sha256": "sha256:9e2af207e9aa8183d4aeca5fde9cc48e7909bb40cdbd7cf21608a6d3ea78075b",
+  "herdr_protocol_verified": true
+## 3) doctor  (after verification)
+{
+  "herdr": {
+    "kind": "herdr",
+    "availability": "AVAILABLE",
+    "version": "herdr 0.9.3",
+    "capabilities": {
+      "create_worker": {
+        "level": "SUPPORTED"
+      },
+      "attach_session": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_ATTACH_NOT_IMPLEMENTED"
+      },
+      "submit_prompt": {
+        "level": "CONDITIONAL",
+        "reason_code": "AGENT_READY_AND_INPUT_OWNERSHIP"
+      },
+      "observe_process": {
+        "level": "SUPPORTED"
+      },
+      "observe_agent": {
+        "level": "CONDITIONAL",
+        "reason_code": "NATIVE_DETECTION_AND_HOOK_EVENTS"
+      },
+      "read_output": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_READ_OUTPUT_NOT_IMPLEMENTED"
+      },
+      "request_interrupt": {
+        "level": "SUPPORTED"
+      },
+      "restore_conversation": {
+        "level": "UNSUPPORTED",
+        "reason_code": "HERDR_RESTORE_OWNERSHIP_UNDEFINED"
+      }
+    },
+    "schema_sha256": "sha256:9e2af207e9aa8183d4aeca5fde9cc48e7909bb40cdbd7cf21608a6d3ea78075b"
+  }
+}
