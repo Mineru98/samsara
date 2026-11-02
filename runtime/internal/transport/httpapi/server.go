@@ -349,7 +349,11 @@ func (s *Server) routes() {
 		}
 		a.Backends.Invalidate()
 		a.Wake()
-		return map[string]string{"status": "ACCEPTED"}, nil
+		gh, err := a.RefreshGitHub(r.Context(), r.PathValue("project_id"))
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"status": "ACCEPTED", "github": gh}, nil
 	}))
 	m.HandleFunc("POST /v1/sessions/{id}/focus", command(func(r *http.Request, c app.Cmd) (any, error) {
 		return a.FocusSession(r.Context(), r.PathValue("id"))

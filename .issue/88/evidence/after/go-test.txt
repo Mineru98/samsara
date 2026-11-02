@@ -1,0 +1,26 @@
+ok  	github.com/Mineru98/samsara/runtime/internal/app	1.605s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend	0.005s
+ok  	github.com/Mineru98/samsara/runtime/internal/backend/tmux	0.408s
+ok  	github.com/Mineru98/samsara/runtime/internal/config	0.006s
+ok  	github.com/Mineru98/samsara/runtime/internal/daemon	0.010s
+ok  	github.com/Mineru98/samsara/runtime/internal/gitops	0.159s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.009s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.421s
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.037s
+ok  	github.com/Mineru98/samsara/runtime/internal/store/sqlite	0.104s
+ok  	github.com/Mineru98/samsara/runtime/internal/transport/httpapi	0.233s
+--- PASS: TestAsyncPolicyHookIsNotAGate (0.00s)
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks	0.003s
+--- PASS: TestStdoutIsOnlyHookJSON (0.32s)
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/bridge	0.323s
+--- PASS: TestEveryP0HookItemIsCovered (0.01s)
+--- PASS: TestCheckedInOrder (0.00s)
+--- PASS: TestFakeDaemonDrivesRealBridge (0.00s)
+--- PASS: TestWrapperFailsSessionStartAndExecsBinary (0.01s)
+--- PASS: TestSubagentAndCommandsAreJudged (0.00s)
+--- PASS: TestFakeDaemonScriptsBashOnly (0.00s)
+ok  	github.com/Mineru98/samsara/runtime/internal/hooks/probe	0.024s
+--- PASS: TestStopAndToolObservationsNeverComplete (0.07s)
+--- PASS: TestStopSessionEndOrderNeverDecides (0.06s)
+--- PASS: TestMissingSessionStartIsDenied (0.05s)
+ok  	github.com/Mineru98/samsara/runtime/internal/app	0.194s

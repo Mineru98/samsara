@@ -145,7 +145,7 @@ func (a *Adapter) Launch(ctx context.Context, spec backend.LaunchSpec) (backend.
 		args = append(args, "-e", k+"="+spec.Env[k])
 	}
 	args = append(args, "--")
-	args = append(args, spec.Argv...)
+	args = append(args, spec.ArgvWithPrompt()...)
 	out, stderr, err := a.run(ctx, nil, args...)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) || isTimeout(err) {

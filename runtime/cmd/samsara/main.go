@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Mineru98/samsara/runtime/internal/app"
+	"github.com/Mineru98/samsara/runtime/internal/backend"
 	"github.com/Mineru98/samsara/runtime/internal/backend/herdr"
 	"github.com/Mineru98/samsara/runtime/internal/backend/tmux"
 	"github.com/Mineru98/samsara/runtime/internal/config"
@@ -45,7 +46,7 @@ const usage = `samsara — local orchestration runtime for Claude Code work
 Usage: samsara [--json] <command> [args]
 
 Project:   init | enable | disable | status | project list|relink|archive
-Plans:     plan validate|apply --file plan.json | profile add
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
 Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
 Sessions:  session attach --issue <id> | session inspect|release-input|focus <id>
 Approvals: approval list | approval decide <id> --approve|--reject|--revoke
@@ -508,12 +509,14 @@ func (c *cli) profile(args []string) int {
 
 func (c *cli) planCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara plan validate|apply --file plan.json")
+		fmt.Fprintln(c.errw, "usage: samsara plan validate|apply --file plan.json | plan revise --run <run_id> --expected-run-generation N --file plan.json")
 		return domain.ExitInput
 	}
 	fs := newFlags("plan")
 	file := fs.String("file", "", "plan JSON file ('-' for stdin)")
-	key := fs.String("idempotency-key", "", "idempotency key (apply)")
+	key := fs.String("idempotency-key", "", "idempotency key (apply, revise)")
+	runID := fs.String("run", "", "run to revise (revise)")
+	runGen := fs.String("expected-run-generation", "", "current run generation (revise)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return domain.ExitInput
 	}
@@ -560,6 +563,16 @@ func (c *cli) planCmd(args []string) int {
 			k = "plan:" + domain.DigestBytes(raw)
 		}
 		return c.callPrint("/ipc/v1/plans/apply", json.RawMessage(raw), ipc.CallOpts{IdempotencyKey: k})
+	case "revise":
+		body, err := json.Marshal(plan.Revision{RunID: *runID, ExpectedRunGeneration: *runGen, Plan: json.RawMessage(raw)})
+		if err != nil {
+			return c.fail(domain.Errf(domain.CodeInvalidRequest, "%v", err))
+		}
+		k := *key
+		if k == "" {
+			k = "plan-revise:" + domain.DigestBytes(body)
+		}
+		return c.callPrint("/ipc/v1/plans/revise", json.RawMessage(body), ipc.CallOpts{IdempotencyKey: k})
 	}
 	return domain.ExitInput
 }
@@ -699,7 +712,7 @@ func (c *cli) approvalCmd(args []string) int {
 
 func (c *cli) worktreeCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara worktree list | inspect <id>")
+		fmt.Fprintln(c.errw, "usage: samsara worktree list | inspect <id> | cleanup [--dry-run] [--delete-branch] [<id>...]")
 		return domain.ExitInput
 	}
 	switch args[0] {
@@ -727,13 +740,30 @@ func (c *cli) worktreeCmd(args []string) int {
 			return domain.ExitInput
 		}
 		return c.callPrint("/ipc/v1/lookup", map[string]string{"kind": sqlite.KindWorktree, "id": args[1]})
+	case "cleanup":
+		fs := newFlags("worktree cleanup")
+		pid := fs.String("project", "", "project id")
+		dry := fs.Bool("dry-run", false, "report eligibility without removing anything")
+		branch := fs.Bool("delete-branch", false, "also delete the branch when its commits stay reachable from another ref")
+		if err := fs.Parse(args[1:]); err != nil {
+			return domain.ExitInput
+		}
+		id, err := c.projectID(*pid)
+		if err != nil {
+			return c.fail(err)
+		}
+		opts := ipc.CallOpts{}
+		if !*dry {
+			opts.IdempotencyKey = domain.NewID("cli")
+		}
+		return c.callPrint("/ipc/v1/worktrees/cleanup", app.CleanupRequest{ProjectID: id, WorktreeIDs: fs.Args(), DryRun: *dry, DeleteBranch: *branch}, opts)
 	}
 	return domain.ExitInput
 }
 
 func (c *cli) mergeCmd(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(c.errw, "usage: samsara merge queue | inspect|enqueue|cancel <candidate_id>")
+		fmt.Fprintln(c.errw, "usage: samsara merge queue | inspect|enqueue|cancel|resolve <candidate_id> | prioritize <candidate_id> [--before <candidate_id>] --reason <text>")
 		return domain.ExitInput
 	}
 	switch args[0] {
@@ -748,7 +778,19 @@ func (c *cli) mergeCmd(args []string) int {
 			return c.fail(err)
 		}
 		return c.callPrint("/ipc/v1/merge/queues", map[string]string{"project_id": id})
-	case "inspect", "enqueue", "cancel":
+	case "prioritize":
+		if len(args) < 2 {
+			return domain.ExitInput
+		}
+		fs := newFlags("merge prioritize")
+		before := fs.String("before", "", "candidate to move ahead of (default: front of the queue)")
+		reason := fs.String("reason", "", "why the order changes (recorded)")
+		if err := fs.Parse(args[2:]); err != nil {
+			return domain.ExitInput
+		}
+		return c.callPrint("/ipc/v1/merge/prioritize", map[string]string{"candidate_id": args[1], "before": *before, "reason": *reason},
+			ipc.CallOpts{IdempotencyKey: domain.NewID("cli")})
+	case "inspect", "enqueue", "cancel", "resolve":
 		if len(args) < 2 {
 			return domain.ExitInput
 		}
@@ -862,7 +904,12 @@ func (c *cli) doctor(args []string) int {
 	tm := tmux.New(nil)
 	tprobe, _ := tm.Probe(ctx)
 	report["tmux"] = tprobe
-	hd := herdr.New(nil, daemon.LoadManifest(c.layout).HerdrSchemaSHA256)
+	mf := daemon.LoadManifest(c.layout)
+	verifiedSchema := ""
+	if mf.HerdrProtocolVerified {
+		verifiedSchema = mf.HerdrSchemaSHA256
+	}
+	hd := herdr.New(nil, verifiedSchema, mf.HerdrCLIVersion)
 	hprobe, _ := hd.Probe(ctx)
 	report["herdr"] = hprobe
 	g := gitops.New()
@@ -896,6 +943,7 @@ func (c *cli) doctor(args []string) int {
 	report["daemon_running"] = daemon.Ping(ctx, c.layout)
 	if *exercise {
 		report["tmux_exercise"] = exerciseTmux(ctx, tm)
+		report["herdr_exercise"] = exerciseHerdr(ctx, hd)
 	}
 	var probePassed *bool
 	if *hookProbe {
@@ -922,6 +970,7 @@ func (c *cli) doctor(args []string) int {
 	}
 	if *write {
 		m := daemon.LoadManifest(c.layout)
+		prevHerdr, prevSchema := m.HerdrCLIVersion, m.HerdrSchemaSHA256
 		m.VerifiedAt = time.Now().UTC().Format("2006-01-02")
 		m.Platform = runtime.GOOS + "/" + runtime.GOARCH
 		m.SamsaraBuild = version
@@ -939,6 +988,16 @@ func (c *cli) doctor(args []string) int {
 		if ex, ok := report["tmux_exercise"].(map[string]any); ok && ex["ok"] == true {
 			m.RealBackendSmokePassed = true
 		}
+		// herdr is verified only for a pinned schema fixture whose live
+		// create/observe/close exercise passed on this installation.
+		if ex, ok := report["herdr_exercise"].(map[string]any); ok {
+			m.HerdrProtocolVerified = ex["ok"] == true && herdr.PinnedSchemas[hprobe.SchemaSHA256] != ""
+			if v, ok := ex["server_version"].(string); ok {
+				m.HerdrServerVersion = v
+			}
+		} else if prevHerdr != m.HerdrCLIVersion || prevSchema != m.HerdrSchemaSHA256 {
+			m.HerdrProtocolVerified = false // a changed herdr needs a new exercise
+		}
 		_ = c.layout.Ensure()
 		b, _ := json.MarshalIndent(m, "", "  ")
 		if err := os.WriteFile(daemon.ManifestPath(c.layout), b, 0o600); err != nil {
@@ -955,6 +1014,32 @@ func (c *cli) doctor(args []string) int {
 		return domain.ExitBlocked
 	}
 	return domain.ExitOK
+}
+
+// exerciseHerdr creates a throwaway owned workspace on the running herdr
+// server, observes it and closes it. It never starts a server.
+func exerciseHerdr(ctx context.Context, hd *herdr.Adapter) map[string]any {
+	res := map[string]any{"ok": false}
+	var pong struct {
+		Version string `json:"version"`
+	}
+	if err := hd.Client.Call(ctx, "ping", nil, &pong); err != nil {
+		res["error"] = err.Error()
+		return res
+	}
+	res["server_version"] = pong.Version
+	corr := "doctor-" + domain.NewID("x")[2:10]
+	rc, err := hd.Launch(ctx, launchSpec(corr))
+	if err != nil || rc.Ref == nil {
+		res["error"] = fmt.Sprint(err, rc.Detail)
+		return res
+	}
+	obs, _ := hd.Observe(ctx, *rc.Ref)
+	res["observed"] = obs.Liveness
+	cl, _ := hd.CloseOwnedSession(ctx, *rc.Ref)
+	res["close"] = cl.Outcome
+	res["ok"] = obs.Liveness == domain.LivenessAlive && cl.Outcome == backend.Delivered
+	return res
 }
 
 func exerciseTmux(ctx context.Context, tm *tmux.Adapter) map[string]any {

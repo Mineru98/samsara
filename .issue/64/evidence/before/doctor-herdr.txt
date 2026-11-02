@@ -1,0 +1,44 @@
+# samsara doctor (before) — herdr section, SAMSARA_HOME=temp, herdr 0.9.3 installed
+{
+  "kind": "herdr",
+  "availability": "DEGRADED",
+  "version": "herdr 0.9.3",
+  "capabilities": {
+    "create_worker": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "attach_session": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "submit_prompt": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "observe_process": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "observe_agent": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "read_output": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "request_interrupt": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    },
+    "restore_conversation": {
+      "level": "UNSUPPORTED",
+      "reason_code": "HERDR_COMPAT_UNVERIFIED"
+    }
+  },
+  "reasons": [
+    "HERDR_COMPAT_UNVERIFIED"
+  ],
+  "schema_sha256": "sha256:9e2af207e9aa8183d4aeca5fde9cc48e7909bb40cdbd7cf21608a6d3ea78075b"
+}
