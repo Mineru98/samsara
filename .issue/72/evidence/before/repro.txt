@@ -1,0 +1,63 @@
+# #72 before — commit f439def, SAMSARA_HOME=<isolated tmp>
+
+$ samsara version
+{
+  "go": "go1.27.1",
+  "os": "linux/amd64",
+  "version": "0.1.0-dev"
+}
+(exit 0)
+
+$ samsara restore --from x.db
+unknown command "restore"
+samsara — local orchestration runtime for Claude Code work
+Usage: samsara [--json] <command> [args]
+Project:   init | enable | disable | status | project list|relink|archive
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
+Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
+(exit 2)
+
+$ samsara upgrade
+unknown command "upgrade"
+samsara — local orchestration runtime for Claude Code work
+Usage: samsara [--json] <command> [args]
+Project:   init | enable | disable | status | project list|relink|archive
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
+Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
+(exit 2)
+
+$ samsara install
+unknown command "install"
+samsara — local orchestration runtime for Claude Code work
+Usage: samsara [--json] <command> [args]
+Project:   init | enable | disable | status | project list|relink|archive
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
+Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
+(exit 2)
+
+$ samsara metrics
+unknown command "metrics"
+samsara — local orchestration runtime for Claude Code work
+Usage: samsara [--json] <command> [args]
+Project:   init | enable | disable | status | project list|relink|archive
+Plans:     plan validate|apply --file plan.json | plan revise --run <id> --expected-run-generation N --file plan.json | profile add
+Runs:      run start|pause|resume|cancel <run_id> | issue show|retry <issue_id>
+(exit 2)
+
+$ samsara doctor --export diag.json
+flag provided but not defined: -export
+Usage of doctor:
+  -exercise
+    	create and destroy a throwaway tmux session to verify control
+  -hook-probe
+    	inject hook failures into the real Claude Code (calls the model) and record the verdict
+(exit 2)
+
+$ ls runtime/scripts
+ls: cannot access 'scripts': No such file or directory
+
+$ grep -n 'cutoff :=' internal/app/reconcile.go
+317:		cutoff := tx.Now - 7*24*3600*1000
+
+$ grep -rn 'RotateDatabaseGeneration(' (호출처)
+(호출처 없음)

@@ -1,0 +1,47 @@
+
+== build release tarballs (linux/amd64)
+PASS  SHA256SUMS verifies
+PASS  build Go toolchain is not on PATH
+PASS  no samsara on PATH
+
+== install smoke (05 §17.1)
+PASS  install link exists: home/install/bin/samsara
+PASS  installed binary reports 0.4.0-drill.1
+PASS  doctor runs read-only (exit 4: claude: version  lacks onFailure:block (need >= 2.1.295); managed execution disabled, observe-only)
+PASS  doctor sees bundled SQLite 3.53.3
+PASS  doctor does not start the daemon
+PASS  init registers a project
+PASS  hooks point at the versioned 0.4.0-drill.1 binary
+PASS  daemon 0.4.0-drill.1 healthy
+PASS  metrics answer (retention 7 days)
+
+== upgrade 0.4.0-drill.1 -> 0.4.0-drill.2 (05 §17.2)
+PASS  upgrade exit 0
+PASS  old daemon 0.4.0-drill.1 stopped first
+PASS  pre-upgrade backup written
+PASS  migration + integrity check ok
+PASS  new daemon 0.4.0-drill.2 started
+PASS  link now points at 0.4.0-drill.2
+PASS  ACT-12: 0.4.0-drill.1 binary kept
+PASS  project hooks retargeted to 0.4.0-drill.2 (old binary cannot open a migrated DB)
+
+== rollback 0.4.0-drill.2 -> 0.4.0-drill.1 with restore (05 §17.3)
+PASS  restore refuses a missing backup
+PASS  restore refuses while the daemon runs (exit 4)
+PASS  rollback install points hooks back at 0.4.0-drill.1
+PASS  restore exit 0
+PASS  database_generation rotated (9260726f2cf571166911eb9a -> 05124b3d7f7d371e81d2cd0f)
+PASS  pre-restore backup kept
+PASS  daemon back on 0.4.0-drill.1
+PASS  daemon serves the new generation
+
+== prune old versions (ACT-12)
+PASS  unused 0.4.0-drill.2 removed, current 0.4.0-drill.1 kept (exit 0)
+PASS  only the version in use remains on disk
+
+== diagnostics export (no secrets)
+PASS  export written (9 values redacted)
+PASS  planted token and prompt absent from export
+PASS  export is private (0600)
+
+DRILL PASSED
