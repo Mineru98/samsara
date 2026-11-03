@@ -655,15 +655,17 @@ func scanCandidate(s interface{ Scan(...any) error }) (*Candidate, error) {
 // ProviderGroup is one merge group GitHub built for a candidate revision.
 type ProviderGroup struct {
 	ID, ProjectID, CandidateID, EntryID, HeadSHA, BaseSHA, Members, PolicyDigest, CheckState, CheckRunID string
+	ManifestState, ManifestRunID, ManifestReason                                                         string
 	CandidateRevision, CreatedAt, UpdatedAt                                                              int64
 }
 
-const providerGroupCols = `id,project_id,candidate_id,candidate_revision,entry_id,head_sha,base_sha,members,policy_digest,check_state,check_run_id,created_at,updated_at`
+const providerGroupCols = `id,project_id,candidate_id,candidate_revision,entry_id,head_sha,base_sha,members,policy_digest,check_state,check_run_id,manifest_state,manifest_run_id,manifest_reason,created_at,updated_at`
 
 func GetProviderGroup(ctx context.Context, q Q, id string) (*ProviderGroup, error) {
 	g := &ProviderGroup{}
 	err := q.QueryRowContext(ctx, "SELECT "+providerGroupCols+" FROM provider_validation_groups WHERE id=?", id).Scan(&g.ID, &g.ProjectID, &g.CandidateID,
-		&g.CandidateRevision, &g.EntryID, &g.HeadSHA, &g.BaseSHA, &g.Members, &g.PolicyDigest, &g.CheckState, &g.CheckRunID, &g.CreatedAt, &g.UpdatedAt)
+		&g.CandidateRevision, &g.EntryID, &g.HeadSHA, &g.BaseSHA, &g.Members, &g.PolicyDigest, &g.CheckState, &g.CheckRunID,
+		&g.ManifestState, &g.ManifestRunID, &g.ManifestReason, &g.CreatedAt, &g.UpdatedAt)
 	return orNil(g, err), notFound(err, "provider_validation_group", id)
 }
 

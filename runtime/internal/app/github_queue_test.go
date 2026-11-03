@@ -1,9 +1,14 @@
 package app_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -32,6 +37,7 @@ github:
   repository: o/r
   merge_queue:
     policy_app_id: 4242
+    manifest_workflow: .github/workflows/samsara-merge-group.yml
 `
 
 // verifiedRules is a target whose merge queue builds and merges one entry
@@ -59,17 +65,51 @@ type queueGitHub struct {
 	dequeued  []string
 	dequeueNo bool // refuse dequeue and keep the entry (missing permission)
 	calls     []string
+	// tamperedHead is a group head whose collector Workflow differs from
+	// the target's; its manifest must be rejected (04 §10.8 step 3).
+	tamperedHead string
+}
+
+// manifestZip is the artifact the trusted collector uploads for a group.
+func manifestZip(head, base string) []byte {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("manifest.json")
+	fmt.Fprintf(w, `{"repository":"o/r","run_id":901,"run_attempt":1,"event":"merge_group","head_sha":%q,"base_sha":%q,"head_ref":"refs/heads/gh-readonly-queue/integration/pr-7-%s"}`, head, base, head)
+	_ = zw.Close()
+	return buf.Bytes()
 }
 
 func (f *queueGitHub) Do(_ context.Context, method, path string, fields map[string]string) (*github.Response, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, method+" "+path)
-	path = strings.SplitN(path, "?", 2)[0]
+	path, rawQuery, _ := strings.Cut(path, "?")
+	query, _ := url.ParseQuery(rawQuery)
 	ok := func(body string) (*github.Response, error) {
 		return &github.Response{Status: 200, Header: http.Header{}, Body: []byte(body)}, nil
 	}
+	var head, base string
+	if f.entry != nil {
+		head, base = f.entry.Head, f.entry.Base
+	}
 	switch {
+	case method == "GET" && path == "repos/o/r/actions/runs":
+		if head == "" || query.Get("head_sha") != head || query.Get("event") != "merge_group" {
+			return ok(`{"workflow_runs":[]}`)
+		}
+		return ok(fmt.Sprintf(`{"workflow_runs":[{"id":901,"path":".github/workflows/samsara-merge-group.yml","event":"merge_group","head_sha":%q,"status":"completed","conclusion":"success","run_attempt":1,"repository":{"full_name":"o/r"}}]}`, head))
+	case method == "GET" && path == "repos/o/r/contents/.github/workflows/samsara-merge-group.yml":
+		if query.Get("ref") != "" && query.Get("ref") == f.tamperedHead {
+			return ok(`{"sha":"wf-tampered"}`)
+		}
+		return ok(`{"sha":"wf-trusted"}`)
+	case method == "GET" && path == "repos/o/r/actions/runs/901/artifacts":
+		z := manifestZip(head, base)
+		sum := sha256.Sum256(z)
+		return ok(fmt.Sprintf(`{"artifacts":[{"id":501,"name":"samsara-merge-group-manifest","size_in_bytes":%d,"expired":false,"digest":"sha256:%s"}]}`, len(z), hex.EncodeToString(sum[:])))
+	case method == "GET" && path == "repos/o/r/actions/artifacts/501/zip":
+		return &github.Response{Status: 200, Header: http.Header{}, Body: manifestZip(head, base)}, nil
 	case method == "GET" && path == "repos/o/r/rules/branches/integration":
 		return ok(f.rules)
 	case method == "GET" && path == "repos/o/r/commits/"+f.source+"/pulls":
@@ -405,6 +445,103 @@ func TestGitHubQueueLostIntentAndUnauthorizedMerge(t *testing.T) {
 	})
 	if !strings.Contains(evidence, `"policy_authorized":false`) {
 		t.Fatalf("evidence must say the merge was not authorized: %s", evidence)
+	}
+}
+
+// appChecks is a publisher that names its GitHub App, like the real one.
+type appChecks struct {
+	fakeChecks
+	app int64
+}
+
+func (f *appChecks) AppID() int64 { return f.app }
+
+// 04 §10.7 / §10.8: a credential of another App, or a target without a
+// trusted manifest Workflow, can never satisfy the gate.
+func TestGitHubQueueUnsupportedPublisherAppAndManifest(t *testing.T) {
+	cases := []struct {
+		name, config string
+		checks       app.PolicyCheckPublisher
+		reason       string
+	}{
+		{"other app", queueConfig, &appChecks{app: 9999}, "POLICY_PUBLISHER_UNAVAILABLE"},
+		{"no manifest workflow", strings.Replace(queueConfig, "    manifest_workflow: .github/workflows/samsara-merge-group.yml\n", "", 1), &appChecks{app: 4242}, "MERGE_GROUP_MANIFEST_UNCONFIGURED"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t, tc.config)
+			e.app.GitHub = &queueGitHub{rules: verifiedRules, prState: "OPEN", enqueueOK: true}
+			e.app.PolicyChecks = tc.checks
+			c := queueCandidate(t, e)
+			e.tick(2)
+			if cur, _ := e.candidate(c.ID); cur.State != domain.CandidateWaiting || cur.StateReason != tc.reason {
+				t.Fatalf("want WAITING(%s), got %s(%s)", tc.reason, cur.State, cur.StateReason)
+			}
+			if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); !domain.IsCode(err, domain.CodeUnsupportedCapability) {
+				t.Fatalf("enqueue must be refused: %v", err)
+			}
+		})
+	}
+}
+
+// 04 §10.8: a group whose collector Workflow was rewritten by the pull
+// request gets a failing policy check, never a success, even with an
+// approved MERGE; its group approvals are invalidated.
+func TestGitHubQueueManifestRejectedPublishesFailure(t *testing.T) {
+	e := newEnv(t, queueConfig)
+	gh := &queueGitHub{rules: verifiedRules, prState: "OPEN", enqueueOK: true, tamperedHead: "g1"}
+	checks := &appChecks{app: 4242}
+	e.app.GitHub, e.app.PolicyChecks = gh, checks
+	c := queueCandidate(t, e)
+	gh.set(func(f *queueGitHub) { f.source, f.prHead = c.SourceSHA, c.SourceSHA })
+	e.tick(1)
+	if _, err := e.app.EnqueueCandidate(e.ctx, e.cmd, c.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.tick(1)
+	gh.set(func(f *queueGitHub) { f.entry = &queueEntry{ID: "MQE_1", Head: "g1", Base: "b1"} })
+	e.tick(1)
+	// The user approves before the manifest verdict arrives; the verdict
+	// still decides the check. The approval itself may already be gone.
+	ap := pendingMerge(t, e, c.ID)
+	_, _ = e.app.DecideApproval(e.ctx, e.cmd, ap.ID, app.DecisionRequest{Decision: "APPROVE"})
+	e.tick(3)
+	got := checks.published()
+	if len(got) != 2 || got[0] != "g1:in_progress:" || got[1] != "g1:completed:failure" {
+		t.Fatalf("rejected manifest must publish failure and never success: %v", got)
+	}
+	if !strings.Contains(checks.runs[1].Summary, "MANIFEST_WORKFLOW_MODIFIED") {
+		t.Fatalf("failure summary must carry the reason: %q", checks.runs[1].Summary)
+	}
+	cur, _ := e.candidate(c.ID)
+	if cur.StateReason != "MERGE_GROUP_MANIFEST_REJECTED" {
+		t.Fatalf("candidate reason: %s", cur.StateReason)
+	}
+	var state, manifest, reason string
+	_ = e.db.Read(e.ctx, func(q sqlite.Q) error {
+		return q.QueryRowContext(e.ctx, "SELECT check_state, manifest_state, manifest_reason FROM provider_validation_groups WHERE id=?", cur.ProviderValidationID).Scan(&state, &manifest, &reason)
+	})
+	if state != "FAILED" || manifest != "FAILED" || reason != "MANIFEST_WORKFLOW_MODIFIED" {
+		t.Fatalf("group: %s %s %s", state, manifest, reason)
+	}
+	for _, a := range e.mergeApprovals(c.ID) {
+		if a.State == domain.ApprovalPending || a.State == domain.ApprovalApproved {
+			t.Fatalf("a rejected group keeps no live MERGE approval: %s", a.State)
+		}
+	}
+
+	// GitHub drops the entry after the failing required check; the failed
+	// group stays on record and the candidate waits again.
+	gh.set(func(f *queueGitHub) { f.entry = nil })
+	e.tick(2)
+	if cur, _ = e.candidate(c.ID); cur.State != domain.CandidateWaiting || cur.StateReason != "NATIVE_QUEUE_REMOVED" {
+		t.Fatalf("after removal: %s(%s)", cur.State, cur.StateReason)
+	}
+	_ = e.db.Read(e.ctx, func(q sqlite.Q) error {
+		return q.QueryRowContext(e.ctx, "SELECT check_state FROM provider_validation_groups WHERE manifest_state='FAILED'").Scan(&state)
+	})
+	if state != "FAILED" {
+		t.Fatalf("the failed group must keep its FAILED record, got %s", state)
 	}
 }
 

@@ -33,7 +33,7 @@ var migrationFS embed.FS
 const MinSQLiteVersion = "3.51.3"
 
 // SchemaVersion is the highest migration this binary knows.
-const SchemaVersion = 5
+const SchemaVersion = 6
 
 // Q is satisfied by *sql.Tx and *sql.DB.
 type Q interface {

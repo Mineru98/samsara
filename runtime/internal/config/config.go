@@ -88,11 +88,20 @@ type GitHub struct {
 // MergeQueue configures the github_queue authority (04 §10). PolicyAppID is
 // the GitHub App that must be the source of the required
 // samsara/integration-policy check; 0 leaves native integration unsupported.
+// ManifestWorkflow is the trusted merge_group collector Workflow and
+// ManifestArtifact the artifact it uploads (04 §10.8); without a Workflow
+// native integration stays unsupported as well.
 type MergeQueue struct {
-	PolicyAppID int64 `yaml:"policy_app_id" json:"policy_app_id"`
+	PolicyAppID      int64  `yaml:"policy_app_id" json:"policy_app_id"`
+	ManifestWorkflow string `yaml:"manifest_workflow" json:"manifest_workflow"`
+	ManifestArtifact string `yaml:"manifest_artifact" json:"manifest_artifact"`
 }
 
-var githubRepoRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
+var (
+	githubRepoRe   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`)
+	workflowPathRe = regexp.MustCompile(`^\.github/workflows/[A-Za-z0-9._-]+\.ya?ml$`)
+	artifactNameRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,100}$`)
+)
 
 // Default returns the documented defaults.
 func Default() *Config {
@@ -105,7 +114,7 @@ func Default() *Config {
 		Approval:    Approval{ImplementationStart: "manual", Result: "manual", Integration: "manual"},
 		Git:         Git{TargetRef: "refs/heads/main", IntegrationAuthority: domain.AuthorityManual, MergeConcurrencyPerTarget: 1, BranchPrefix: "samsara", WorktreeRetentionHours: 168},
 		Observation: Observation{CollectTerminalOutput: false, EventRetentionDays: 7},
-		GitHub:      GitHub{Sync: "auto", SyncIntervalSeconds: 300},
+		GitHub:      GitHub{Sync: "auto", SyncIntervalSeconds: 300, MergeQueue: MergeQueue{ManifestArtifact: "samsara-merge-group-manifest"}},
 	}
 }
 
@@ -214,6 +223,12 @@ func (c *Config) Validate() error {
 	}
 	if c.GitHub.MergeQueue.PolicyAppID < 0 {
 		add("github.merge_queue.policy_app_id must be >= 0")
+	}
+	if w := c.GitHub.MergeQueue.ManifestWorkflow; w != "" && !workflowPathRe.MatchString(w) {
+		add("github.merge_queue.manifest_workflow must be a .github/workflows/<name>.yml path")
+	}
+	if !artifactNameRe.MatchString(c.GitHub.MergeQueue.ManifestArtifact) {
+		add("github.merge_queue.manifest_artifact must be 1-100 of [A-Za-z0-9._-]")
 	}
 	if c.GitHub.SyncIntervalSeconds < 60 {
 		add("github.sync_interval_seconds must be >= 60")

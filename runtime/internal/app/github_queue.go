@@ -8,17 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Mineru98/samsara/runtime/internal/config"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
 	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
 )
 
 // PolicyCheck is one publication of samsara/integration-policy on a merge
-// group head (04 §10.7). Status is in_progress or completed; Conclusion is
-// set only when completed. ExternalID binds the check to the exact group.
-type PolicyCheck struct {
-	Repository, HeadSHA, ExternalID, Status, Conclusion, Summary string
-}
+// group head (04 §10.7).
+type PolicyCheck = github.PolicyCheck
 
 // PolicyCheckPublisher writes the required policy check with the verified
 // GitHub App credential. Only the target controller holds it; workers never
@@ -33,6 +31,8 @@ const (
 	groupInProgress          = "IN_PROGRESS"
 	groupSuccessRequested    = "SUCCESS_REQUESTED"
 	groupSuccess             = "SUCCESS"
+	groupFailureRequested    = "FAILURE_REQUESTED"
+	groupFailed              = "FAILED"
 	groupSuperseded          = "SUPERSEDED"
 )
 
@@ -49,7 +49,7 @@ var capabilityReasons = map[string]bool{
 	"GITHUB_QUEUE_NOT_VERIFIED": true, "AWAITING_ENQUEUE": true, "GITHUB_REPOSITORY_UNKNOWN": true,
 	github.ReasonQueueDisabled: true, github.ReasonQueueAmbiguous: true, github.ReasonHeadGreen: true, github.ReasonGroupSize: true,
 	github.ReasonPolicyNotRequired: true, github.ReasonPolicyUnpinned: true, github.ReasonPublisherMissing: true,
-	github.ReasonProviderUnreachable: true,
+	github.ReasonProviderUnreachable: true, github.ReasonManifestUnconfigured: true,
 }
 
 // retryableNativeFailures are FAILED reasons that only lost the delivering
@@ -121,7 +121,7 @@ func (a *App) prepareNativeEnqueue(ctx context.Context, candidateID string) (*na
 	}
 	// Enqueue decides on a fresh probe, never on a cached one.
 	repo := a.projectGitHubRepo(ctx, p)
-	if err := a.probeTarget(ctx, t, repo, projectConfig(p).GitHub.MergeQueue.PolicyAppID); err != nil {
+	if err := a.probeTarget(ctx, t, repo, projectConfig(p).GitHub.MergeQueue); err != nil {
 		return nil, err
 	}
 	if err := nativeSupported(t); err != nil {
@@ -336,7 +336,7 @@ func (a *App) observeGitHubQueueTarget(ctx context.Context, t *sqlite.Target) er
 	// recent probe (04 §10.2), so the target is re-probed every poll.
 	age := a.nowMillis() - t.ProviderCheckedAt
 	if t.ProviderCheckedAt == 0 || age >= int64(cfg.GitHub.SyncIntervalSeconds)*1000 || (active && age >= nativePollInterval.Milliseconds()) {
-		if err := a.probeTarget(ctx, t, repo, cfg.GitHub.MergeQueue.PolicyAppID); err != nil {
+		if err := a.probeTarget(ctx, t, repo, cfg.GitHub.MergeQueue); err != nil {
 			return err
 		}
 	}
@@ -359,25 +359,29 @@ func (a *App) observeGitHubQueueTarget(ctx context.Context, t *sqlite.Target) er
 			a.Log.Warn("merge queue poll", "candidate", c.ID, "err", github.AsError(err))
 			continue
 		}
+		mr := a.verifyGroupManifest(ctx, c, t, repo, cfg.GitHub.MergeQueue, o)
 		cid := c.ID
-		if err := a.DB.Write(ctx, func(tx *sqlite.Tx) error { return a.applyQueueObservation(ctx, tx, cid, t, repo, o) }); err != nil {
+		if err := a.DB.Write(ctx, func(tx *sqlite.Tx) error { return a.applyQueueObservation(ctx, tx, cid, t, repo, o, mr) }); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (a *App) probeTarget(ctx context.Context, t *sqlite.Target, repo string, appID int64) error {
+func (a *App) probeTarget(ctx context.Context, t *sqlite.Target, repo string, mq config.MergeQueue) error {
 	var capa *github.QueueCapability
 	if repo == "" {
 		capa = &github.QueueCapability{Reason: "GITHUB_REPOSITORY_UNKNOWN", Branch: targetBranch(t.TargetRef)}
 	} else {
 		var err error
-		capa, err = github.ProbeMergeQueue(ctx, a.GitHub, repo, targetBranch(t.TargetRef), appID, a.PolicyChecks != nil, a.Clock.Now())
+		capa, err = github.ProbeMergeQueue(ctx, a.GitHub, repo, targetBranch(t.TargetRef), mq.PolicyAppID, a.publishesAs(mq.PolicyAppID), a.Clock.Now())
 		if err != nil {
 			a.Log.Warn("merge queue probe", "target", t.ID, "err", github.AsError(err))
 			capa = &github.QueueCapability{Reason: github.ReasonProviderUnreachable, Repository: repo, Branch: targetBranch(t.TargetRef)}
 		}
+	}
+	if capa.Supported && mq.ManifestWorkflow == "" {
+		capa.Supported, capa.Reason = false, github.ReasonManifestUnconfigured
 	}
 	reason := capa.Reason
 	if capa.Supported {
@@ -408,13 +412,60 @@ func (a *App) probeTarget(ctx context.Context, t *sqlite.Target, repo string, ap
 	})
 }
 
+// publishesAs reports whether a check publisher exists and, when it names
+// its App, whether that is the App the ruleset pins. A credential of
+// another App could never satisfy the required check.
+func (a *App) publishesAs(appID int64) bool {
+	if a.PolicyChecks == nil {
+		return false
+	}
+	if p, ok := a.PolicyChecks.(interface{ AppID() int64 }); ok {
+		return p.AppID() == appID
+	}
+	return true
+}
+
+// groupManifest is a manifest verdict read for one provider group.
+type groupManifest struct {
+	groupID string
+	*github.ManifestResult
+}
+
+// verifyGroupManifest reads the collector manifest of the candidate's
+// current group outside any transaction (R-06). It returns nil when there
+// is nothing to verify, the run is not finished or the read failed; the
+// group then stays unverified and its check never turns green.
+func (a *App) verifyGroupManifest(ctx context.Context, c *sqlite.Candidate, t *sqlite.Target, repo string, mq config.MergeQueue, o *github.QueueObservation) *groupManifest {
+	if c.ProviderValidationID == "" || o.GroupHead == "" || mq.ManifestWorkflow == "" {
+		return nil
+	}
+	var g *sqlite.ProviderGroup
+	if err := a.DB.Read(ctx, func(q sqlite.Q) error {
+		var err error
+		g, err = sqlite.GetProviderGroup(ctx, q, c.ProviderValidationID)
+		return err
+	}); err != nil || g.ManifestState != github.ManifestPending || g.EntryID != o.EntryID || g.HeadSHA != o.GroupHead || g.BaseSHA != o.GroupBase {
+		return nil
+	}
+	spec := github.ManifestSpec{Repository: repo, Branch: targetBranch(t.TargetRef), Workflow: mq.ManifestWorkflow, Artifact: mq.ManifestArtifact}
+	mr, err := github.VerifyMergeGroupManifest(ctx, a.GitHub, spec, g.HeadSHA, g.BaseSHA, a.Clock.Now())
+	if err != nil {
+		a.Log.Warn("merge group manifest", "candidate", c.ID, "group", g.ID, "err", github.AsError(err))
+		return nil
+	}
+	if mr.State == github.ManifestPending {
+		return nil
+	}
+	return &groupManifest{groupID: g.ID, ManifestResult: mr}
+}
+
 // applyQueueObservation maps one provider observation onto the candidate.
 // A group tuple GitHub has not shown before is a new candidate revision
 // with a fresh in_progress policy check and a new MERGE approval (INV-09,
 // 04 §10.9). The success intent is the linearization point (04 §10.10):
 // it is written only when, in this transaction, the observed group is still
 // the candidate's group and its MERGE approval is current.
-func (a *App) applyQueueObservation(ctx context.Context, tx *sqlite.Tx, candidateID string, t *sqlite.Target, repo string, o *github.QueueObservation) error {
+func (a *App) applyQueueObservation(ctx context.Context, tx *sqlite.Tx, candidateID string, t *sqlite.Target, repo string, o *github.QueueObservation, mr *groupManifest) error {
 	c, err := sqlite.GetCandidate(ctx, tx, candidateID)
 	if err != nil || c.State != domain.CandidatePublishing {
 		return err
@@ -436,7 +487,7 @@ func (a *App) applyQueueObservation(ctx context.Context, tx *sqlite.Tx, candidat
 		return nil
 	}
 	dropGroup := func(reason string) error {
-		if g != nil && g.CheckState != groupSuperseded {
+		if g != nil && g.CheckState != groupSuperseded && g.CheckState != groupFailed {
 			if _, err := tx.ExecContext(ctx, "UPDATE provider_validation_groups SET check_state='SUPERSEDED', updated_at=? WHERE id=?", tx.Now, g.ID); err != nil {
 				return err
 			}
@@ -502,8 +553,39 @@ func (a *App) applyQueueObservation(ctx context.Context, tx *sqlite.Tx, candidat
 	if g == nil || g.EntryID != o.EntryID || g.HeadSHA != o.GroupHead || g.BaseSHA != o.GroupBase {
 		return a.startProviderGroup(ctx, tx, c, t, repo, o, dropGroup, update)
 	}
+	if mr != nil && mr.groupID == g.ID && g.ManifestState == github.ManifestPending {
+		if _, err := tx.ExecContext(ctx, "UPDATE provider_validation_groups SET manifest_state=?, manifest_run_id=?, manifest_reason=?, updated_at=? WHERE id=? AND manifest_state='PENDING'",
+			mr.State, mr.RunID, mr.Reason, tx.Now, g.ID); err != nil {
+			return err
+		}
+		g.ManifestState, g.ManifestRunID, g.ManifestReason = mr.State, mr.RunID, mr.Reason
+		if err := tx.Audit(ctx, c.ProjectID, "integration-controller", "merge.native_manifest", "merge_candidate", c.ID, "", mr.State,
+			map[string]string{"provider_validation_id": g.ID, "merge_group_head": g.HeadSHA, "workflow_run": mr.RunID, "workflow_blob": mr.WorkflowBlob, "reason": mr.Reason}); err != nil {
+			return err
+		}
+	}
 	if g.CheckState != groupInProgress {
 		return nil
+	}
+	if g.ManifestState == github.ManifestFailed {
+		// The provider gets a definite failure for this exact group; GitHub
+		// then removes the entry and the candidate returns to WAITING.
+		if _, err := tx.ExecContext(ctx, "UPDATE provider_validation_groups SET check_state='FAILURE_REQUESTED', updated_at=? WHERE id=? AND check_state='IN_PROGRESS'", tx.Now, g.ID); err != nil {
+			return err
+		}
+		aps, err := sqlite.ApprovalsWhere(ctx, tx, "kind='MERGE' AND merge_candidate_id=? AND state IN ('PENDING','APPROVED')", c.ID)
+		if err != nil {
+			return err
+		}
+		for _, ap := range aps {
+			if err := a.invalidateApproval(ctx, tx, ap, "MERGE_GROUP_MANIFEST_REJECTED"); err != nil {
+				return err
+			}
+		}
+		if err := update("state_reason='MERGE_GROUP_MANIFEST_REJECTED'"); err != nil {
+			return err
+		}
+		return a.enqueuePolicyCheck(ctx, tx, c, t, repo, g.ID, "failure")
 	}
 	if cur, err := sqlite.GetTarget(ctx, tx, t.ID); err != nil {
 		return err
@@ -543,6 +625,10 @@ func (a *App) applyQueueObservation(ctx context.Context, tx *sqlite.Tx, candidat
 		if ap.State != domain.ApprovalApproved {
 			return nil
 		}
+	}
+	// Success is authorized only for a group whose manifest was verified.
+	if g.ManifestState != github.ManifestVerified {
+		return nil
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE provider_validation_groups SET check_state='SUCCESS_REQUESTED', updated_at=? WHERE id=? AND check_state='IN_PROGRESS'", tx.Now, g.ID); err != nil {
 		return err
@@ -642,35 +728,42 @@ func (a *App) handlePolicyCheck(ctx context.Context, p map[string]string) outcom
 		return failed(err.Error(), nil)
 	}
 	success := p["status"] == "success"
-	want := groupInProgressRequested
-	if success {
-		want = groupSuccessRequested
-	}
+	want := map[string]string{"in_progress": groupInProgressRequested, "success": groupSuccessRequested, "failure": groupFailureRequested}[p["status"]]
 	current := c.State == domain.CandidatePublishing && c.ProviderValidationID == g.ID
 	if !current || g.CheckState != want {
 		return done(map[string]string{"skipped": g.CheckState}, nil)
 	}
-	approved := true
-	if success && projectConfig(proj).Approval.Integration != "auto" {
-		var err error
-		if approved, err = a.groupApproved(ctx, c); err != nil {
+	cancel := ""
+	if success && g.ManifestState != github.ManifestVerified {
+		cancel = "MERGE_GROUP_MANIFEST_NOT_VERIFIED"
+	} else if success && projectConfig(proj).Approval.Integration != "auto" {
+		approved, err := a.groupApproved(ctx, c)
+		if err != nil {
 			return retry(15*time.Second, err)
 		}
+		if !approved {
+			cancel = "MERGE_APPROVAL_NOT_CURRENT"
+		}
 	}
-	if !approved {
-		return done(map[string]string{"cancelled": "MERGE_APPROVAL_NOT_CURRENT"}, func(tx *sqlite.Tx) error {
+	if cancel != "" {
+		return done(map[string]string{"cancelled": cancel}, func(tx *sqlite.Tx) error {
 			_, err := tx.ExecContext(ctx, "UPDATE provider_validation_groups SET check_state='IN_PROGRESS', updated_at=? WHERE id=? AND check_state='SUCCESS_REQUESTED'", tx.Now, g.ID)
 			return err
 		})
 	}
 	if a.PolicyChecks == nil {
-		return failed(github.ReasonPublisherMissing, nil)
+		// The credential went away while a publication was pending: keep it
+		// retryable rather than stranding the group in a *_REQUESTED state.
+		return retry(15*time.Second, errors.New(github.ReasonPublisherMissing))
 	}
 	check := PolicyCheck{Repository: p["repository"], HeadSHA: g.HeadSHA, ExternalID: g.ID + ":" + g.PolicyDigest, Status: "in_progress",
 		Summary: "Samsara MERGE approval pending for this merge group"}
 	next := groupInProgress
-	if success {
+	switch p["status"] {
+	case "success":
 		check.Status, check.Conclusion, check.Summary, next = "completed", "success", "Samsara MERGE approval granted for this exact merge group", groupSuccess
+	case "failure":
+		check.Status, check.Conclusion, check.Summary, next = "completed", "failure", "Samsara rejected this merge group: "+g.ManifestReason, groupFailed
 	}
 	id, err := a.PolicyChecks.PublishPolicyCheck(ctx, check)
 	if err != nil {

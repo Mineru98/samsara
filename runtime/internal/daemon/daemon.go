@@ -26,6 +26,7 @@ import (
 	"github.com/Mineru98/samsara/runtime/internal/backend/standalone"
 	"github.com/Mineru98/samsara/runtime/internal/backend/tmux"
 	"github.com/Mineru98/samsara/runtime/internal/domain"
+	"github.com/Mineru98/samsara/runtime/internal/github"
 	"github.com/Mineru98/samsara/runtime/internal/hooks"
 	"github.com/Mineru98/samsara/runtime/internal/paths"
 	"github.com/Mineru98/samsara/runtime/internal/store/sqlite"
@@ -170,6 +171,14 @@ func Run(opts Options) error {
 	hd := herdr.New(clock, verified, manifest.HerdrCLIVersion)
 	set := backend.NewSet(clock, hd, tmux.New(clock), &standalone.Adapter{Clock: clock})
 	a := app.New(db, l, set, log)
+	// Only the daemon, as target controller, holds the App credential that
+	// publishes samsara/integration-policy (04 §10.8). Without one, or with
+	// an unusable one, github_queue stays unsupported.
+	if pub, err := github.LoadAppPublisher(l.StateDir); err != nil {
+		log.Warn("github app credential unusable; github_queue stays unsupported", "err", err)
+	} else if pub != nil {
+		a.PolicyChecks = pub
+	}
 	var claudeOnce sync.Once
 	var claude app.ClaudeSupport
 	a.Claude = func() app.ClaudeSupport {
