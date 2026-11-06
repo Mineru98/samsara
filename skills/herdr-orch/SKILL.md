@@ -66,7 +66,9 @@ agent 여러 개를 한 번에 넘길 수 있다. 하나라도 이벤트가 나�
 
 - `blocked` 에서는 `agent read --lines N` 이 `agent_not_idle` 로 거절된다. `--source visible` 로 읽는다.
 - 화면의 질문·선택지·tab 의 진행 요약을 그대로 옮겨 AskUserQuestion 으로 사용자에게 묻는다.
-  질문 제목에 `[#<N> tab 질문 대리]` 를 붙이고, 선택지 설명에 tab 쪽 번호를 적는다. 오케스트레이터의 권장 판단이 있으면 함께 적는다.
+  질문 제목에 `[#<N> tab 질문 대리]` 를 붙이고 `header` 도 `#<N>` 으로 둬 어느 이슈의 질문인지 드러낸다. 오케스트레이터의 권장 판단이 있으면 함께 적는다.
+  선택지에는 tab 화면의 선택지 번호(`1.`, `tab 2번` 등)를 적지 않고 선택지 문구만 옮긴다. 사용자는 그 번호가 무엇을 가리키는지 알 수 없다.
+  여러 tab 의 질문을 한 번에 물을 때도 질문마다 이슈 번호를 붙여 구분한다. 선택지와 tab 화면 번호의 대응은 오케스트레이터만 기억한다.
 - 답 넣기: `agent send-keys issue-<N> down ... enter`. 키마다 화면을 다시 읽어 커서 위치(`❯`)를 확인한 뒤 enter.
   렌더링이 늦으니 `pane wait-output <pane> --match "❯ <번호>." --source visible --timeout 3000` 으로 확인한다.
 - 질문이 여러 개(상단 `☐ A ☐ B ✔ Submit`)면 하나 답할 때마다 다음 질문이 나타난다. 마지막 `Review your answers` 에서 사용자 답과 일치하는지 확인하고 `Submit answers`.
