@@ -1,21 +1,27 @@
-$ node --test tools/issue-ontology/ontology.test.mjs scripts/check-shared.test.mjs
-✔ 현재 사본은 공유 블록 검사를 통과한다 (61.608234ms)
-✔ 공유 블록이 한 사본에서만 달라지면 drift 로 실패한다 (31.594861ms)
-✔ 공유 블록 시작 표식이 없으면 not found 로 실패한다 (38.399028ms)
+$ node --test tools/issue-ontology/ontology.test.mjs scripts/check-shared.test.mjs skills/issue-merge/scripts/issue-unblocked.test.mjs
+✔ 현재 사본은 공유 블록 검사를 통과한다 (30.471613ms)
+✔ 공유 블록이 한 사본에서만 달라지면 drift 로 실패한다 (25.414223ms)
+✔ 공유 블록 시작 표식이 없으면 not found 로 실패한다 (21.548762ms)
+✔ 닫은 이슈만 선행으로 둔 열린 이슈는 ready 로 나온다 (2.506366ms)
+✔ 다른 선행이 남아 있으면 후보지만 ready 가 아니다 (1.893834ms)
+✔ 선행 섹션 밖에서만 번호를 언급한 이슈는 후보가 아니다 (0.281601ms)
+✔ status:close 라벨도 끝난 것으로 보고, 조회 실패한 선행은 ready 를 막는다 (0.31751ms)
+✔ 검색이 실패하면 ok:false 로 알린다 (1.15349ms)
+✔ unblocked 명령은 번호 없이 부르면 실패한다 (93.88456ms)
 ! 선행 이슈 #15 이 아직 끝나지 않았습니다.
 ! 선행 이슈 #15 조회 실패로 ready 판정을 생략합니다.
-✔ start requires an open tracker issue and a ready result when checked (87.876958ms)
-✔ create has only git and tracker preconditions (0.683888ms)
-✔ end and merge require complete before and after evidence (1.468445ms)
-✔ missing island is an explicit skip for the human end guard (84.876112ms)
-✔ sibling skills resolve from the plugin root without hidden install directories (0.460732ms)
-✔ start ready is unchecked when the body has no predecessors (1.431056ms)
-✔ start ready follows predecessor issues read from the tracker (1.175978ms)
-ℹ tests 10
+✔ start requires an open tracker issue and a ready result when checked (62.064209ms)
+✔ create has only git and tracker preconditions (0.531912ms)
+✔ end and merge require complete before and after evidence (0.755759ms)
+✔ missing island is an explicit skip for the human end guard (65.662461ms)
+✔ sibling skills resolve from the plugin root without hidden install directories (0.398798ms)
+✔ start ready is unchecked when the body has no predecessors (1.474161ms)
+✔ start ready follows predecessor issues read from the tracker (1.202096ms)
+ℹ tests 16
 ℹ suites 0
-ℹ pass 10
+ℹ pass 16
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 355.680712
+ℹ duration_ms 272.249966
