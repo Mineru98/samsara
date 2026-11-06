@@ -24,7 +24,7 @@
 - `skills/{issue-create,issue-start,issue-end,issue-merge}/scripts/issue-common.mjs` — 그래프 캐시 잠금·patch 블록, `GRAPH_FILE_NAME`, ignore 예외 제거. 공유 블록 표식을 `resolveStatus` 로 변경
 - `skills/{issue-create,issue-start,issue-end,issue-merge}/scripts/issue-tracker.mjs` — `setTrackerStatus` 의 그래프 patch 제거
 - `scripts/check-shared.sh`, `scripts/check-shared.test.mjs` — 4개 사본 기준으로 정리, onboard·sync 전용 Git 탐지 검사 제거
-- `skills/issue-start/scripts/issue-start.mjs` — `readyFact` 를 gh 조회로 대체, `predecessorNumbers` 추가
+- `skills/issue-start/scripts/issue-start.mjs` — `readyFact` 를 공유 블록의 선행 조회(gh)로 대체
 - `skills/issue-merge/scripts/issue-merge.mjs`, `tools/issue-ontology/schemas/actions/merge.schema.json` — `graphPresent` 제거
 - `skills/issue-merge/scripts/issue-merge.mjs` — `unblocked --issue <n>` 명령 추가. `skills/issue-merge/references/next-actions.md` 가 이 명령을 안내
 - `skills/*/scripts/issue-common.mjs` 공유 블록 — `predecessorNumbers`·`isIssueDone`·`unblockedSuccessors` 추가 (issue-start `readyFact` 도 사용)
