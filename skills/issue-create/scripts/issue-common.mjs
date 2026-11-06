@@ -471,6 +471,56 @@ export function resolveStatus(raw) {
 }
 
 /** "59", "#59", GitHub 이슈 URL, Jira 키("ACME-59")에서 번호를 뽑는다. */
+/** 본문 `## 선행 이슈` 섹션의 이슈 번호를 순서대로 뽑는다. 섹션이 없거나 `없음` 이면 빈 배열. */
+export function predecessorNumbers(body) {
+  const lines = String(body ?? '').split(/\r?\n/);
+  const at = lines.findIndex((line) => /^##\s+선행 이슈\s*$/.test(line));
+  if (at < 0) return [];
+  const numbers = [];
+  for (const line of lines.slice(at + 1)) {
+    if (/^#{1,2}\s/.test(line)) break;
+    const m = line.match(/^\s*[-*]\s+(?:\[[ xX]\]\s+)?\[?#(\d+)\b/);
+    if (m && !numbers.includes(Number(m[1]))) numbers.push(Number(m[1]));
+  }
+  return numbers;
+}
+
+/** 트래커 이슈가 끝났는지. 닫혔거나 `status:close` 라벨이면 끝난 것이다. */
+export function isIssueDone(issue) {
+  return String(issue?.state ?? '').toUpperCase() === 'CLOSED'
+    || (issue?.labels ?? []).some((label) => (label?.name ?? label) === 'status:close');
+}
+
+/**
+ * 닫은 이슈를 `## 선행 이슈` 에 적어 둔 열린 이슈를 찾고, 선행이 전부 끝났는지 트래커에서 확인한다.
+ * 검색은 본문에 번호가 언급된 이슈를 넓게 잡고, 선행 섹션으로 다시 거른다.
+ * 반환: { ok, issue, candidates: [{ number, title, url, predecessors: [{ number, done }], ready }], ready: [번호] }
+ */
+export function unblockedSuccessors(tracker, number, { limit = 100 } = {}) {
+  const n = Number(number);
+  const list = tracker.issueList({
+    state: 'open', limit, search: `"#${n}" in:body`, fields: 'number,title,url,body,state,labels',
+  });
+  if (!list) return { ok: false, issue: n, candidates: [], ready: [], err: '열린 이슈 검색 실패' };
+  const seen = new Map();
+  const done = (k) => {
+    if (!seen.has(k)) seen.set(k, tracker.issueView(k));
+    const issue = seen.get(k);
+    return issue ? isIssueDone(issue) : null;
+  };
+  const candidates = [];
+  for (const item of list) {
+    const preds = predecessorNumbers(item.body);
+    if (!preds.includes(n)) continue;
+    const predecessors = preds.map((k) => ({ number: k, done: done(k) }));
+    candidates.push({
+      number: Number(item.number), title: item.title, url: item.url,
+      predecessors, ready: predecessors.every((p) => p.done === true),
+    });
+  }
+  return { ok: true, issue: n, candidates, ready: candidates.filter((c) => c.ready).map((c) => c.number) };
+}
+
 export function parseIssueNumber(raw) {
   if (raw === null || raw === undefined) return null;
   const s = String(raw).trim();

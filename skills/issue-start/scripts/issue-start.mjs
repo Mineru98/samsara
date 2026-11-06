@@ -42,7 +42,7 @@ import {
   slugify, prefixFromLabels, parseIssueNumber, inferIssue,
   issueDir, evidenceDir, evidenceRel, listEvidence, ensureIgnoreBlock,
   mirrorEvidence, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
-  setTerminalTitle, WORKSPACE_DIR, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
+  setTerminalTitle, predecessorNumbers, isIssueDone, WORKSPACE_DIR, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
 } from './issue-common.mjs';
 import {
   createTracker, evidenceUrls, gitHost, setTrackerStatus,
@@ -97,20 +97,6 @@ export function downloadImage(url, dir, index, auth) {
   return downloadImageReference(url, dir, index, auth);
 }
 
-/** 본문 `## 선행 이슈` 섹션의 이슈 번호를 순서대로 뽑는다. 섹션이 없거나 `없음` 이면 빈 배열. */
-export function predecessorNumbers(body) {
-  const lines = String(body ?? '').split(/\r?\n/);
-  const at = lines.findIndex((line) => /^##\s+선행 이슈\s*$/.test(line));
-  if (at < 0) return [];
-  const numbers = [];
-  for (const line of lines.slice(at + 1)) {
-    if (/^#{1,2}\s/.test(line)) break;
-    const m = line.match(/^\s*[-*]\s+(?:\[[ xX]\]\s+)?\[?#(\d+)\b/);
-    if (m && !numbers.includes(Number(m[1]))) numbers.push(Number(m[1]));
-  }
-  return numbers;
-}
-
 /**
  * 착수 가능 여부를 트래커에서 직접 판정한다. 본문의 선행 이슈를 하나씩 조회해
  * 모두 닫혔거나 `status:close` 면 ready 다. 선행이 없거나 조회에 실패하면 판정을 생략한다.
@@ -124,9 +110,7 @@ export function readyFact(issue, tracker) {
       console.error(`! 선행 이슈 #${n} 조회 실패로 ready 판정을 생략합니다.`);
       return { readyChecked: false };
     }
-    const closed = String(pred.state ?? '').toUpperCase() === 'CLOSED'
-      || (pred.labels ?? []).some((label) => label.name === 'status:close');
-    if (!closed) {
+    if (!isIssueDone(pred)) {
       console.error(`! 선행 이슈 #${n} 이 아직 끝나지 않았습니다.`);
       return { readyChecked: true, ready: false };
     }

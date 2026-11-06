@@ -10,7 +10,8 @@ import {
   assertAction,
   validateActionDocument,
 } from './validate.mjs';
-import { predecessorNumbers, readyFact } from '../../skills/issue-start/scripts/issue-start.mjs';
+import { readyFact } from '../../skills/issue-start/scripts/issue-start.mjs';
+import { predecessorNumbers } from '../../skills/issue-start/scripts/issue-common.mjs';
 import { resolveSkillScript } from '../../skills/issue-create/scripts/issue-common.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');

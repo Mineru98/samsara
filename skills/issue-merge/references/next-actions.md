@@ -49,14 +49,15 @@ git worktree list
 ```
 
 이번 회차에 닫은 이슈를 `## 선행 이슈` 에 적어 둔 열린 이슈가 있으면 close 로 새로 풀렸을 수 있다.
-GitHub 이슈를 직접 검색해 후보를 찾고, 후보 본문의 선행 이슈가 전부 닫혔는지 확인한다.
+닫은 이슈마다 아래를 돌린다. 본문에 번호가 언급된 열린 이슈를 `gh` 로 검색한 뒤 선행 섹션으로 거르고,
+후보의 선행 이슈가 전부 끝났는지(CLOSED 또는 `status:close`) 하나씩 조회한다.
 
 ```bash
-gh issue list --state open --search '"#<닫은 번호>" in:body' --json number,title,url,body
-gh issue view <선행 번호> --json state,labels     # 후보의 선행 이슈마다. CLOSED 또는 status:close 면 끝난 것
+node <skill>/scripts/issue-merge.mjs unblocked --issue <닫은 번호>   # ready 에 착수 가능한 번호가 나온다
 ```
 
-선행이 모두 끝난 후보가 있으면 1번(다른 이슈 착수)의 권장 대상으로 그 번호를 제시한다.
+`ready` 에 번호가 있으면 1번(다른 이슈 착수)의 권장 대상으로 그 번호를 제시한다.
+`candidates` 중 `ready: false` 인 것은 남은 선행(`done: false`)을 한 줄로 함께 적는다.
 
 상황에 따라 권장 위치를 바꾼다.
 
