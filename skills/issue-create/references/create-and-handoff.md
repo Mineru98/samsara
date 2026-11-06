@@ -124,18 +124,13 @@ cp /tmp/issue-draft.md .issue/<번호>/request.md
 동시에 굴리면 어느 워크트리에서 편집 중인지 잃는다. 병렬로 굴리고 싶으면 세션을 나눠
 `issue-start` 를 각각 부르고, 마지막에 `issue-merge` 로 한 번에 통합한다.
 
-## DAG 배선 (issue-onboard 사용 시)
+## 선행 · 후행 기록
 
-`.issue/graph.json` 이 있으면(issue-onboard 사용 중) 새로 만든 이슈의 노드는 `status:open` 자동 부착이
-`setTrackerStatus` 를 지나며 그래프에 자동 등록된다. **분할 때 확정한 의존은 그때만 알 수 있으므로**
-버리지 말고 엣지로 남긴다. 본문에 `depends on #N` 을 적으면 `issue-onboard sync` 가 자동 감지하고,
-즉시 걸려면 아래로 근거와 함께 남긴다.
+**분할 때 확정한 의존은 그때만 알 수 있으므로** 버리지 말고 본문의 `## 선행 이슈` / `## 후행 이슈` 에 남긴다
+(형식은 `issue-draft.md` 의 `선행 · 후행 이슈`). 별도 그래프 캐시는 없다. `issue-start` 는 착수 때
+선행 이슈를 `gh` 로 하나씩 조회해, 하나라도 끝나지 않았으면 착수를 막는다.
 
-```bash
-node <issue-onboard>/scripts/issue-onboard.mjs link <새 이슈> <선행 이슈> --why "<왜 막히는지>"
-```
-
-예: API 이슈 #71 이 UI 이슈 #72 의 선행이면 `link 72 71 --why "72 는 71 의 API 계약이 필요"`.
+예: API 이슈 #71 이 UI 이슈 #72 의 선행이면 #72 의 `## 선행 이슈` 에 #71 을, #71 의 `## 후행 이슈` 에 #72 를 적는다.
 
 ## 실패 처리
 

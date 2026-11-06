@@ -10,6 +10,7 @@
  *   resolve --worktree <p> 작업 브랜치 쪽에서 충돌을 해소할 판을 깐다
  *   merge --pr <n>         PR merge 래퍼. 실패 사유를 구조화해 출력
  *   close --issue <n> [--comment-file <f>]  이슈를 닫는다
+ *   unblocked --issue <n>  닫은 이슈를 선행으로 둔 열린 이슈와 착수 가능 여부
  *   cleanup                통합이 끝난 워크트리와 base-tree 를 정리
  *
  * 이 스크립트는 판단하지 않는다. 사실 수집과 단일 동작 실행만 한다.
@@ -26,13 +27,13 @@ import path from 'node:path';
 import process from 'node:process';
 import {
   git, run, fail, parseArgs, repoRoot, currentBranch, detectBase,
-  inferIssue, listWorktrees, listEvidence, evidenceRel, setTerminalTitle, WORKSPACE_DIR,
+  inferIssue, listWorktrees, listEvidence, evidenceRel, setTerminalTitle, unblockedSuccessors, WORKSPACE_DIR,
 } from './issue-common.mjs';
 import { createTracker, gitHost, setTrackerStatus } from './issue-tracker.mjs';
 import { cmdPhase } from './issue-merge-phase.mjs';
 import { gateAction } from './issue-ontology.mjs';
 
-const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|status|cleanup> [options]
+const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
 
   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
   base-tree [--remove]         base 전용 임시 워크트리 생성/정리
@@ -41,6 +42,7 @@ const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflig
   resolve --worktree <path> [--continue [--push] | --abort]
   merge --pr <n> [--method squash|merge|rebase]
   close --issue <n> [--comment-file <f>]
+  unblocked --issue <n>
   status <n> <open|plan|in-process|review|close>
   cleanup --worktree <path> [--branch <name>]
 
@@ -519,7 +521,6 @@ function cmdMerge(args) {
   };
   const guard = gateAction({
     action: 'merge',
-    graphPresent: existsSync(path.join(root, WORKSPACE_DIR, 'graph.json')),
     observed,
   });
   if (!guard.ok) fail('merge 온톨로지 guard 실패: ' + guard.error);
@@ -561,6 +562,16 @@ function cmdClose(args) {
   }, null, 2));
 }
 
+/* -------------------------------------------------------------- unblocked */
+
+function cmdUnblocked(args) {
+  const number = args.issue ?? args._[0];
+  if (!number) fail('--issue <번호> 가 필요합니다.');
+  const result = unblockedSuccessors(createTracker(repoRoot()), number);
+  console.log(JSON.stringify(result, null, 2));
+  if (!result.ok) process.exit(2);
+}
+
 /* ---------------------------------------------------------------- cleanup */
 
 function cmdCleanup(args) {
@@ -596,6 +607,7 @@ switch (sub) {
   case 'resolve': cmdResolve(args); break;
   case 'merge': cmdMerge(args); break;
   case 'close': cmdClose(args); break;
+  case 'unblocked': cmdUnblocked(args); break;
   case 'status': {
     const result = setTrackerStatus(createTracker(repoRoot(), { repo: args.repo }), args._[0] ?? args.issue, args._[1], { dryRun: args.dryRun });
     if (!result.status) { console.error(`✗ 상태 전환 실패: ${result.err}`); process.exit(2); }

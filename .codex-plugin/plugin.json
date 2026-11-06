@@ -29,9 +29,8 @@
     ],
     "websiteURL": "https://github.com/Mineru98/samsara",
     "defaultPrompt": [
-      "Show me which issue to work on next.",
       "Create an issue before changing this repository.",
-      "Refresh the issue graph from GitHub."
+      "Start work on an open issue."
     ],
     "brandColor": "#D93528",
     "composerIcon": "./assets/icon.png",
