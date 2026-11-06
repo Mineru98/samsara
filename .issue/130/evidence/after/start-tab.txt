@@ -1,0 +1,36 @@
+## 1. 신뢰하지 않은 새 폴더 (git init 직후)
+$ cd <new-folder> && start-tab.sh trust-after-130 "#130 after" "reply with OK only"
+trust-after-130 wP:t2K wP:p2K TRUST_PROMPT
+exit=2 elapsed=7s   # 프롬프트 전송 전에 감지, 선택지는 건드리지 않음
+
+# herdr pane read --source visible (스크립트 종료 직후)
+cc --mode=dev --model=opus
+❯ cc --mode=dev --model=opus
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Accessing workspace:
+
+ <new-folder>
+
+ Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source
+ project, or work from your team). If not, take a moment to review what's in this folder first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ No, exit
+   Yes, I trust this folder
+
+ Enter to confirm · Esc to cancel
+
+## 2. 이미 신뢰한 폴더 (이 저장소)
+$ start-tab.sh trusted-after-130 "#130 after trusted" "reply with OK only"
+trusted-after-130 wP:t2M wP:p2M working
+exit=0 elapsed=10s
+
+## 3. SKILL.md 재전송 절차 실측 (오케스트레이터가 만든 테스트 폴더)
+send-keys down → ❯ Yes, I trust this folder → enter
+agent wait --until idle                          → rc=0
+agent prompt "<프롬프트>" --wait --until working  → 실패(입력창에 글자만 남고 제출 안 됨) — 스크립트였다면 NOT_STARTED:idle, exit 3
+send-keys enter → agent wait --until working    → working, 응답 "● OK"
