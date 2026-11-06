@@ -352,9 +352,5 @@ __marimo__/
 !.issue/*/
 !.issue/*/evidence/
 !.issue/*/evidence/**
-!.issue/graph.json
 .issue/**/.auth.json
 .issue/**/storage-state.json
-
-# board-mockup 검증 스크린샷 (재생성 가능, 비추적)
-design/assets/shots/

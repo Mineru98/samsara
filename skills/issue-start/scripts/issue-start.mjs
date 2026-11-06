@@ -33,7 +33,6 @@ import {
   mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, renameSync, readdirSync, cpSync,
   realpathSync,
 } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -42,8 +41,8 @@ import {
   branchExists, remoteBranchExists, existingWorktreeFor, isIgnored,
   slugify, prefixFromLabels, parseIssueNumber, inferIssue,
   issueDir, evidenceDir, evidenceRel, listEvidence, ensureIgnoreBlock,
-  mirrorEvidence, resolveSkillScript, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
-  setTerminalTitle, WORKSPACE_DIR, GRAPH_FILE_NAME, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
+  mirrorEvidence, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
+  setTerminalTitle, WORKSPACE_DIR, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
 } from './issue-common.mjs';
 import {
   createTracker, evidenceUrls, gitHost, setTrackerStatus,
@@ -98,36 +97,41 @@ export function downloadImage(url, dir, index, auth) {
   return downloadImageReference(url, dir, index, auth);
 }
 
-export function readyFact(number, root) {
-  const graphFile = path.join(root, WORKSPACE_DIR, GRAPH_FILE_NAME);
-  if (!existsSync(graphFile)) return { readyChecked: false };
+/** 본문 `## 선행 이슈` 섹션의 이슈 번호를 순서대로 뽑는다. 섹션이 없거나 `없음` 이면 빈 배열. */
+export function predecessorNumbers(body) {
+  const lines = String(body ?? '').split(/\r?\n/);
+  const at = lines.findIndex((line) => /^##\s+선행 이슈\s*$/.test(line));
+  if (at < 0) return [];
+  const numbers = [];
+  for (const line of lines.slice(at + 1)) {
+    if (/^#{1,2}\s/.test(line)) break;
+    const m = line.match(/^\s*[-*]\s+(?:\[[ xX]\]\s+)?\[?#(\d+)\b/);
+    if (m && !numbers.includes(Number(m[1]))) numbers.push(Number(m[1]));
+  }
+  return numbers;
+}
 
-  const onboard = resolveSkillScript(import.meta.url, 'issue-onboard', 'issue-onboard.mjs', { root });
-  if (!onboard) {
-    console.error('! sibling issue-onboard을 찾지 못해 ready 판정을 생략합니다.');
-    return { readyChecked: false };
+/**
+ * 착수 가능 여부를 트래커에서 직접 판정한다. 본문의 선행 이슈를 하나씩 조회해
+ * 모두 닫혔거나 `status:close` 면 ready 다. 선행이 없거나 조회에 실패하면 판정을 생략한다.
+ */
+export function readyFact(issue, tracker) {
+  const preds = predecessorNumbers(issue?.body);
+  if (!preds.length) return { readyChecked: false };
+  for (const n of preds) {
+    const pred = tracker.issueView(n);
+    if (!pred) {
+      console.error(`! 선행 이슈 #${n} 조회 실패로 ready 판정을 생략합니다.`);
+      return { readyChecked: false };
+    }
+    const closed = String(pred.state ?? '').toUpperCase() === 'CLOSED'
+      || (pred.labels ?? []).some((label) => label.name === 'status:close');
+    if (!closed) {
+      console.error(`! 선행 이슈 #${n} 이 아직 끝나지 않았습니다.`);
+      return { readyChecked: true, ready: false };
+    }
   }
-  const result = spawnSync(process.execPath, [onboard, 'plan', '--json'], {
-    cwd: root,
-    encoding: 'utf8',
-  });
-  if (result.status !== 0) {
-    console.error('! issue-onboard plan --json 실패로 ready 판정을 생략합니다.');
-    return { readyChecked: false };
-  }
-
-  let plan;
-  try {
-    plan = JSON.parse(String(result.stdout ?? '').trim());
-  } catch {
-    console.error('! issue-onboard plan --json 응답이 JSON이 아니어서 ready 판정을 생략합니다.');
-    return { readyChecked: false };
-  }
-  if (!Array.isArray(plan.ready)) {
-    console.error('! issue-onboard plan --json 응답에 ready 배열이 없어 판정을 생략합니다.');
-    return { readyChecked: false };
-  }
-  return { readyChecked: true, ready: plan.ready.includes(Number(number)) };
+  return { readyChecked: true, ready: true };
 }
 
 function cmdFetch(number, root, tracker, providedAuth) {
@@ -145,7 +149,7 @@ function cmdFetch(number, root, tracker, providedAuth) {
       trackerAuth: auth.ok,
       issueExists: true,
       trackerStateOpen: String(issue.state ?? '').toUpperCase() === 'OPEN',
-      ...readyFact(number, root),
+      ...readyFact(issue, tracker),
     });
     if (!guard.ok) {
       console.error('✗ start 온톨로지 guard 실패: ' + guard.error);

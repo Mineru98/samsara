@@ -58,20 +58,13 @@ export function loadOntology({ root } = {}) {
   if (cache.has(base)) return cache.get(base);
 
   const ajv = new Ajv2020({ allErrors: true, strict: true });
-  const graph = ajv.compile(readSchema(path.join(base, 'schemas', 'graph-v2.schema.json')));
   const actions = Object.fromEntries(ACTIONS.map((action) => [
     action,
     ajv.compile(readSchema(path.join(base, 'schemas', 'actions', action + '.schema.json'))),
   ]));
-  const loaded = { root: base, ajv, graph, actions };
+  const loaded = { root: base, ajv, actions };
   cache.set(base, loaded);
   return loaded;
-}
-
-export function validateGraphDocument(document, { root } = {}) {
-  const validator = loadOntology({ root }).graph;
-  const valid = validator(document);
-  return { valid, errors: valid ? [] : (validator.errors ?? []) };
 }
 
 export function validateActionDocument(document, { root } = {}) {

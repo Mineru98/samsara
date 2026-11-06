@@ -6,15 +6,11 @@
   "additionalProperties": false,
   "required": [
     "action",
-    "graphPresent",
     "observed"
   ],
   "properties": {
     "action": {
       "const": "merge"
-    },
-    "graphPresent": {
-      "const": true
     },
     "observed": {
       "type": "object",

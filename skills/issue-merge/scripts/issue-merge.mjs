@@ -519,7 +519,6 @@ function cmdMerge(args) {
   };
   const guard = gateAction({
     action: 'merge',
-    graphPresent: existsSync(path.join(root, WORKSPACE_DIR, 'graph.json')),
     observed,
   });
   if (!guard.ok) fail('merge 온톨로지 guard 실패: ' + guard.error);

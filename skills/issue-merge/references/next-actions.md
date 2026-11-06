@@ -48,14 +48,15 @@ gh issue list --state open --limit 10 --json number,title,url,labels
 git worktree list
 ```
 
-`.issue/graph.json` 이 있으면(issue-onboard 사용 중) close 로 새로 풀린 이슈를 함께 보여준다.
-close 는 `setTrackerStatus` 를 지나며 그래프 노드를 자동으로 `close` 로 바꾸므로, 아래는 최신 상태를 낸다.
+이번 회차에 닫은 이슈를 `## 선행 이슈` 에 적어 둔 열린 이슈가 있으면 close 로 새로 풀렸을 수 있다.
+GitHub 이슈를 직접 검색해 후보를 찾고, 후보 본문의 선행 이슈가 전부 닫혔는지 확인한다.
 
 ```bash
-node <issue-onboard>/scripts/issue-onboard.mjs plan     # 방금 close 로 BLOCKED → READY 로 풀린 이슈가 드러난다
+gh issue list --state open --search '"#<닫은 번호>" in:body' --json number,title,url,body
+gh issue view <선행 번호> --json state,labels     # 후보의 선행 이슈마다. CLOSED 또는 status:close 면 끝난 것
 ```
 
-새로 ready 가 된 이슈가 있으면 1번(다른 이슈 착수)의 권장 대상으로 그 번호를 제시한다.
+선행이 모두 끝난 후보가 있으면 1번(다른 이슈 착수)의 권장 대상으로 그 번호를 제시한다.
 
 상황에 따라 권장 위치를 바꾼다.
 
