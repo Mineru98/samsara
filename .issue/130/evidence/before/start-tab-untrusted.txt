@@ -1,0 +1,27 @@
+$ cd <git init 직후 새 폴더> && start-tab.sh trust-before-130 "#130 before" "reply with OK only"
+trust-before-130 wP:t2J wP:p2J blocked
+exit=0   # 정상처럼 끝남
+
+# herdr pane read --source visible (프롬프트 전송 후)
+cc --mode=dev --model=opus
+❯ cc --mode=dev --model=opus
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Accessing workspace:
+
+ <new-folder>
+
+ Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source
+ project, or work from your team). If not, take a moment to review what's in this folder first.
+
+ Claude Code'll be able to read, edit, and execute files here.
+
+ Security guide
+
+ ❯ No, exit
+   Yes, I trust this folder
+
+ Enter to confirm · Esc to cancel
+
+# herdr agent get
+agent_status= blocked
