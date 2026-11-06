@@ -14,7 +14,7 @@ CX=( "cx --model gpt-6.1-terra -c model_reasoning_effort=high"
      "cx --model gpt-6.1-sol -c model_reasoning_effort=high"
      "cx --model gpt-6-astra -c model_reasoning_effort=low"
      "cx --model gpt-6-astra -c model_reasoning_effort=medium" )
-CC=( "cc --mode=dev --model=opus --effort=xhigh"
+CC=( "cc --mode=dev --model=opus --effort=high"
      "cc --mode=dev --model=fable" )
 CXP="\$issue-merge $ISSUES — 이 저장소는 GitHub CI 가 없다(check 0개는 실패가 아니라 검사 없음). CI 대신 이슈 증거와 base-tree 통합 테스트를 게이트로 쓴다. 보정 push 와 PR 별 merge 는 승인을 물어라."
 if [ "${ORCH:-}" = codex ]; then
