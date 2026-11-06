@@ -42,11 +42,34 @@ R=$(herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" \
 P=<R 의 .result.root_pane.pane_id>
 herdr pane rename "$P" "#<N> start: <짧은 제목>"
 herdr pane run "$P" "cc --mode=dev --model=opus"
-# pane get 의 agent=claude, agent_status=idle 이 될 때까지 2초 간격 확인 (보통 2~5초)
+# pane get 의 agent=claude, agent_status=idle|done|blocked 가 될 때까지 2초 간격 확인 (보통 2~5초)
 herdr agent rename "$P" issue-<N>
-herdr agent prompt issue-<N> "/issue-start #<N>" --wait --timeout 10000
-# timeout 오류는 정상. agent get 으로 working 이면 착수된 것
+herdr pane read "$P" --source visible --lines 60   # 신뢰·hooks 화면이면 보내지 않고 멈춘다
+herdr agent prompt issue-<N> "/issue-start #<N>" --wait --until working --timeout 15000
+# 성공하면 착수된 것. 실패하면 화면을 다시 읽어 신뢰·hooks 화면인지 가린다
 ```
+
+출력의 마지막 칸과 exit 로 결과를 가린다.
+
+| 출력 상태 | exit | 뜻 |
+| --- | --- | --- |
+| `working` | 0 | 첫 프롬프트가 들어가 착수됐다 |
+| `TRUST_PROMPT` | 2 | 폴더 신뢰 화면("Is this a project you created or one you trust?")이 떠 있다. 프롬프트는 보내지 않았거나 화면이 삼켰다 |
+| `HOOKS_REVIEW` | 2 | codex "hooks need review" 화면이 떠 있다. 6 통합의 "cx tab 동작" 항목대로 처리한다 |
+| `NOT_STARTED:<status>` | 3 | 프롬프트를 보냈지만 `working` 이 되지 않았다. 화면을 읽어 원인을 가린다 |
+
+### 폴더 신뢰 화면 처리 [검증: 새 폴더 `TRUST_PROMPT` · 재전송]
+
+새 폴더(아직 신뢰하지 않은 폴더)에서 처음 tab 을 열면 뜬다. 같은 폴더의 두 번째 tab 부터는 뜨지 않는다.
+폴더 신뢰는 보안 판단이라 스크립트는 선택지를 고르지 않는다. 오케스트레이터가 아래 순서로 처리한다.
+
+1. 신뢰 여부를 정한다.
+   - 오케스트레이터가 이번 작업에서 직접 만든 폴더(예: 방금 `git init` 한 저장소)면 묻지 않고 신뢰한다.
+   - 그 밖의 폴더는 AskUserQuestion 으로 경로를 보여 주고 묻는다. 사용자가 거절하면 `esc` 로 닫고 그 tab 을 닫는다.
+2. 선택한다. 커서 기본값은 `No, exit` 다. `agent send-keys issue-<N> down` 뒤 화면을 다시 읽어 `❯ Yes, I trust this folder` 를 확인하고 `enter`.
+3. `agent wait issue-<N> --until idle --timeout 20000` 으로 기동을 기다린다.
+4. 첫 프롬프트를 다시 보낸다: `agent prompt issue-<N> "<첫 프롬프트>" --wait --until working --timeout 15000`.
+5. 4 가 실패하고 입력창(`❯ <첫 프롬프트>`)에 글자만 남아 있으면 기동 중에 Enter 가 빠진 것이다. `agent send-keys issue-<N> enter` 뒤 `agent wait issue-<N> --until working --timeout 10000` (실측: 이 경우로 한 번 걸렸다).
 
 - tab 이름 형식: 착수 `#<N> start: <제목>`, 통합 `#<N> #<M> merge` [통합은 미검증].
 - 포커스는 오케스트레이터 tab 에 남긴다(`--no-focus`).
@@ -167,7 +190,7 @@ LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 �
   - issue-merge 의 "CI 통과" 조건을 문자 그대로 읽어 CI 가 없는 저장소의 PR 을 전부 보류한다. 그래서 cx 의 첫 프롬프트에 "CI 없음 = 검사 없음, 증거·base-tree 통합 테스트가 게이트" 를 붙인다(`merge-launch.sh` 가 붙인다). 이미 보류로 끝났으면 같은 내용을 `agent prompt` 로 보내 이어가게 한다.
   - 질문은 AskUserQuestion 화면이 아니라 일반 텍스트로 묻고, 입력을 기다리는 동안 상태가 `blocked` 가 아니라 `done`/`idle` 이다. 감시기는 `done` 에서도 멈추므로 화면을 읽어 질문인지 완료인지 가린다. 답은 `agent prompt <agent> "<답>"` 으로 보낸다.
   - `agent prompt` 직후 잠깐 `done` 으로 읽힌다. 감시기를 다시 띄우기 전에 `agent wait <agent> --until working --timeout 15000` 으로 작업 시작을 확인한다.
-  - `~/.codex/hooks.json` 이 바뀌면 codex 가 시작할 때 "hooks need review" 화면을 띄워 첫 프롬프트를 삼킨다. 상태는 `done` 으로 읽힌다. hook 신뢰는 사용자에게 묻고(실측: 사용자가 trust all 선택 → `t`), `esc` 로 닫은 뒤 첫 프롬프트를 다시 보낸다.
+  - `~/.codex/hooks.json` 이 바뀌면 codex 가 시작할 때 "hooks need review" 화면을 띄워 첫 프롬프트를 삼킨다. 상태는 `done` 으로 읽힌다. hook 신뢰는 사용자에게 묻고(실측: 사용자가 trust all 선택 → `t`), `esc` 로 닫은 뒤 첫 프롬프트를 다시 보낸다. `start-tab.sh` 는 이 화면을 `HOOKS_REVIEW`(exit 2)로 알리고 선택하지 않는다.
   - 사다리 단계를 올릴 때 이전 단계가 남긴 `.issue/merge/<묶음>/` 계획·의미 충돌 목록·사용자 결정(예: S3)을 첫 프롬프트에 요약해 넘긴다.
 - 사다리를 건너뛰는 경우: 모델 문제가 아니라 설치 플러그인 문제(예: codex 쪽 0.3.6 issue-merge 의 계약 해시 불일치로 실행 거부)로 cx tab 이 시작조차 못 하면, cx 다음 단계도 같은 플러그인이라 같은 결과다. 사용자에게 묻고 cc 사다리(별도 설치본)로 넘긴다(실측: #65 #69 #97 회차).
 - merge tab 을 손으로 열 때도 `LAUNCH` 를 반드시 넘긴다. 빠뜨리면 `start-tab.sh` 기본값(`cc --mode=dev --model=opus`, effort medium)으로 뜬다(실측: 한 번 빠뜨려 다시 띄움).

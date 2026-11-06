@@ -54,13 +54,16 @@ R=$(herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" \
 P=<R 의 .result.root_pane.pane_id>
 herdr pane rename "$P" "#<N> start[6.1 terra]: <짧은 제목>"
 herdr pane run "$P" "cx --mode=dev --model gpt-6.1-terra -c model_reasoning_effort=high"
-# pane get 의 agent=codex, agent_status=idle|done 이 될 때까지 2초 간격 확인
+# pane get 의 agent=codex, agent_status=idle|done|blocked 가 될 때까지 2초 간격 확인
 herdr agent rename "$P" issue-<N>
-herdr agent prompt issue-<N> '$issue-start #<N>' --wait --timeout 10000
-# timeout 오류는 정상. agent wait issue-<N> --until working --timeout 15000 으로 착수를 확인한다
+herdr pane read "$P" --source visible --lines 60   # 신뢰·hooks 화면이면 보내지 않고 멈춘다
+herdr agent prompt issue-<N> '$issue-start #<N>' --wait --until working --timeout 15000
+# 성공하면 착수된 것. 실패하면 화면을 다시 읽어 신뢰·hooks 화면인지 가린다
 ```
 
-- 첫 프롬프트 직후 `done` 으로 읽히면 "hooks need review" 화면이 프롬프트를 삼킨 것일 수 있다. 화면을 읽어 확인하고 6 통합의 "cx tab 동작" 항목대로 처리한 뒤 다시 보낸다.
+- 출력 상태와 exit 는 SKILL.md 1단계 표와 같다: `working`(0), `TRUST_PROMPT`(2), `HOOKS_REVIEW`(2), `NOT_STARTED:<status>`(3).
+- `HOOKS_REVIEW` 면 "hooks need review" 화면이 떠 있는 것이다. 6 통합의 "cx tab 동작" 항목대로 처리한 뒤 첫 프롬프트를 다시 보낸다. [미검증: cx 화면 문구로 감지 실측 전]
+- `TRUST_PROMPT` 면 SKILL.md 1단계 "폴더 신뢰 화면 처리" 순서를 따른다. codex 신뢰 화면은 선택지 문구가 다르므로 화면을 읽어 고른다. [미검증: cx]
 
 - tab 이름 형식: 착수 `#<N> start[<모델>]: <제목>`, 통합 `#<N> #<M> merge[<단계 모델>]: <요지>`.
 - 포커스는 오케스트레이터 tab 에 남긴다(`--no-focus`).
@@ -185,7 +188,7 @@ LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 �
   - (merge tab 만) issue-merge 의 "CI 통과" 조건을 문자 그대로 읽어 CI 가 없는 저장소의 PR 을 전부 보류한다. 그래서 cx 의 첫 프롬프트에 "CI 없음 = 검사 없음, 증거·base-tree 통합 테스트가 게이트" 를 붙인다(`merge-launch.sh` 가 붙인다). 이미 보류로 끝났으면 같은 내용을 `agent prompt` 로 보내 이어가게 한다.
   - 질문은 AskUserQuestion 화면이 아니라 일반 텍스트로 묻고, 입력을 기다리는 동안 상태가 `blocked` 가 아니라 `done`/`idle` 이다. 감시기는 `done` 에서도 멈추므로 화면을 읽어 질문인지 완료인지 가린다. 답은 `agent prompt <agent> "<답>"` 으로 보낸다.
   - `agent prompt` 직후 잠깐 `done` 으로 읽힌다. 감시기를 다시 띄우기 전에 `agent wait <agent> --until working --timeout 15000` 으로 작업 시작을 확인한다.
-  - `~/.codex/hooks.json` 이 바뀌면 codex 가 시작할 때 "hooks need review" 화면을 띄워 첫 프롬프트를 삼킨다. 상태는 `done` 으로 읽힌다. hook 신뢰는 사용자에게 묻고(실측: 사용자가 trust all 선택 → `t`), `esc` 로 닫은 뒤 첫 프롬프트를 다시 보낸다.
+  - `~/.codex/hooks.json` 이 바뀌면 codex 가 시작할 때 "hooks need review" 화면을 띄워 첫 프롬프트를 삼킨다. 상태는 `done` 으로 읽힌다. hook 신뢰는 사용자에게 묻고(실측: 사용자가 trust all 선택 → `t`), `esc` 로 닫은 뒤 첫 프롬프트를 다시 보낸다. `start-tab.sh` 는 이 화면을 `HOOKS_REVIEW`(exit 2)로 알리고 선택하지 않는다.
   - 사다리 단계를 올릴 때 이전 단계가 남긴 `.issue/merge/<묶음>/` 계획·의미 충돌 목록·사용자 결정(예: S3)을 첫 프롬프트에 요약해 넘긴다.
 - `EXHAUSTED=1` 이면 더 올리지 않고 사용자에게 상황을 보고하고 묻는다.
 - tab 이름에 단계 모델을 넣는다. 예: `#64 #66 merge[6.1 sol medium]: …`.
