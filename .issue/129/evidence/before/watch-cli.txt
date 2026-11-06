@@ -1,0 +1,27 @@
+$ watch.sh --interval 1 --merging merge-1-4
+HH:MM:SS --merging gone
+EVENT --merging gone
+exit=0
+
+$ watch.sh --bogus x
+HH:MM:SS --bogus gone
+EVENT --bogus gone
+exit=0
+
+$ watch.sh --interval 1 merge-1-4
+HH:MM:SS merge-1-4 working
+HH:MM:SS merge-1-4 done
+EVENT merge-1-4 done
+exit=0
+
+$ watch.sh --interval 1 issue-1 issue-2
+HH:MM:SS issue-1 working
+HH:MM:SS issue-2 working
+HH:MM:SS issue-1 done
+EVENT issue-1 done
+exit=0
+
+$ watch.sh merge-1-4
+HH:MM:SS merge-1-4 working
+exit=124
+

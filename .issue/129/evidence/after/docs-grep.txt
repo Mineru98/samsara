@@ -1,0 +1,5 @@
+$ grep -rn -- --merging skills/herdr-orch
+skills/herdr-orch/SKILL.md:180:- 첫 프롬프트는 사다리의 `PROMPT`(cc 는 `/issue-merge #<N> #<M>`, cx 는 `$issue-merge #<N> #<M>`, 번호 오름차순)다. `scripts/watch.sh --interval 15 merge-<N>-<M>` 으로 감시하고, 그동안 판정을 다시 돌릴 때는 `merge-candidates.py` 에 `--merging` 을 붙인다.
+skills/herdr-orch/scripts/merge-candidates.py:4:usage: merge-candidates.py --base <branch> [--live <N> ...] [--owned <N> ...] [--merging]
+skills/herdr-orch/scripts/merge-candidates.py:27:ap.add_argument("--merging", action="store_true", help="an /issue-merge tab is still running")
+skills/herdr-orch/references/codex.md:196:- 첫 프롬프트는 사다리의 `PROMPT`(`$issue-merge #<N> #<M>`, 번호 오름차순)다. `scripts/watch.sh --interval 15 merge-<N>-<M>` 으로 감시하고, 그동안 판정을 다시 돌릴 때는 `merge-candidates.py` 에 `--merging` 을 붙인다.
