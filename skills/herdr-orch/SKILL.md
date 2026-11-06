@@ -179,7 +179,7 @@ LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 �
 ### merge tab 진행
 
 - MERGE 판정 이슈만 묶어 새 tab 을 연다. 이름 `#<N> #<M> merge: <각 이슈 요지>`, agent 이름 `merge-<N>-<M>`.
-- 첫 프롬프트는 사다리의 `PROMPT`(cc 는 `/issue-merge #<N> #<M>`, cx 는 `$issue-merge #<N> #<M>`, 번호 오름차순)다. `--merging` 을 켠 채 감시한다.
+- 첫 프롬프트는 사다리의 `PROMPT`(cc 는 `/issue-merge #<N> #<M>`, cx 는 `$issue-merge #<N> #<M>`, 번호 오름차순)다. `scripts/watch.sh --interval 15 merge-<N>-<M>` 으로 감시하고, 그동안 판정을 다시 돌릴 때는 `merge-candidates.py` 에 `--merging` 을 붙인다.
 - issue-merge 3단계 "후보 확정" 질문은 오케스트레이터가 답한다. tab 이 고른 대상이 `merge_issues` 와 정확히 같으면 "이대로 진행". preflight 가 이 질문 뒤에 돌더라도 충돌은 6단계 PR 별 승인에서 다시 걸러지므로 기다리지 않는다(실측: #64 #66 #67 #70 #71). 다르면 "일부 제외" 로 판정 밖 이슈를 빼거나, 판정 대상이 빠졌으면 사용자에게 알린다(실측: #68 #82, tab 도 #55 를 스스로 뺐다).
 - issue-merge 6단계 "PR #X 를 merge 할까요?" 도 오케스트레이터가 답한다. 답하기 전에 직접 확인한다:
   PR 이 `merge_issues` 에 있음 · tab 이 고정한 head = `gh pr view` 의 headRefOid = 워크트리 HEAD · `MERGEABLE`+`CLEAN` · tab 이 보고한 사전 통합 테스트 통과.

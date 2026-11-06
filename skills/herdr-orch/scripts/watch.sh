@@ -3,7 +3,10 @@
 # usage: watch.sh [--interval 15] <agent-name>...
 set -u
 INTERVAL=15
-if [ "${1:-}" = "--interval" ]; then INTERVAL=$2; shift 2; fi
+usage() { echo "usage: watch.sh [--interval 15] <agent-name>..." >&2; exit 2; }
+case "${1:-}" in --interval) [ $# -ge 2 ] || usage; INTERVAL=$2; shift 2;; esac
+[ $# -ge 1 ] || usage
+for a in "$@"; do case "$a" in -*) usage;; esac; done
 while :; do
   for a in "$@"; do
     out=$(herdr agent get "$a" 2>&1)
