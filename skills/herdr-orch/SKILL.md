@@ -157,7 +157,7 @@ LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 �
 | 남은 사용량 | 사다리 (앞에서부터) | 첫 프롬프트 |
 | --- | --- | --- |
 | 20% 이상 | `cx` 6.1 terra high → 6.1 sol medium → 6.1 sol high → 6 astra low → 6 astra medium | `$issue-merge #N #M …` (codex 는 `$` 로 스킬을 부른다) |
-| 20% 미만 · 알 수 없음 | `cc --mode=dev --model=opus --effort=xhigh` → `cc --mode=dev --model=fable` | `/issue-merge #N #M …` |
+| 20% 미만 · 알 수 없음 | `cc --mode=dev --model=opus --effort=high` → `cc --mode=dev --model=fable` | `/issue-merge #N #M …` |
 
 - `cx` 실행 형식: `cx --model gpt-6.1-terra -c model_reasoning_effort=high` (`--tmux` 를 붙이지 않는다 — 붙이면 herdr pane 이 아니라 tmux 세션으로 빠진다). herdr 는 `codex` agent 로 인식한다.
 - 기록값은 마지막 codex 세션 시점 값이다. cx tab 을 띄운 뒤 화면 하단 `weekly <n>% left` 가 실시간 값이니, 다음 단계로 올라갈 때는 그 값을 우선한다(실측: 기록 74% / 화면 72%).
