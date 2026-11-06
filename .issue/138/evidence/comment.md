@@ -11,9 +11,10 @@
 | `skills/issue-*` | 8개 (onboard·sync·viz 포함) | 5개 (create·start·end·merge·version) |
 | 그래프 참조 grep (세 스킬 밖) | 166줄 | **0줄** |
 | `sh scripts/check-shared.sh` | `6 copies match` + Git 탐지 2벌 | `shared block: 4 copies match` |
-| ontology + check-shared 테스트 | 23건 통과 (그래프 스키마 테스트 포함) | 10건 통과 (그래프 테스트 제거, ready 판정 테스트 2건 추가) |
+| ontology + check-shared (+ unblocked) 테스트 | 23건 통과 (그래프 스키마 테스트 포함) | 16건 통과 (그래프 테스트 제거, ready 판정 2건·unblocked 6건 추가) |
 | merge guard | `graphPresent: true` 필수 → graph.json 이 없으면 실패 | `graphPresent` 없이 통과 |
 | issue-start 착수 판정 | graph.json 이 있을 때만 `issue-onboard plan` 으로 판정 | 본문 `## 선행 이슈` 를 `gh` 로 하나씩 조회해 판정 |
+| close 로 풀린 이슈 안내 | `issue-onboard plan` (그래프 필요) | `issue-merge.mjs unblocked --issue <n>` 이 gh 검색 + 선행 조회로 계산 |
 
 원본: `.issue/138/evidence/before/`, `.issue/138/evidence/after/`
 
@@ -25,14 +26,17 @@
 - `scripts/check-shared.sh`, `scripts/check-shared.test.mjs` — 4개 사본 기준으로 정리, onboard·sync 전용 Git 탐지 검사 제거
 - `skills/issue-start/scripts/issue-start.mjs` — `readyFact` 를 gh 조회로 대체, `predecessorNumbers` 추가
 - `skills/issue-merge/scripts/issue-merge.mjs`, `tools/issue-ontology/schemas/actions/merge.schema.json` — `graphPresent` 제거
-- `skills/issue-merge/references/next-actions.md` — 새로 풀린 이슈를 `gh issue list --search` 로 찾도록 안내
+- `skills/issue-merge/scripts/issue-merge.mjs` — `unblocked --issue <n>` 명령 추가. `skills/issue-merge/references/next-actions.md` 가 이 명령을 안내
+- `skills/*/scripts/issue-common.mjs` 공유 블록 — `predecessorNumbers`·`isIssueDone`·`unblockedSuccessors` 추가 (issue-start `readyFact` 도 사용)
+- `skills/issue-merge/scripts/issue-unblocked.test.mjs` — 신규 테스트
 - `tools/issue-ontology/` — `graph-v2.schema.json`, graph 픽스처, `validateGraphDocument` 제거
 - `README.md`, `skills/issue-create/references/create-and-handoff.md`, `.codex-plugin/plugin.json`, `.gitignore` — 그래프·세 스킬 언급 정리
 
 ## 검증
 
 - `sh scripts/check-shared.sh` 통과
-- `node --test scripts/check-shared.test.mjs tools/issue-ontology/ontology.test.mjs skills/issue-version/scripts/issue-version.test.mjs` 66건 통과
+- `node --test scripts/check-shared.test.mjs tools/issue-ontology/ontology.test.mjs skills/issue-merge/scripts/issue-unblocked.test.mjs skills/issue-version/scripts/issue-version.test.mjs` 72건 통과
+- 실제 GitHub 에서 `issue-merge.mjs unblocked --issue 137` 실행: #138 은 `## 참고` 에서만 #137 을 언급해 후보에서 제외됨 (`after/06-unblocked.txt`)
 - `skills/issue-*/scripts/*.mjs`, `tools/issue-ontology/*.mjs`, `scripts/*.mjs` 전부 `node --check` 통과
 - 워크트리에서 `issue-start.mjs fetch 138`, `issue-create.mjs mode`, `issue-merge.mjs` 실행 확인
 

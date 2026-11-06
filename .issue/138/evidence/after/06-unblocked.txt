@@ -1,0 +1,11 @@
+$ node skills/issue-merge/scripts/issue-merge.mjs unblocked --issue 137   # 실제 GitHub. #138 은 #137 을 ## 참고 에서만 언급하므로 후보가 아니다
+{
+  "ok": true,
+  "issue": 137,
+  "candidates": [],
+  "ready": []
+}
+
+$ node skills/issue-merge/scripts/issue-merge.mjs unblocked   # 번호 누락
+ERROR: --issue <번호> 가 필요합니다.
+exit=1
