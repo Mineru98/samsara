@@ -1,0 +1,6 @@
+$ ls -d skills/issue-*
+skills/issue-create
+skills/issue-end
+skills/issue-merge
+skills/issue-start
+skills/issue-version

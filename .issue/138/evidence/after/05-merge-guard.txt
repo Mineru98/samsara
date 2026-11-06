@@ -1,0 +1,14 @@
+$ node -e gateAction(merge) — graphPresent 없이 merge guard 통과
+{
+ "ok": true,
+ "skipped": false,
+ "document": {
+  "action": "merge",
+  "observed": {
+   "gitRepo": true,
+   "trackerAuth": true,
+   "issueExists": true,
+   "evidenceComplete": true
+  }
+ }
+}

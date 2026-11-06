@@ -1,0 +1,4 @@
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+git detection code: 2 copies match (12 declarations)
+exit=0
