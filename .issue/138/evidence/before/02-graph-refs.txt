@@ -1,0 +1,169 @@
+$ git grep -nE "graph\.json|patchGraphNode|GraphCacheLock|issue-onboard|issue-viz|graphPresent|GRAPH_FILE_NAME" -- . (세 스킬 제외)
+.gitignore:355:!.issue/graph.json
+README.md:129:술자가 `Issue-104`에 손을 대려 할 때, `issue-onboard`는 어떤 선행 인이 막고 있는지와 어떤 인이 함께 연결돼 있는지를 보여 줍니다. 실제 착수 가능 여부에는 `depends-on`만 영향을 줍니다. 모듈 정보는 각 인의 `context.components`에 근거와 함께 기록되지만, 시스템이 코드 파급 범위를 자동으로 예측하지는 않습니다.
+README.md:168:`issue-onboard`, `issue-sync`, `issue-viz`는 명부를 읽고 갱신하거나 시각화하는 보조 술식이므로 필요한 시점에 호출할 수 있습니다.
+README.md:172:### 1. `issue-onboard` — 개안(開眼)
+README.md:184:### 3. `issue-viz` — 경락도 시각화
+README.md:188:> **[술식]** `.issue/graph.json`을 칸반·관계 연결선·상세 패널이 포함된 자체완결 `.issue/graph.html`로 렌더링합니다.
+README.md:295:issue-onboard ─┐
+README.md:296:issue-sync    ─┼─▶ issue-viz (필요 시)
+README.md:308:* **`issue-onboard`** 는 현재 판을 읽는 선택적 진입점이고, **`issue-sync`** 는 그래프 스냅샷을 갱신하며, **`issue-viz`** 는 그 스냅샷을 브라우저에서 읽는 보조 술식입니다.
+design/board-mockup.html:8:  DESIGN MOCKUP (시안) — issue-onboard board.  session interview_20260827_113337 요구 시각화.
+design/board-mockup.html:382:  node(100,"이슈 보드 (epic) — graph.json 칸반 렌더링","open","p0",["epic","enhancement"],[],
+design/board-mockup.html:383:    {problem:cv("graph.json 을 사람이 한눈에 볼 방법이 없다","인터뷰","interview"),outcome:cv("이슈 경락도 board.html","인터뷰","interview"),
+design/board-mockup.html:385:     components:cv(["issue-onboard","board"],"인터뷰","interview"),decisions:cv("정적 HTML + graph-data.js 사이드카","인터뷰","interview"),evidence:U("evidence")},
+design/board-mockup.html:393:  node(102,"issue-onboard sync 엔진","close","p0",["enhancement"],
+design/board-mockup.html:394:    ["skills/issue-onboard/scripts/issue-onboard.mjs","skills/issue-sync/scripts/issue-sync.mjs"],
+design/board-mockup.html:396:     result:cv("sync/plan/next 동작","code","code"),components:cv(["issue-onboard"],"code","code"),decisions:U("decisions"),evidence:U("evidence")},
+design/board-mockup.html:402:  node(110,"board 사이드카 생성기 (graph-data.js)","in-process","p1",["enhancement"],["skills/issue-onboard/scripts/board-sidecar.mjs"],
+design/board-mockup.html:406:    [{cap:"sidecar-shape.png"}],"graph.json → 분류·엣지 좌표·node.files 를 사이드카에 구움."),
+design/board-mockup.html:407:  node(120,"node.files git log 수집","plan","p1",["enhancement"],["skills/issue-onboard/scripts/board-files.mjs"],
+design/board-mockup.html:412:  node(140,"검증 줄번호 매핑 (validate)","review","p1",["enhancement"],["skills/issue-onboard/scripts/issue-onboard.mjs"],
+design/board-mockup.html:413:    {problem:cv("검증 실패 위치를 못 짚음","인터뷰","interview"),outcome:cv("Ajv instancePath → graph.json:줄 매핑","인터뷰","interview"),
+design/board-mockup.html:416:    [{cap:"before-noloc.png"},{cap:"after-lineno.png"}],"실패 시 CLI+오버레이에 .issue/graph.json:<줄> 로 전 문제 나열."),
+design/board-mockup.html:438:  node(160,"구 board POC (대체됨)","close","p3",["enhancement"],["skills/issue-onboard/scripts/board-poc.mjs"],
+scripts/check-shared.sh:12:skills/issue-onboard/scripts/issue-common.mjs
+scripts/check-shared.sh:63:skills/issue-onboard/scripts/issue-common.mjs
+skills/issue-create/references/create-and-handoff.md:127:## DAG 배선 (issue-onboard 사용 시)
+skills/issue-create/references/create-and-handoff.md:129:`.issue/graph.json` 이 있으면(issue-onboard 사용 중) 새로 만든 이슈의 노드는 `status:open` 자동 부착이
+skills/issue-create/references/create-and-handoff.md:131:버리지 말고 엣지로 남긴다. 본문에 `depends on #N` 을 적으면 `issue-onboard sync` 가 자동 감지하고,
+skills/issue-create/references/create-and-handoff.md:135:node <issue-onboard>/scripts/issue-onboard.mjs link <새 이슈> <선행 이슈> --why "<왜 막히는지>"
+skills/issue-create/scripts/issue-common.mjs:30:/** issue-onboard 의 DAG 파일 이름. `.issue/graph.json`. IGNORE_BLOCK 예외와 issue-onboard 가 공유한다. */
+skills/issue-create/scripts/issue-common.mjs:31:export const GRAPH_FILE_NAME = 'graph.json';
+skills/issue-create/scripts/issue-common.mjs:54:  // issue-onboard 의 DAG. base 브랜치에 커밋해 모든 워크트리가 같은 그래프를 본다.
+skills/issue-create/scripts/issue-common.mjs:55:  `!${WORKSPACE_DIR}/${GRAPH_FILE_NAME}`,
+skills/issue-create/scripts/issue-common.mjs:151: * issue-onboard ↔ issue-sync 가 서로를 못 찾고 죽었고,
+skills/issue-create/scripts/issue-common.mjs:471: * issue-onboard 의 DAG(.issue/graph.json)에 노드를 upsert 한다.
+skills/issue-create/scripts/issue-common.mjs:474: * graph.json 이 없으면(= issue-onboard 를 아직 안 씀) 조용히 no-op 한다. 그래프 갱신 실패가
+skills/issue-create/scripts/issue-common.mjs:507:    if (error.code === 'ENOENT') return { file: path.join(issueDir, GRAPH_FILE_NAME), parentStat: null, fileStat: null };
+skills/issue-create/scripts/issue-common.mjs:522:  const file = path.join(realIssueDir, GRAPH_FILE_NAME);
+skills/issue-create/scripts/issue-common.mjs:531:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+skills/issue-create/scripts/issue-common.mjs:534:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-create/scripts/issue-common.mjs:538:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}이 저장소 바깥을 가리킨다.`);
+skills/issue-create/scripts/issue-common.mjs:783:  if (!expectedFile.isFile()) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 일반 파일이어야 한다.`);
+skills/issue-create/scripts/issue-common.mjs:784:  if (expectedFile.nlink !== 1) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-create/scripts/issue-common.mjs:816:function reclaimStaleGraphCacheLock(file, expectedParent) {
+skills/issue-create/scripts/issue-common.mjs:830:    return removeOwnedGraphCacheLock(relativeFile, owner.slice(0, -1));
+skills/issue-create/scripts/issue-common.mjs:875:function removeOwnedGraphCacheLock(relativeFile, owner) {
+skills/issue-create/scripts/issue-common.mjs:933:function acquireGraphCacheLock(root) {
+skills/issue-create/scripts/issue-common.mjs:952:    if (!reclaimStaleGraphCacheLock(lockFile, parentStat)) {
+skills/issue-create/scripts/issue-common.mjs:967:      removeOwnedGraphCacheLock(path.basename(lockFile), owner);
+skills/issue-create/scripts/issue-common.mjs:972:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-create/scripts/issue-common.mjs:974:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-create/scripts/issue-common.mjs:985:function withGraphCacheLock(root, action) {
+skills/issue-create/scripts/issue-common.mjs:986:  const release = acquireGraphCacheLock(root);
+skills/issue-create/scripts/issue-common.mjs:994:export function patchGraphNode(root, node) {
+skills/issue-create/scripts/issue-common.mjs:999:    return withGraphCacheLock(root, () => {
+skills/issue-create/scripts/issue-common.mjs:1016:      // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
+skills/issue-create/scripts/issue-tracker.mjs:35:  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+skills/issue-create/scripts/issue-tracker.mjs:621:  // graph.json 이 없으면 no-op 이고, 실패해도 상태 전환 결과를 바꾸지 않는다.
+skills/issue-create/scripts/issue-tracker.mjs:629:      patchGraphNode(graphRoot, {
+skills/issue-end/scripts/issue-common.mjs:30:/** issue-onboard 의 DAG 파일 이름. `.issue/graph.json`. IGNORE_BLOCK 예외와 issue-onboard 가 공유한다. */
+skills/issue-end/scripts/issue-common.mjs:31:export const GRAPH_FILE_NAME = 'graph.json';
+skills/issue-end/scripts/issue-common.mjs:54:  // issue-onboard 의 DAG. base 브랜치에 커밋해 모든 워크트리가 같은 그래프를 본다.
+skills/issue-end/scripts/issue-common.mjs:55:  `!${WORKSPACE_DIR}/${GRAPH_FILE_NAME}`,
+skills/issue-end/scripts/issue-common.mjs:151: * issue-onboard ↔ issue-sync 가 서로를 못 찾고 죽었고,
+skills/issue-end/scripts/issue-common.mjs:471: * issue-onboard 의 DAG(.issue/graph.json)에 노드를 upsert 한다.
+skills/issue-end/scripts/issue-common.mjs:474: * graph.json 이 없으면(= issue-onboard 를 아직 안 씀) 조용히 no-op 한다. 그래프 갱신 실패가
+skills/issue-end/scripts/issue-common.mjs:507:    if (error.code === 'ENOENT') return { file: path.join(issueDir, GRAPH_FILE_NAME), parentStat: null, fileStat: null };
+skills/issue-end/scripts/issue-common.mjs:522:  const file = path.join(realIssueDir, GRAPH_FILE_NAME);
+skills/issue-end/scripts/issue-common.mjs:531:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+skills/issue-end/scripts/issue-common.mjs:534:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-end/scripts/issue-common.mjs:538:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}이 저장소 바깥을 가리킨다.`);
+skills/issue-end/scripts/issue-common.mjs:783:  if (!expectedFile.isFile()) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 일반 파일이어야 한다.`);
+skills/issue-end/scripts/issue-common.mjs:784:  if (expectedFile.nlink !== 1) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-end/scripts/issue-common.mjs:816:function reclaimStaleGraphCacheLock(file, expectedParent) {
+skills/issue-end/scripts/issue-common.mjs:830:    return removeOwnedGraphCacheLock(relativeFile, owner.slice(0, -1));
+skills/issue-end/scripts/issue-common.mjs:875:function removeOwnedGraphCacheLock(relativeFile, owner) {
+skills/issue-end/scripts/issue-common.mjs:933:function acquireGraphCacheLock(root) {
+skills/issue-end/scripts/issue-common.mjs:952:    if (!reclaimStaleGraphCacheLock(lockFile, parentStat)) {
+skills/issue-end/scripts/issue-common.mjs:967:      removeOwnedGraphCacheLock(path.basename(lockFile), owner);
+skills/issue-end/scripts/issue-common.mjs:972:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-end/scripts/issue-common.mjs:974:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-end/scripts/issue-common.mjs:985:function withGraphCacheLock(root, action) {
+skills/issue-end/scripts/issue-common.mjs:986:  const release = acquireGraphCacheLock(root);
+skills/issue-end/scripts/issue-common.mjs:994:export function patchGraphNode(root, node) {
+skills/issue-end/scripts/issue-common.mjs:999:    return withGraphCacheLock(root, () => {
+skills/issue-end/scripts/issue-common.mjs:1016:      // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
+skills/issue-end/scripts/issue-tracker.mjs:35:  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+skills/issue-end/scripts/issue-tracker.mjs:621:  // graph.json 이 없으면 no-op 이고, 실패해도 상태 전환 결과를 바꾸지 않는다.
+skills/issue-end/scripts/issue-tracker.mjs:629:      patchGraphNode(graphRoot, {
+skills/issue-merge/references/next-actions.md:51:`.issue/graph.json` 이 있으면(issue-onboard 사용 중) close 로 새로 풀린 이슈를 함께 보여준다.
+skills/issue-merge/references/next-actions.md:55:node <issue-onboard>/scripts/issue-onboard.mjs plan     # 방금 close 로 BLOCKED → READY 로 풀린 이슈가 드러난다
+skills/issue-merge/scripts/issue-common.mjs:30:/** issue-onboard 의 DAG 파일 이름. `.issue/graph.json`. IGNORE_BLOCK 예외와 issue-onboard 가 공유한다. */
+skills/issue-merge/scripts/issue-common.mjs:31:export const GRAPH_FILE_NAME = 'graph.json';
+skills/issue-merge/scripts/issue-common.mjs:54:  // issue-onboard 의 DAG. base 브랜치에 커밋해 모든 워크트리가 같은 그래프를 본다.
+skills/issue-merge/scripts/issue-common.mjs:55:  `!${WORKSPACE_DIR}/${GRAPH_FILE_NAME}`,
+skills/issue-merge/scripts/issue-common.mjs:151: * issue-onboard ↔ issue-sync 가 서로를 못 찾고 죽었고,
+skills/issue-merge/scripts/issue-common.mjs:471: * issue-onboard 의 DAG(.issue/graph.json)에 노드를 upsert 한다.
+skills/issue-merge/scripts/issue-common.mjs:474: * graph.json 이 없으면(= issue-onboard 를 아직 안 씀) 조용히 no-op 한다. 그래프 갱신 실패가
+skills/issue-merge/scripts/issue-common.mjs:507:    if (error.code === 'ENOENT') return { file: path.join(issueDir, GRAPH_FILE_NAME), parentStat: null, fileStat: null };
+skills/issue-merge/scripts/issue-common.mjs:522:  const file = path.join(realIssueDir, GRAPH_FILE_NAME);
+skills/issue-merge/scripts/issue-common.mjs:531:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+skills/issue-merge/scripts/issue-common.mjs:534:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-merge/scripts/issue-common.mjs:538:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}이 저장소 바깥을 가리킨다.`);
+skills/issue-merge/scripts/issue-common.mjs:783:  if (!expectedFile.isFile()) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 일반 파일이어야 한다.`);
+skills/issue-merge/scripts/issue-common.mjs:784:  if (expectedFile.nlink !== 1) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-merge/scripts/issue-common.mjs:816:function reclaimStaleGraphCacheLock(file, expectedParent) {
+skills/issue-merge/scripts/issue-common.mjs:830:    return removeOwnedGraphCacheLock(relativeFile, owner.slice(0, -1));
+skills/issue-merge/scripts/issue-common.mjs:875:function removeOwnedGraphCacheLock(relativeFile, owner) {
+skills/issue-merge/scripts/issue-common.mjs:933:function acquireGraphCacheLock(root) {
+skills/issue-merge/scripts/issue-common.mjs:952:    if (!reclaimStaleGraphCacheLock(lockFile, parentStat)) {
+skills/issue-merge/scripts/issue-common.mjs:967:      removeOwnedGraphCacheLock(path.basename(lockFile), owner);
+skills/issue-merge/scripts/issue-common.mjs:972:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-merge/scripts/issue-common.mjs:974:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-merge/scripts/issue-common.mjs:985:function withGraphCacheLock(root, action) {
+skills/issue-merge/scripts/issue-common.mjs:986:  const release = acquireGraphCacheLock(root);
+skills/issue-merge/scripts/issue-common.mjs:994:export function patchGraphNode(root, node) {
+skills/issue-merge/scripts/issue-common.mjs:999:    return withGraphCacheLock(root, () => {
+skills/issue-merge/scripts/issue-common.mjs:1016:      // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
+skills/issue-merge/scripts/issue-merge.mjs:522:    graphPresent: existsSync(path.join(root, WORKSPACE_DIR, 'graph.json')),
+skills/issue-merge/scripts/issue-tracker.mjs:35:  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+skills/issue-merge/scripts/issue-tracker.mjs:621:  // graph.json 이 없으면 no-op 이고, 실패해도 상태 전환 결과를 바꾸지 않는다.
+skills/issue-merge/scripts/issue-tracker.mjs:629:      patchGraphNode(graphRoot, {
+skills/issue-start/scripts/issue-common.mjs:30:/** issue-onboard 의 DAG 파일 이름. `.issue/graph.json`. IGNORE_BLOCK 예외와 issue-onboard 가 공유한다. */
+skills/issue-start/scripts/issue-common.mjs:31:export const GRAPH_FILE_NAME = 'graph.json';
+skills/issue-start/scripts/issue-common.mjs:54:  // issue-onboard 의 DAG. base 브랜치에 커밋해 모든 워크트리가 같은 그래프를 본다.
+skills/issue-start/scripts/issue-common.mjs:55:  `!${WORKSPACE_DIR}/${GRAPH_FILE_NAME}`,
+skills/issue-start/scripts/issue-common.mjs:151: * issue-onboard ↔ issue-sync 가 서로를 못 찾고 죽었고,
+skills/issue-start/scripts/issue-common.mjs:471: * issue-onboard 의 DAG(.issue/graph.json)에 노드를 upsert 한다.
+skills/issue-start/scripts/issue-common.mjs:474: * graph.json 이 없으면(= issue-onboard 를 아직 안 씀) 조용히 no-op 한다. 그래프 갱신 실패가
+skills/issue-start/scripts/issue-common.mjs:507:    if (error.code === 'ENOENT') return { file: path.join(issueDir, GRAPH_FILE_NAME), parentStat: null, fileStat: null };
+skills/issue-start/scripts/issue-common.mjs:522:  const file = path.join(realIssueDir, GRAPH_FILE_NAME);
+skills/issue-start/scripts/issue-common.mjs:531:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 심볼릭 링크가 아닌 일반 파일이어야 한다.`);
+skills/issue-start/scripts/issue-common.mjs:534:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-start/scripts/issue-common.mjs:538:    throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}이 저장소 바깥을 가리킨다.`);
+skills/issue-start/scripts/issue-common.mjs:783:  if (!expectedFile.isFile()) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 일반 파일이어야 한다.`);
+skills/issue-start/scripts/issue-common.mjs:784:  if (expectedFile.nlink !== 1) throw new Error(`${WORKSPACE_DIR}/${GRAPH_FILE_NAME}은 다른 경로와 하드링크되지 않은 파일이어야 한다.`);
+skills/issue-start/scripts/issue-common.mjs:816:function reclaimStaleGraphCacheLock(file, expectedParent) {
+skills/issue-start/scripts/issue-common.mjs:830:    return removeOwnedGraphCacheLock(relativeFile, owner.slice(0, -1));
+skills/issue-start/scripts/issue-common.mjs:875:function removeOwnedGraphCacheLock(relativeFile, owner) {
+skills/issue-start/scripts/issue-common.mjs:933:function acquireGraphCacheLock(root) {
+skills/issue-start/scripts/issue-common.mjs:952:    if (!reclaimStaleGraphCacheLock(lockFile, parentStat)) {
+skills/issue-start/scripts/issue-common.mjs:967:      removeOwnedGraphCacheLock(path.basename(lockFile), owner);
+skills/issue-start/scripts/issue-common.mjs:972:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-start/scripts/issue-common.mjs:974:        removeOwnedGraphCacheLock(relativeFile, owner);
+skills/issue-start/scripts/issue-common.mjs:985:function withGraphCacheLock(root, action) {
+skills/issue-start/scripts/issue-common.mjs:986:  const release = acquireGraphCacheLock(root);
+skills/issue-start/scripts/issue-common.mjs:994:export function patchGraphNode(root, node) {
+skills/issue-start/scripts/issue-common.mjs:999:    return withGraphCacheLock(root, () => {
+skills/issue-start/scripts/issue-common.mjs:1016:      // issue-onboard saveGraph 와 같은 정렬 규율을 지킨다 — 노드는 번호순, 엣지는 (from,to,type)순.
+skills/issue-start/scripts/issue-start.mjs:46:  setTerminalTitle, WORKSPACE_DIR, GRAPH_FILE_NAME, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
+skills/issue-start/scripts/issue-start.mjs:102:  const graphFile = path.join(root, WORKSPACE_DIR, GRAPH_FILE_NAME);
+skills/issue-start/scripts/issue-start.mjs:105:  const onboard = resolveSkillScript(import.meta.url, 'issue-onboard', 'issue-onboard.mjs', { root });
+skills/issue-start/scripts/issue-start.mjs:107:    console.error('! sibling issue-onboard을 찾지 못해 ready 판정을 생략합니다.');
+skills/issue-start/scripts/issue-start.mjs:115:    console.error('! issue-onboard plan --json 실패로 ready 판정을 생략합니다.');
+skills/issue-start/scripts/issue-start.mjs:123:    console.error('! issue-onboard plan --json 응답이 JSON이 아니어서 ready 판정을 생략합니다.');
+skills/issue-start/scripts/issue-start.mjs:127:    console.error('! issue-onboard plan --json 응답에 ready 배열이 없어 판정을 생략합니다.');
+skills/issue-start/scripts/issue-tracker.mjs:35:  isStatusLabel, resolveStatus, STATUS_LABELS, mainCheckout, patchGraphNode,
+skills/issue-start/scripts/issue-tracker.mjs:621:  // graph.json 이 없으면 no-op 이고, 실패해도 상태 전환 결과를 바꾸지 않는다.
+skills/issue-start/scripts/issue-tracker.mjs:629:      patchGraphNode(graphRoot, {
+tools/issue-ontology/fixtures/graph-valid.json:51:            "issue-onboard"
+tools/issue-ontology/ontology.test.mjs:19:} from '../../skills/issue-onboard/scripts/issue-graph-v2.mjs';
+tools/issue-ontology/ontology.test.mjs:72:// 못했다.) 이 shape 는 issue-onboard.mjs cmdSync + issue-llm.mjs applyEnrichment 산출물.
+tools/issue-ontology/ontology.test.mjs:214:    graphPresent: true,
+tools/issue-ontology/ontology.test.mjs:244:  writeFileSync(path.join(isolated, '.issue', 'graph.json'), '{}');
+tools/issue-ontology/schemas/actions/merge.schema.json:9:    "graphPresent",
+tools/issue-ontology/schemas/actions/merge.schema.json:16:    "graphPresent": {
+
+count: 39 files (세 스킬 포함)

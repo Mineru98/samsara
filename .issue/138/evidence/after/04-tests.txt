@@ -1,0 +1,21 @@
+$ node --test tools/issue-ontology/ontology.test.mjs scripts/check-shared.test.mjs
+✔ 현재 사본은 공유 블록 검사를 통과한다 (61.608234ms)
+✔ 공유 블록이 한 사본에서만 달라지면 drift 로 실패한다 (31.594861ms)
+✔ 공유 블록 시작 표식이 없으면 not found 로 실패한다 (38.399028ms)
+! 선행 이슈 #15 이 아직 끝나지 않았습니다.
+! 선행 이슈 #15 조회 실패로 ready 판정을 생략합니다.
+✔ start requires an open tracker issue and a ready result when checked (87.876958ms)
+✔ create has only git and tracker preconditions (0.683888ms)
+✔ end and merge require complete before and after evidence (1.468445ms)
+✔ missing island is an explicit skip for the human end guard (84.876112ms)
+✔ sibling skills resolve from the plugin root without hidden install directories (0.460732ms)
+✔ start ready is unchecked when the body has no predecessors (1.431056ms)
+✔ start ready follows predecessor issues read from the tracker (1.175978ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 355.680712

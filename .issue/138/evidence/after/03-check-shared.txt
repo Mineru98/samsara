@@ -1,0 +1,3 @@
+$ sh scripts/check-shared.sh
+shared block: 4 copies match
+exit=0
