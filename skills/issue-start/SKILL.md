@@ -50,6 +50,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
     <rule>커밋은 `guard` 가 통과할 때만 사용자 확인 없이 한다. 실패하면 커밋하지 않고 AskUserQuestion 으로 확인을 받는다.</rule>
     <rule>기본 브랜치에서는 절대 구현하지 않는다. 현재 워크트리에서 브랜치를 갈아타지도 않는다.</rule>
     <rule>증거는 먼저 커밋·푸시한다. 공개 저장소는 미러 raw URL, 비공개 저장소는 `user-attachments` URL(gh-attach 자동 업로드, 실패 시에만 이슈 웹 UI 수동 업로드)로 코멘트하고 실제 렌더링을 확인한다.</rule>
+    <rule>`report-check` 가 실패하면(exit ≠ 0) 이슈 코멘트를 게시하지 않는다. 고쳐서 통과시킨 뒤에만 게시한다.</rule>
     <rule>증거 이미지는 webp 로만 만들고, after 에는 변경 구간을 가리키는 바운딩 박스를 넣는다.</rule>
     <rule>첨부 이미지는 요약만 믿지 않고 Read 로 직접 열어본다.</rule>
     <rule>이슈 상태 변경, PR 생성, merge 를 하지 않는다. 각각 issue-end 와 issue-merge 의 몫이다.</rule>
@@ -434,12 +435,18 @@ neither         문서·설정만 바뀜 — 캡처 대신 변경 근거를 글�
 ## 8단계 — 작업 트리 커밋
 
 ```bash
-node <skill>/scripts/issue-start.mjs guard
-git add -A -- ':!.issue'          # 증거는 이 커밋에 넣지 않는다
-git commit -m "<type>(<scope>): <요약>"
+msg="<type>(<scope>): <요약>"
+node <skill>/scripts/issue-start.mjs guard --message "$msg" \
+  && git add -A -- ':!.issue' \
+  && git commit -m "$msg"           # 증거(.issue)는 이 커밋에 넣지 않는다
 ```
 
+세 명령을 `&&` 로 묶는다. guard 가 실패하면 커밋까지 가지 않아야 한다.
+
 통과하면 **사용자에게 묻지 않고** 커밋한다. 실패하면(exit 3) 이유를 보고하고 AskUserQuestion 으로 확인을 받는다.
+
+커밋 메시지에 `Closes` / `Fixes` / `Resolves #N` 같은 자동 종료 문구를 넣지 않는다. 이슈는 `issue-merge` 가 통합 검증 뒤에 닫는다.
+`guard --message` 는 이 문구를 찾으면 `checks.noClosingKeyword: false` 로 실패한다. 이때는 묻지 않고 문구를 지운 뒤 다시 검사한다.
 
 `':!.issue'` 를 빼면 6단계에서 만든 before 증거가 구현 커밋에 섞여 리뷰에서 diff 가 읽히지 않는다. 증거는 10단계에서 따로 커밋한다.
 
@@ -459,9 +466,12 @@ git push -u origin "$(git branch --show-current)"
 node <skill>/scripts/issue-start.mjs evidence-mirror {issue_number} --push
 node <skill>/scripts/issue-start.mjs evidence-urls {issue_number} --mirrorRef <mirror 출력의 mirrorRef>
 gh repo view --json visibility --jq .visibility
-node <skill>/scripts/issue-start.mjs report-check {issue_number}
-gh issue comment {issue_number} --body-file .issue/{issue_number}/evidence/comment.md
+node <skill>/scripts/issue-start.mjs report-check {issue_number} \
+  && gh issue comment {issue_number} --body-file .issue/{issue_number}/evidence/comment.md
 ```
+
+**`report-check` 가 실패하면(exit ≠ 0) 게시하지 않는다.** 두 명령을 `&&` 로 묶어 실패가 게시로 새지 않게 한다.
+exit 5 면 `errors` 대로 `comment.md` 를 고쳐 다시 검사하고, exit 6 이면 아래 수동 업로드 절차를 따른다.
 
 `evidence-urls` 의 `renderMode` 가 `auto-upload` 면(= `isPrivate: true` 이고 gh-attach 가 전부 성공)
 `images[].inlineUrl` 이 이미 채워져 있으니 그대로 쓴다. `manual-upload` 면 그중 자동 업로드에 실패한

@@ -284,7 +284,7 @@ const proposedEffect = (request, scriptPath) => {
       request: {
         cwd: state.issueWorktree,
         steps: [
-          command([process.execPath, scriptPath, 'guard', '--issue', issue], state.issueWorktree),
+          command([process.execPath, scriptPath, 'guard', '--issue', issue, '--message', input.commitMessage], state.issueWorktree),
           command(['git', 'add', '-A', '--', ':!.issue'], state.issueWorktree),
           {
             kind: 'git-commit',

@@ -29,16 +29,20 @@ cat package.json | grep -A 20 '"scripts"'   # 실제 명령 확인
 이 단계만 사용자에게 묻지 않는다. 그 대신 안전장치를 먼저 통과해야 한다.
 
 ```bash
-node <skill>/scripts/issue-start.mjs guard
+node <skill>/scripts/issue-start.mjs guard --message "<커밋 메시지>"
 ```
 
-3중 가드를 전부 만족해야 `ok: true` 다.
+가드를 전부 만족해야 `ok: true` 다.
 
 ```text
 isLinkedWorktree      링크된 워크트리인가          (주 체크아웃이면 실패)
 notOnBaseBranch       기본 브랜치가 아닌가          (main/master 면 실패)
 branchHasIssueNumber  브랜치에 이슈 번호가 있는가   (임시 브랜치면 실패)
+noClosingKeyword      자동 종료 문구가 없는가       (Closes/Fixes/Resolves #N 이면 실패, --message 를 줄 때만)
 ```
+
+`noClosingKeyword` 만 실패했으면 묻지 않고 메시지에서 그 문구를 지운 뒤 다시 검사한다.
+이슈는 `issue-merge` 가 통합 검증 뒤에 닫으므로 커밋 메시지로 닫지 않는다.
 
 하나라도 실패하면 exit 3 이고 `reason` 이 나온다. 이때는 **커밋하지 말고** 이유를 보고한 뒤 AskUserQuestion 으로 확인을 받는다.
 

@@ -208,14 +208,20 @@ bare 이미지 URL, 일반 링크로 감싼 이미지, blob 페이지, 빈 설�
 (`autoUploaded: false`, `autoUploadError` 참고) 그 이미지만 웹 UI에 직접 올린다.
 
 게시 전에 반드시 기계 검사를 통과시킨다. `evidence-commit`도 같은 검사를 다시 실행한다.
+검사가 실패하면(exit ≠ 0) **게시하지 않는다.** 두 명령을 `&&` 로 묶어 실패한 리포트가 올라가지 않게 한다.
 
 ```bash
-node <skill>/scripts/issue-start.mjs report-check {issue_number}
+node <skill>/scripts/issue-start.mjs report-check {issue_number} \
+  && gh issue comment {issue_number} --body-file .issue/{issue_number}/evidence/comment.md
 ```
 
-```bash
-gh issue comment {issue_number} --body-file .issue/{issue_number}/evidence/comment.md
+```text
+exit 5   리포트를 고친다 — errors 를 보고 comment.md 를 수정해 다시 검사
+exit 6   사람이 이미지를 올려야 한다 — 수동 업로드 뒤 다시 검사
 ```
+
+검사 대상은 이미지 링크뿐이다. 증거 텍스트 파일(`.txt` 등)로 가는 일반 링크 `[bench.txt](…/evidence/…)` 는
+이미지가 아니므로 그대로 둔다. 이미지 확장자(webp·png 등) 파일을 일반 링크나 blob 주소로 쓰면 실패한다.
 
 ### 프론트엔드 형식
 

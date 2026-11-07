@@ -58,7 +58,7 @@ function usage(exitCode = 1) {
   console.error(`Usage:
   node issue-start.mjs fetch <issue-number> [--repo <owner/name>]
   node issue-start.mjs worktree <issue-number> [options]
-  node issue-start.mjs guard [--issue <n>]
+  node issue-start.mjs guard [--issue <n>] [--message <커밋 메시지>]
   node issue-start.mjs evidence-init|evidence-commit|evidence-mirror|evidence-urls|report-check <issue-number> [options]
   node issue-start.mjs migrate [--dry-run]
   node issue-start.mjs sync-base [--base <branch>]
@@ -338,9 +338,27 @@ function carryIssueDir(root, wtPath, number) {
 /* ------------------------------------------------------------------ guard */
 
 /**
+ * 커밋 메시지에서 GitHub 자동 종료 문구(`Closes #N` 등)를 찾는다.
+ *
+ * 이슈는 issue-merge 가 통합 검증 뒤에 닫는다. 구현 커밋에 이 문구가 있으면
+ * 기본 브랜치에 들어가는 순간 검증 전에 이슈가 닫힌다.
+ */
+const CLOSING_KEYWORD_RE = new RegExp(
+  '\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\b:?\\s+'
+  + '(?:[\\w.-]+\\/[\\w.-]+)?#\\d+'
+  + '|\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\b:?\\s+https?:\\/\\/\\S+\\/issues\\/\\d+',
+  'gi',
+);
+
+export function findClosingKeywords(message) {
+  return [...String(message ?? '').matchAll(CLOSING_KEYWORD_RE)].map((m) => m[0]);
+}
+
+/**
  * 사용자 확인 없이 커밋해도 되는 상태인지 검사한다.
  *
  * issue-start 는 구현 후 묻지 않고 커밋한다. 그 유일한 안전장치가 이 3중 가드다.
+ * `--message` 로 커밋 메시지를 넘기면 자동 종료 문구 검사가 더해진다.
  * 하나라도 실패하면 커밋하지 않는다.
  */
 function cmdGuard(root, opts) {
@@ -353,11 +371,23 @@ function cmdGuard(root, opts) {
     notOnBaseBranch: Boolean(branch) && branch !== base,
     branchHasIssueNumber: /(?:^|[/_-])\d{1,6}(?:[/_-]|$)/.test(branch || ''),
   };
+  const closingKeywords = opts.message === undefined ? [] : findClosingKeywords(opts.message);
+  if (opts.message !== undefined) checks.noClosingKeyword = closingKeywords.length === 0;
   const ok = Object.values(checks).every(Boolean);
+
+  const reasons = [];
+  if (closingKeywords.length) {
+    reasons.push(`커밋 메시지에 자동 종료 문구가 있습니다(${closingKeywords.join(', ')}) — 지우고 다시 검사하세요. 이슈는 issue-merge 가 닫습니다.`);
+  }
+  if (!checks.isLinkedWorktree || !checks.notOnBaseBranch || !checks.branchHasIssueNumber) {
+    reasons.push('무확인 커밋 조건 미충족 — 사용자에게 확인을 받고 진행하세요.');
+  }
+  const reason = reasons.length ? reasons.join(' / ') : null;
 
   console.log(JSON.stringify({
     ok, branch, baseBranch: base, issue, checks,
-    reason: ok ? null : '무확인 커밋 조건 미충족 — 사용자에게 확인을 받고 진행하세요.',
+    ...(closingKeywords.length ? { closingKeywords } : {}),
+    reason,
   }, null, 2));
   if (!ok) process.exit(3);
 }
@@ -533,6 +563,7 @@ function main() {
     else if (arg === '--repo') opts.repo = argv[++i];
     else if (arg === '--issue') number = parseIssueNumber(argv[++i]);
     else if (arg === '--mirrorRef') opts.mirrorRef = argv[++i];
+    else if (arg === '--message') opts.message = argv[++i] ?? '';
     else if (arg.startsWith('-')) {
       console.error(`✗ 알 수 없는 옵션: ${arg}`);
       usage();
