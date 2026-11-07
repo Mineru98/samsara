@@ -1,0 +1,4 @@
+$ node --test skills/issue-merge/scripts/issue-unblocked.test.mjs
+ℹ tests 6
+ℹ pass 6
+ℹ fail 0

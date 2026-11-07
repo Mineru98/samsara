@@ -1,0 +1,7 @@
+# Codex 0.167.0 실측. 수정한 agents/*.toml 세 개를 임시 프로젝트 .codex/agents 에 두고 spawn_agent 로 띄운 세션 기록
+# 부모: gpt-6.1-terra low. r1, r5 는 model·reasoning_effort 를 넘김. a, c 는 넘기지 않음
+# 값은 각 하위 세션의 마지막 turn_context (첫 turn_context 는 부모 이력 상속분)
+/root/a  role=shikamaru-merge-analyst    model=gpt-6.1-terra effort=medium
+/root/c  role=itachi-merge-critic        model=gpt-6.1-sol effort=high
+/root/r1 role=yamato-merge-resolver      model=gpt-6.1-sol effort=low
+/root/r5 role=yamato-merge-resolver      model=gpt-6-astra effort=medium
