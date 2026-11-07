@@ -1,0 +1,33 @@
+$ issue-start.mjs guard --issue 147 --message $'fix(x): y
+
+Closes #147'  (commit 27f5b4d)
+{
+  "ok": false,
+  "branch": "fix/147-block-closing-keyword-report-links",
+  "baseBranch": "main",
+  "issue": 147,
+  "checks": {
+    "isLinkedWorktree": true,
+    "notOnBaseBranch": true,
+    "branchHasIssueNumber": true,
+    "noClosingKeyword": false
+  },
+  "closingKeywords": [
+    "Closes #147"
+  ],
+  "reason": "커밋 메시지에 자동 종료 문구가 있습니다(Closes #147) — 지우고 다시 검사하세요. 이슈는 issue-merge 가 닫습니다."
+}
+exit=3
+
+$ SKILL.md 8단계 명령 그대로 (guard && add && commit)
+exit=3 / HEAD=27f5b4d (커밋 생성 안 됨)
+
+$ node --test skills/issue-start/scripts/issue-start.test.mjs
+✔ 자동 종료 문구를 찾는다 (1.548582ms)
+✔ 관련 이슈 언급은 자동 종료 문구가 아니다 (1.080675ms)
+✔ 증거 텍스트 파일 링크만 있는 리포트는 통과한다 (1.266611ms)
+✔ 깨진 이미지 링크는 여전히 실패한다 (0.968329ms)
+✔ 정상 이미지와 user-attachments 는 통과한다 (0.447027ms)
+ℹ tests 5
+ℹ pass 5
+ℹ fail 0
