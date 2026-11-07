@@ -40,7 +40,7 @@ const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflig
   plan-dir <n> [<n>...]        .issue/merge/<번호들>/ 생성
   preflight --branch <b> [--onto <commit>]
   resolve --worktree <path> [--continue [--push] | --abort]
-  merge --pr <n> [--method squash|merge|rebase]
+  merge --pr <n> --head <검사한 head sha> [--method squash|merge|rebase]
   close --issue <n> [--comment-file <f>]
   unblocked --issue <n>
   status <n> <open|plan|in-process|review|close>
@@ -498,6 +498,8 @@ function cmdResolve(args) {
 /** gh 출력에서 실패 원인을 갈라낸다. 호출부가 다시 조사하지 않게 한다. */
 function mergeFailureCause(text) {
   const t = text.toLowerCase();
+  // gh 의 "Head branch was modified. Review and try..." 는 review 를 포함하므로 approval 보다 먼저 본다.
+  if (/head branch was modified|match-head-commit|expected head|head (sha|commit|ref).*(changed|modified|mismatch)/.test(t)) return 'head-changed';
   if (/not mergeable|merge conflict|conflicts? with the base|dirty/.test(t)) return 'conflict';
   if (/required status check|checks? (are )?fail|failing check|not successful/.test(t)) return 'checks';
   if (/review|approv|protected branch|not authorized|permission/.test(t)) return 'approval';
@@ -506,6 +508,7 @@ function mergeFailureCause(text) {
 }
 
 const MERGE_HINT = {
+  'head-changed': '검사한 뒤 PR head 가 바뀌었습니다. merge 하지 않았습니다. 새 head 로 preflight·CI·critic 을 다시 돌리고 이 PR 승인을 다시 받으세요. gh pr merge 를 직접 호출하지 마세요.',
   conflict: 'preflight --branch <브랜치> 로 충돌 파일을 확정하고 resolve 로 해소하세요.',
   checks: 'gh pr checks <번호> 로 실패한 체크를 확인하세요. CI 가 실패한 PR 은 merge 하지 않습니다.',
   approval: '리뷰 승인이나 브랜치 보호 규칙을 확인하세요. 스크립트가 우회하지 않습니다.',
@@ -513,8 +516,8 @@ const MERGE_HINT = {
   unknown: 'gh pr checks 와 gh pr view 로 확인하세요.',
 };
 
-function prHeadRef(root, number) {
-  const result = run('gh', ['pr', 'view', String(number), '--json', 'headRefName'], { cwd: root });
+function prHead(root, number) {
+  const result = run('gh', ['pr', 'view', String(number), '--json', 'headRefName,headRefOid'], { cwd: root });
   if (result.code !== 0) {
     fail('PR head branch 조회 실패: ' + (result.err || result.out));
   }
@@ -525,11 +528,22 @@ function prHeadRef(root, number) {
     fail('PR head branch 응답이 JSON이 아닙니다.');
   }
   if (!data.headRefName) fail('PR head branch가 비어 있어 merge하지 않습니다.');
-  return data.headRefName;
+  return { ref: data.headRefName, sha: data.headRefOid || null };
+}
+
+function reportMergeFailure(pr, method, reason, head) {
+  const cause = mergeFailureCause(reason);
+  console.log(JSON.stringify({
+    merged: false, pr: Number(pr), method,
+    cause, reason, hint: MERGE_HINT[cause], ...head,
+  }, null, 2));
+  process.exit(1);
 }
 
 function cmdMerge(args) {
   if (!args.pr) fail('--pr <번호> 가 필요합니다.');
+  // 검사·승인한 head 로만 merge 한다. 그 사이 push 된 커밋이 승인 없이 들어가지 않게 한다.
+  if (!args.head || typeof args.head !== 'string') fail('--head <검사한 head sha> 가 필요합니다.');
   const root = repoRoot();
   const method = args.method || 'squash';
   if (!['squash', 'merge', 'rebase'].includes(method)) {
@@ -537,8 +551,8 @@ function cmdMerge(args) {
   }
 
   // 증거 URL 이 브랜치에 의존할 수 있으므로 --delete-branch 를 붙이지 않는다.
-  const headRef = prHeadRef(root, args.pr);
-  const issue = inferIssue(headRef);
+  const head = prHead(root, args.pr);
+  const issue = inferIssue(head.ref);
   if (!issue) fail('PR head branch에서 연결 이슈 번호를 추론할 수 없어 merge하지 않습니다.');
   const evidence = listEvidence(root, issue);
   const hasBefore = evidence.some((file) => file.includes('/before/'));
@@ -559,17 +573,13 @@ function cmdMerge(args) {
   });
   if (!guard.ok) fail('merge 온톨로지 guard 실패: ' + guard.error);
 
-  const r = gitHost.prMerge(args.pr, method);
-  if (!r.ok) {
-    const reason = r.err || r.out;
-    const cause = mergeFailureCause(reason);
-    console.log(JSON.stringify({
-      merged: false, pr: Number(args.pr), method,
-      cause, reason, hint: MERGE_HINT[cause],
-    }, null, 2));
-    process.exit(1);
+  const heads = { expectedHead: args.head, currentHead: head.sha };
+  if (head.sha && head.sha !== args.head) {
+    reportMergeFailure(args.pr, method, 'Head branch was modified: PR head 가 검사한 head 와 다릅니다.', heads);
   }
-  console.log(JSON.stringify({ merged: true, pr: Number(args.pr), method }, null, 2));
+  const r = gitHost.prMerge(args.pr, method, { matchHead: args.head });
+  if (!r.ok) reportMergeFailure(args.pr, method, r.err || r.out, heads);
+  console.log(JSON.stringify({ merged: true, pr: Number(args.pr), method, head: args.head }, null, 2));
 }
 
 /* ------------------------------------------------------------------ close */
