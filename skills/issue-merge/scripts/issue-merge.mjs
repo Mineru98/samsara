@@ -338,21 +338,26 @@ function preflightViaWorktree(root, onto, branch) {
 
 const MAX_SCAN = 1024 * 1024;
 
-// 한쪽이 지운 파일은 마커가 없다. 남길지 지울지는 사람이 정해야 하므로 마커 수로 판정하지 않는다.
-const DELETION_KINDS = new Set(['deleted-by-us', 'deleted-by-them']);
+// 한쪽에만 있는 경로(삭제·이름 변경·디렉터리/파일)는 마커가 없다. 남길지 지울지는 사람이 정하므로 마커 수로 판정하지 않는다.
+const DECISION_KINDS = new Set(['deleted-by-us', 'deleted-by-them', 'both-deleted', 'added-by-us', 'added-by-them']);
 
 /** index stage 조합으로 종류를 정한다. 1 = 공통 조상, 2 = 이 브랜치(HEAD), 3 = 들어오는 쪽. */
 function unmergedKind(p, stages) {
-  if (!stages.has('2')) return 'deleted-by-us';
-  if (!stages.has('3')) return 'deleted-by-them';
-  if (conflictKind(p) === 'generated') return 'generated';
-  return stages.has('1') ? 'content' : 'both-added';
+  const [base, ours, theirs] = ['1', '2', '3'].map((s) => stages.has(s));
+  if (ours && theirs) {
+    if (conflictKind(p) === 'generated') return 'generated';
+    return base ? 'content' : 'both-added';
+  }
+  if (ours) return base ? 'deleted-by-them' : 'added-by-us';
+  if (theirs) return base ? 'deleted-by-us' : 'added-by-them';
+  return 'both-deleted';
 }
 
 function unmergedEntries(wt) {
   const stages = new Map();
   for (const rec of git(['ls-files', '-u', '-z'], { cwd: wt }).out.split('\0').filter(Boolean)) {
-    const [meta, p] = rec.split('\t');
+    const tab = rec.indexOf('\t');
+    const [meta, p] = [rec.slice(0, tab), rec.slice(tab + 1)];
     if (!stages.has(p)) stages.set(p, new Set());
     stages.get(p).add(meta.split(' ')[2]);
   }
@@ -375,7 +380,7 @@ function scanMarkers(wt, entries) {
 function withIncoming(wt, files) {
   return files.map((f) => ({
     ...f,
-    incoming: git(['log', '--format=%h %s', 'HEAD..MERGE_HEAD', '--', f.path], { cwd: wt }).out.split('\n').filter(Boolean),
+    incoming: git(['--literal-pathspecs', 'log', '--format=%h %s', 'HEAD..MERGE_HEAD', '--', f.path], { cwd: wt }).out.split('\n').filter(Boolean),
   }));
 }
 
@@ -408,20 +413,18 @@ function cmdResolve(args) {
 
   if (args.continue) {
     const entries = unmergedEntries(wt);
-    const left = scanMarkers(wt, entries).filter((f) => DELETION_KINDS.has(f.kind) || f.hunks.length || f.unreadable);
+    const left = scanMarkers(wt, entries).filter((f) => DECISION_KINDS.has(f.kind) || f.hunks.length || f.unreadable);
     if (left.length) {
       console.log(JSON.stringify({
         committed: false, worktree: wt, branch,
-        reason: '해소되지 않은 충돌이 남아 있습니다. 마커를 전부 지우고, 삭제형(deleted-by-*)은 승인받은 뒤 git add(남김) 또는 git rm(지움)으로 정한 다음 다시 실행하세요.',
+        reason: '해소되지 않은 충돌이 남아 있습니다. 마커를 전부 지우고, 한쪽에만 있는 경로(deleted-by-*, added-by-*, both-deleted)는 승인받은 뒤 git add(남김) 또는 git rm(지움)으로 정한 다음 다시 실행하세요.',
         remaining: left,
       }, null, 2));
       process.exit(1);
     }
-    // 충돌 없이 합쳐진 파일은 merge 가 이미 스테이징했다. 검사 산출물 같은 다른 파일이 섞이지 않게 충돌 경로만 담는다.
-    if (entries.length) {
-      const add = git(['add', '--', ...entries.map((e) => e.path)], { cwd: wt });
-      if (add.code !== 0) fail(`git add 실패: ${add.err}`);
-    }
+    // 추적 중인 파일만 담는다. 의미 충돌 수정·재생성한 생성물은 들어가고, 검사가 남긴 새 파일은 빠진다.
+    const add = git(['add', '-u'], { cwd: wt });
+    if (add.code !== 0) fail(`git add 실패: ${add.err}`);
     const c = git(['commit', '--no-edit'], { cwd: wt });
     // 해소 결과가 base 와 동일하면 커밋할 것이 없다. 실패가 아니다.
     const nothing = /nothing to commit|no changes added/i.test(c.out + c.err);
@@ -454,7 +457,8 @@ function cmdResolve(args) {
     return;
   }
 
-  const dirty = git(['status', '--porcelain'], { cwd: wt }).out;
+  // 추적하지 않는 파일은 merge 를 막지 않는다. 앞선 해소의 검사 산출물이 남아 있어도 다시 시작할 수 있다.
+  const dirty = git(['status', '--porcelain', '--untracked-files=no'], { cwd: wt }).out;
   if (dirty) {
     console.log(JSON.stringify({
       worktree: wt, branch, started: false,

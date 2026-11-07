@@ -177,7 +177,8 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree /Users/me/work/repo-issu
 | `both-added` | 양쪽이 같은 경로를 새로 만듦 | resolver 가 합친다 |
 | `deleted-by-us` | 이 브랜치가 지웠고 base 가 수정 | 마커가 없다. 사용자에게 묻고 `git add`(남김) 또는 `git rm`(지움) |
 | `deleted-by-them` | base 가 지웠고 이 브랜치가 수정 | 위와 같다 |
-| `generated` | lockfile·빌드 산출물 | 손으로 합치지 않고 `regenerate` 명령으로 다시 만든다 |
+| `both-deleted` · `added-by-us` · `added-by-them` | 한쪽에만 남은 경로 (이름 변경, 디렉터리/파일 충돌) | 위와 같다 |
+| `generated` | lockfile·빌드 산출물 | 손으로 합치지 않고 `regenerate` 명령으로 다시 만든다. 한쪽이 지운 생성물은 삭제형으로 와서 사용자에게 묻는다 |
 
 - 저장 안 된 변경이 있으면 시작하지 않는다. 먼저 커밋하거나 치운다.
 - base 워크트리를 지정하면 거부된다.
@@ -238,8 +239,8 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue     
 node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue --push    # 승인 후
 ```
 
-`--continue` 는 충돌 마커가 하나라도 남았거나, 삭제형(`deleted-by-*`) 충돌을 아직 `git add`/`git rm` 으로 정하지 않았으면 커밋하지 않고 거부한다. 남은 파일과 줄 번호를 돌려준다.
-커밋에는 충돌 경로만 담는다. 충돌 없이 합쳐진 파일은 merge 가 이미 스테이징했고, resolver 의 검사가 남긴 파일은 들어가지 않는다.
+`--continue` 는 충돌 마커가 하나라도 남았거나, 한쪽에만 있는 경로(`deleted-by-*`, `added-by-*`, `both-deleted`)를 아직 `git add`/`git rm` 으로 정하지 않았으면 커밋하지 않고 거부한다. 남은 파일과 줄 번호를 돌려준다.
+커밋에는 추적 중인 파일만 담는다(`git add -u`). resolver 가 고친 의미 충돌과 재생성한 생성물은 들어가고, 검사가 새로 만든 파일은 들어가지 않는다. 재생성으로 새로 생긴 파일이 있으면 승인 전에 직접 `git add` 한다.
 
 ### 다시 확인한다
 

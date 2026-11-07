@@ -45,6 +45,7 @@ function setup() {
   write(root, 'lib.js', 'export const a = 1;\n');
   write(root, 'util.js', 'export const u = 1;\n');
   write(root, 'yarn.lock', 'lock 1\n');
+  write(root, 'use.js', 'import { fetchUser } from "./api.js";\nfetchUser(1);\n');
   commitAll(root, 'base');
   sh(root, 'git', 'push', '-q', '-u', 'origin', 'main');
   sh(root, 'git', 'remote', 'set-head', 'origin', 'main');
@@ -109,7 +110,7 @@ test('--continue 는 삭제형 충돌이 남아 있으면 커밋하지 않는다
   }
 });
 
-test('--continue 는 충돌 경로만 담고 추적하지 않는 파일은 커밋하지 않는다', () => {
+test('--continue 는 추적 중인 파일의 수정을 담고 검사 산출물은 커밋하지 않는다', () => {
   const { root, wt, cleanup } = setup();
   try {
     resolve(root, '--worktree', wt);
@@ -118,6 +119,7 @@ test('--continue 는 충돌 경로만 담고 추적하지 않는 파일은 커�
     write(wt, 'yarn.lock', 'lock regenerated\n');
     sh(wt, 'git', 'rm', '-q', 'lib.js');
     sh(wt, 'git', 'add', 'util.js');
+    write(wt, 'use.js', 'import { fetchUser } from "./api.js";\nfetchUser(1, {});\n');
     write(wt, 'tsc-output.log', 'scratch from a check run\n');
 
     const { code, json } = resolve(root, '--worktree', wt, '--continue');
@@ -127,8 +129,44 @@ test('--continue 는 충돌 경로만 담고 추적하지 않는 파일은 커�
     assert.ok(!tracked.includes('tsc-output.log'), '검사 산출물은 커밋되지 않는다');
     assert.ok(!tracked.includes('lib.js'), 'git rm 한 결정이 반영된다');
     assert.match(readFileSync(path.join(wt, 'api.js'), 'utf8'), /\/v2\/users\/\$\{id\}`, opts/);
+    assert.match(sh(wt, 'git', 'show', 'HEAD:use.js'), /fetchUser\(1, \{\}\)/, '충돌 없는 파일의 의미 충돌 수정도 커밋된다');
     assert.equal(sh(wt, 'git', 'status', '--porcelain'), '?? tsc-output.log');
+
+    const again = resolve(root, '--worktree', wt);
+    assert.equal(again.json.started, true, '검사 산출물이 남아 있어도 다시 시작할 수 있다');
   } finally {
     cleanup();
+  }
+});
+
+test('이름 변경 충돌은 한쪽에만 있는 경로로 분류하고 커밋하지 않는다', () => {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'issue-merge-rename-'));
+  try {
+    const origin = path.join(tmp, 'origin.git');
+    const root = path.join(tmp, 'repo');
+    const wt = path.join(tmp, 'repo-issue-3');
+    sh(tmp, 'git', 'init', '-q', '--bare', '-b', 'main', origin);
+    sh(tmp, 'git', 'clone', '-q', origin, root);
+    sh(root, 'git', 'checkout', '-q', '-b', 'main');
+    write(root, 'old.txt', 'one\ntwo\nthree\n');
+    commitAll(root, 'base');
+    sh(root, 'git', 'push', '-q', '-u', 'origin', 'main');
+    sh(root, 'git', 'remote', 'set-head', 'origin', 'main');
+    sh(root, 'git', 'worktree', 'add', '-q', '-b', 'feat/3-x', wt);
+    sh(wt, 'git', 'mv', 'old.txt', 'ours.txt');
+    commitAll(wt, 'rename ours');
+    sh(root, 'git', 'mv', 'old.txt', 'theirs.txt');
+    commitAll(root, 'rename theirs');
+    sh(root, 'git', 'push', '-q', 'origin', 'main');
+
+    const { json } = resolve(root, '--worktree', wt);
+    const kinds = Object.fromEntries(json.conflicts.map((c) => [c.path, c.kind]));
+    assert.deepEqual(kinds, { 'old.txt': 'both-deleted', 'ours.txt': 'added-by-us', 'theirs.txt': 'added-by-them' });
+
+    const cont = resolve(root, '--worktree', wt, '--continue');
+    assert.equal(cont.code, 1);
+    assert.equal(cont.json.committed, false);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
   }
 });
