@@ -243,6 +243,8 @@ push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를
 - inventory 결과 (계획이 사실과 맞는지 대조할 재료)
 - preflight 결과 전부 (단독 · 누적)
 - resolver 의 출력과 해소 diff (해소가 있었다면)
+- 묶음 위험도 (PR 수 · 파일 overlap · 충돌 해소 여부 · 보정 push 유무)
+- 재검토면 직전 review.md — 직전 지적의 반영 여부와 그 수정이 만든 새 위험만 보게 한다
 - "동의가 아니라 깨뜨리는 것이 역할이다"
 ```
 
