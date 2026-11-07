@@ -30,13 +30,13 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
   </routing>
 
   <subagents>
-    <agent name="shikamaru-merge-analyst" claude-model="opus" codex-model="gpt-5.6-luna">
+    <agent name="shikamaru-merge-analyst" claude-model="opus" codex-model="gpt-6.1-terra medium">
       워크트리 하나씩 분석. 워크트리 개수만큼 병렬로 스폰
     </agent>
-    <agent name="yamato-merge-resolver" claude-model="opus" codex-model="gpt-5.6-terra">
+    <agent name="yamato-merge-resolver" claude-model="opus" codex-model="사다리: gpt-6.1-sol low → medium → high → gpt-6-astra low → medium">
       충돌 헌크를 양쪽 의도를 보존하는 방향으로 해소. 충돌이 있는 워크트리마다 스폰
     </agent>
-    <agent name="itachi-merge-critic" claude-model="opus" codex-model="gpt-5.6-luna">
+    <agent name="itachi-merge-critic" claude-model="opus" codex-model="gpt-6.1-sol high">
       계획의 모호성·검증되지 않은 전제·되돌릴 수 없는 순서를 지적. 해소 결과도 검토
     </agent>
   </subagents>
@@ -49,7 +49,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
     <rule>충돌 해소는 작업 브랜치의 워크트리에서 한다. base 브랜치나 base 워크트리에서 해소하지 않는다.</rule>
     <rule>해소 결과는 diff 를 보여주고 승인받은 뒤에만 push 한다. 해소한 쪽이 스스로 승인하지 않는다 — 비판 서브에이전트도 함께 본다.</rule>
     <rule>해소 서브에이전트가 `escalate` 한 파일은 자동으로 합치지 않는다. 그 PR 을 보류한다.</rule>
-    <rule>같은 PR 에 대한 해소 재시도는 최대 2회. 그 뒤에는 보류로 넘긴다.</rule>
+    <rule>같은 PR 의 해소 재시도는 Codex 에서 resolver 사다리 5단계, Claude 에서 최대 2회까지다. 그 뒤에는 보류로 넘긴다.</rule>
     <rule>이슈 close 는 통합 테스트 뒤에 한다. 순서를 바꾸지 않는다.</rule>
     <rule>merge 전에 PR 본문의 `Closes/Fixes/Resolves #N` 을 제거한다. 두면 merge 순간 자동 close 되어 위 순서가 깨진다. 제거 실패 시 merge 하지 않는다.</rule>
     <rule>CI 가 실패한 PR 은 merge 하지 않는다.</rule>
@@ -105,7 +105,7 @@ flowchart TD
     R1 -- resolved --> R3{diff 승인}
     R3 -- 거부 --> R4[resolve --abort] --> R2
     R3 -- 승인 --> R5[--continue --push] --> R6[preflight 재확인]
-    R6 -- 여전히 충돌 --> R0
+    R6 -- 여전히 충돌 --> R7[resolver 다음 단계 · 이전 결과 전달] --> R0
     R6 -- clean --> I
 
     I[비판 서브에이전트: 계획 + 해소 결과]
@@ -151,13 +151,31 @@ skills/issue-merge              # 플러그인 루트 (Claude Code / Codex)
 claude  agents/shikamaru-merge-analyst.md   (model: opus)
         agents/yamato-merge-resolver.md     (model: opus)
         agents/itachi-merge-critic.md       (model: opus)
-codex   agents/shikamaru-merge-analyst.toml (model = "gpt-5.6-luna")
-        agents/yamato-merge-resolver.toml   (model = "gpt-5.6-terra")
-        agents/itachi-merge-critic.toml     (model = "gpt-5.6-luna")
+codex   agents/shikamaru-merge-analyst.toml (model = "gpt-6.1-terra", effort = "medium")
+        agents/yamato-merge-resolver.toml   (model 없음. 스폰할 때 사다리 단계로 지정)
+        agents/itachi-merge-critic.toml     (model = "gpt-6.1-sol", effort = "high")
 ```
 
-analyst 와 critic 은 판정만 하므로 작은 모델로 충분하다.
-**resolver 는 코드를 고친다.** 잘못 합치면 아무도 모르는 회귀가 남으므로 모델을 낮추지 않는다.
+analyst 는 판정만 하므로 중간 설정으로 충분하다. critic 은 해소 결과에서 버려진 변경을 찾아야 해서 effort 를 높인다.
+**resolver 는 코드를 고친다.** 잘못 합치면 아무도 모르는 회귀가 남는다.
+
+## Codex resolver 사다리
+
+Codex 에서는 resolver 를 낮은 설정에서 시작해, 해소가 실패할 때마다 한 단계씩 올린다.
+
+| 단계 | model | reasoning_effort |
+| --- | --- | --- |
+| 1 | `gpt-6.1-sol` | `low` |
+| 2 | `gpt-6.1-sol` | `medium` |
+| 3 | `gpt-6.1-sol` | `high` |
+| 4 | `gpt-6-astra` | `low` |
+| 5 | `gpt-6-astra` | `medium` |
+
+`spawn_agent` 를 부를 때마다 `agent_type: "yamato-merge-resolver"` 와 함께 그 단계의 `model`, `reasoning_effort` 를 **반드시 넘긴다.**
+`.toml` 에 model 을 고정하면 `spawn_agent` 의 덮어쓰기가 무시되므로 resolver `.toml` 에는 model 을 적지 않는다.
+넘기지 않으면 부모 세션의 모델을 물려받는다. 단계를 올리는 조건과 넘길 맥락은 `references/merge-plan.md` 5절.
+
+Claude 에서는 `opus` 고정이고 사다리가 없다. 재시도는 최대 2회다.
 
 없으면 설치한다.
 
