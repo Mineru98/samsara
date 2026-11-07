@@ -1,0 +1,20 @@
+# before — de9601f (fix/145-capability-bundle-plugin-layout)
+
+07a12b0be54493e90b7d025fa6f47b6ef748d2663acbe881419d28441e506507  skills/issue-start/contracts/issue-phase-capability-bundle-v1.json
+07a12b0be54493e90b7d025fa6f47b6ef748d2663acbe881419d28441e506507  skills/issue-end/contracts/issue-phase-capability-bundle-v1.json
+07a12b0be54493e90b7d025fa6f47b6ef748d2663acbe881419d28441e506507  skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json
+
+bundle   skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json
+sha256   07a12b0be54493e90b7d025fa6f47b6ef748d2663acbe881419d28441e506507
+mirrors  [{"id":"claude","root":".claude"},{"id":"codex","root":".codex"}]
+  hash mismatch: README.md
+  hash mismatch: scripts/check-shared.sh
+root     ~/workspace/samsara-issue-145
+  일치 0/87  없음 85  해시 불일치 2
+  hash mismatch: README.md
+  hash mismatch: scripts/check-shared.sh
+root     ~/.codex/plugins/cache/samsara/samsara/0.3.7
+  일치 0/87  없음 85  해시 불일치 2
+
+$ ls scripts/build-phase-capability-bundle.mjs
+ls: cannot access 'scripts/build-phase-capability-bundle.mjs': No such file or directory
