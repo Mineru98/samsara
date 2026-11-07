@@ -171,6 +171,7 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree /Users/me/work/repo-issu
 ### 해소 서브에이전트
 
 충돌이 있는 워크트리마다 `yamato-merge-resolver` 를 띄운다. 여러 개면 병렬.
+Codex 에서는 `SKILL.md` 의 resolver 사다리 1단계(`gpt-6.1-sol` · `low`)로 띄우고, `model` 과 `reasoning_effort` 를 스폰 인자로 넘긴다.
 
 프롬프트에 넣을 것:
 
@@ -179,6 +180,7 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree /Users/me/work/repo-issu
 - resolve 출력의 conflicts 전체
 - 이 브랜치가 연결된 이슈의 완료 기준
 - 반대쪽(이미 base 에 들어간) 변경이 무엇을 하려던 것인지 — 그쪽 이슈의 완료 기준
+- (2단계부터) 이전 단계의 resolver 출력, 해소 diff, 실패 사유 — 아래 "다시 확인한다" 참고
 ```
 
 돌아오는 `verdict` 에 따라 갈린다.
@@ -228,8 +230,33 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue --pu
 
 push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를 확인한다.
 
-**아직 충돌하면 5절을 한 번 더 돈다. 최대 2회다.** 두 번째에도 안 되면 그 PR 을 보류하고 사유를 계획에 적는다.
-같은 자리를 세 번 시도하는 것은 자동 해소로 풀 문제가 아니라는 신호다.
+해소가 실패하면 resolver 를 다음 단계로 올려 5절을 다시 돈다. 아래 중 하나면 실패다.
+
+```text
+- verdict 가 partial 이거나 escalate 인데, 남은 항목이 제품 판단이 아니다
+- --continue 가 남은 충돌 때문에 커밋을 거부했다
+- push 뒤 preflight 가 아직 clean: false 다
+- 6절 비판 서브에이전트가 해소 결과를 block 했다 (한쪽 변경을 버림, 근거 없는 해소)
+```
+
+`escalate` 의 `options` 가 저마다 한쪽 이슈의 완료 기준을 깨는 경우는 제품 판단이다. 더 강한 모델로도 풀리지 않으므로 사다리를 올리지 않고 위 질문으로 바로 묻는다.
+
+다음 단계로 올리기 전에 `resolve --worktree <경로> --abort` 로 판을 되돌리고 `resolve` 로 다시 깐다. 이전 단계가 남긴 편집 위에서 이어 붙이지 않는다.
+새 resolver 프롬프트에는 위 기본 항목에 더해 아래를 넣는다. 같은 실수를 반복하지 않게 하려는 것이다.
+
+```text
+- 이전 단계 번호와 모델·effort
+- 이전 resolver 의 JSON 출력 전체
+- 이전 해소 diff (git -C <워크트리> diff 를 abort 전에 저장해 둔 것)
+- 실패 사유 — 위 네 가지 중 무엇이었는지, --continue 의 remaining, preflight 의 conflicts, critic 의 blocking 항목
+```
+
+| 실행 계열 | 상한 | 다 쓴 뒤 |
+| --- | --- | --- |
+| Codex | 사다리 5단계 (`gpt-6.1-sol` low → medium → high → `gpt-6-astra` low → medium) | 그 PR 을 보류하고 단계별 실패 사유를 계획에 적은 뒤 사용자에게 묻는다 |
+| Claude | 최대 2회 (`opus` 고정) | 그 PR 을 보류하고 사유를 계획에 적는다 |
+
+단계를 건너뛰지 않는다. 각 단계의 모델·effort·실패 사유는 `plan.md` 의 충돌 현황에 한 줄씩 남긴다.
 
 ## 6. 비판 서브에이전트
 
@@ -250,7 +277,7 @@ push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를
 
 | verdict | 행동 |
 | --- | --- |
-| `block` | `blocking` 항목을 전부 해소하도록 `plan.md` 를 고치고 다시 검토받는다 |
+| `block` | `blocking` 항목을 전부 해소하도록 `plan.md` 를 고치고 다시 검토받는다. 항목이 해소 결과를 가리키면 5절 "다시 확인한다" 대로 resolver 를 다음 단계로 올린다 |
 | `revise` | `warnings` 를 반영하고 넘어간다. 반영하지 않은 것은 이유를 계획에 적는다 |
 | `proceed` | 다음 단계로 |
 
