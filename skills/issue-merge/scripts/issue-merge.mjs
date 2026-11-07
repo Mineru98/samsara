@@ -651,7 +651,7 @@ const args = parseArgs(rest, ['json', 'dry-run', 'remove', 'force', 'no-status',
 
 // 되돌리기 어려운 서브커맨드는 받는 옵션만 허용한다. 오타 옵션이 조용히 무시된 채 실행되지 않게 한다.
 const ALLOWED_OPTIONS = {
-  merge: ['pr', 'method'],
+  merge: ['pr', 'head', 'method'],
   close: ['issue', 'comment-file', 'no-status'],
   cleanup: ['worktree', 'branch', 'force'],
   resolve: ['worktree', 'base', 'continue', 'abort', 'push'],

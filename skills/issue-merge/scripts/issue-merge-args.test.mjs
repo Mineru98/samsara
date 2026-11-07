@@ -96,10 +96,10 @@ test('모르는 옵션은 exit 1 로 끝나고 gh 를 부르지 않는다', () =
 test('허용된 옵션만 쓰면 merge 는 그대로 실행된다', () => {
   const t = setup();
   try {
-    const r = t.runCli('merge', '--pr', '151', '--method', 'squash');
+    const r = t.runCli('merge', '--pr', '151', '--head', 'a'.repeat(40), '--method', 'squash');
     assert.equal(r.code, 0, r.stderr);
     assert.equal(JSON.parse(r.stdout).merged, true);
-    assert.ok(r.calls.includes('pr merge 151 --squash'));
+    assert.ok(r.calls.includes(`pr merge 151 --squash --match-head-commit ${'a'.repeat(40)}`));
   } finally {
     t.cleanup();
   }
