@@ -1,0 +1,15 @@
+✔ affectedPaths 는 영향 범위 섹션의 경로만 뽑는다 (2.58604ms)
+✔ 낡은 기준 브랜치에 영향 경로가 없으면 워크트리를 만들기 전에 멈춘다 (345.476247ms)
+✔ origin/HEAD 가 없어도 main 으로 폴백해 낡은 기준을 잡는다 (271.319682ms)
+✔ 어느 브랜치에도 없는 경로(새 파일·상대 경로)만 빠지면 막지 않는다 (543.268145ms)
+✔ base --set 으로 기준을 고치면 바로 워크트리가 만들어진다 (1641.718856ms)
+✔ base 는 기록이 없으면 원격에서 판별해 SOURCE=detected 로 남긴다 (650.444702ms)
+✔ base 는 .issue 가 무시 대상이 아니어서 기록을 못 해도 SOURCE=detected 다 (377.977733ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3957.201627
