@@ -640,7 +640,29 @@ function cmdCleanup(args) {
 /* ------------------------------------------------------------------ entry */
 
 const [, , sub, ...rest] = process.argv;
+
+// 도움말 요청은 어떤 서브커맨드보다 먼저 처리한다. parseArgs 를 거치면 값 옵션으로 먹혀 사라진다.
+if (rest.includes('--help') || rest.includes('-h')) {
+  console.log(USAGE);
+  process.exit(0);
+}
+
 const args = parseArgs(rest, ['json', 'dry-run', 'remove', 'force', 'no-status', 'continue', 'abort', 'push']);
+
+// 되돌리기 어려운 서브커맨드는 받는 옵션만 허용한다. 오타 옵션이 조용히 무시된 채 실행되지 않게 한다.
+const ALLOWED_OPTIONS = {
+  merge: ['pr', 'head', 'method'],
+  close: ['issue', 'comment-file', 'no-status'],
+  cleanup: ['worktree', 'branch', 'force'],
+  resolve: ['worktree', 'base', 'continue', 'abort', 'push'],
+};
+if (ALLOWED_OPTIONS[sub]) {
+  const unknown = Object.keys(args).filter((k) => k !== '_' && k !== 'dryRun' && !ALLOWED_OPTIONS[sub].includes(k));
+  if (unknown.length) {
+    console.error(`✗ ${sub} 가 받지 않는 옵션입니다: ${unknown.map((k) => `--${k}`).join(', ')}\n\n${USAGE}`);
+    process.exit(1);
+  }
+}
 
 switch (sub) {
   case 'phase': cmdPhase(args); break;
