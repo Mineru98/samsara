@@ -1,0 +1,5 @@
+## 실제 herdr 0.9.3 · 신뢰·hooks·업데이트 화면 없는 경우 (이 워크트리, cc --mode=dev --model=opus)
+$ skills/herdr-orch/scripts/start-tab.sh real-146-after "#146 after real" "reply with OK only"
+real-146-after wP:t34 wP:p34 working
+exit=0 elapsed=7s
+# 확인 뒤 테스트 tab(wP:t34)은 닫음
