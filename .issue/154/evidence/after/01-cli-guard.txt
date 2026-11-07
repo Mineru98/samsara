@@ -1,0 +1,49 @@
+$ node issue-merge.mjs merge --pr 151 --help
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  | 
+  |   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
+  exit=0
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
+$ node issue-merge.mjs merge --pr 151 -h
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  | 
+  |   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
+  exit=0
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
+$ node issue-merge.mjs merge --pr 151 --bogus x
+  | ✗ merge 가 받지 않는 옵션입니다: --bogus
+  | 
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  exit=1
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
+$ node issue-merge.mjs close --issue 1 --help
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  | 
+  |   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
+  exit=0
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
+$ node issue-merge.mjs close --issue 1 --bogus
+  | ✗ close 가 받지 않는 옵션입니다: --bogus
+  | 
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  exit=1
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
+$ node issue-merge.mjs cleanup --worktree <tmp>/nope --bogus x
+  | ✗ cleanup 가 받지 않는 옵션입니다: --bogus
+  | 
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  exit=1
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
+$ node issue-merge.mjs resolve --worktree <tmp>/nope --help
+  | Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|unblocked|status|cleanup> [options]
+  | 
+  |   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
+  exit=0
+  gh 호출: 0 회 (상태 변경) / 전체 0 회
+
