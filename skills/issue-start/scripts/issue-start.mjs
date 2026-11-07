@@ -10,6 +10,7 @@
  *   evidence-commit <n>  증거 파일을 강제 add 하고 커밋
  *   evidence-mirror <n>  기본 브랜치에 증거만 커밋 (코멘트 이미지가 렌더링되게)
  *   evidence-urls <n>    코멘트에 붙일 raw 이미지 URL 출력
+ *   base                 기준 브랜치 확인 · --set 으로 저장소 고정 · --default 로 사용자 기본값 고정
  *   migrate              .issue-start / .issue-evidence 를 .issue 로 이관
  *   sync-base            증거 미러 뒤 주 체크아웃의 기본 브랜치를 최신화
  *
@@ -42,7 +43,8 @@ import {
   slugify, prefixFromLabels, parseIssueNumber, inferIssue,
   issueDir, evidenceDir, evidenceRel, listEvidence, ensureIgnoreBlock,
   mirrorEvidence, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
-  setTerminalTitle, predecessorNumbers, isIssueDone, WORKSPACE_DIR, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
+  setTerminalTitle, predecessorNumbers, isIssueDone, readProjectSettings, writeProjectSettings,
+  getDefaultBaseBranch, setDefaultBaseBranch, WORKSPACE_DIR, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
 } from './issue-common.mjs';
 import {
   createTracker, evidenceUrls, gitHost, setTrackerStatus,
@@ -62,6 +64,7 @@ function usage(exitCode = 1) {
   node issue-start.mjs evidence-init|evidence-commit|evidence-mirror|evidence-urls|report-check <issue-number> [options]
   node issue-start.mjs migrate [--dry-run]
   node issue-start.mjs sync-base [--base <branch>]
+  node issue-start.mjs base [--set <branch>] [--default <branch>]
 
 fetch:
   이슈 본문·코멘트·라벨을 .issue/<번호>/issue.json / issue.md 로 저장하고
@@ -71,10 +74,15 @@ worktree options:
   --slug <slug>    브랜치 영문 slug (예: fab-tab-active-state). 생략 시 issue-<번호>
   --prefix <p>     브랜치 prefix (fix|feat|docs|chore|refactor). 생략 시 라벨로 추론
   --branch <name>  브랜치 이름 전체를 직접 지정 (--slug/--prefix 무시)
-  --base <branch>  분기 기준 브랜치 (기본: origin/HEAD 자동 판별)
+  --base <branch>  분기 기준 브랜치 (기본: .issue/settings.json 기록 → origin/HEAD 판별)
   --layout <l>     이번 실행에 한해 배치 강제 (${WORKTREE_LAYOUTS.join('|')})
   --path <dir>     워크트리 경로 직접 지정 (설정을 우회하는 탈출구)
+  --allow-missing-paths  영향 경로가 기준 브랜치에 없고 origin/HEAD 에만 있어도 그대로 만든다
   --dry-run        실행 계획만 출력
+
+base options:
+  --set <branch>      이 저장소의 기준 브랜치를 .issue/settings.json 에 고정
+  --default <branch>  저장소에서 판별이 안 될 때 쓸 사용자 기본값을 고정
 
 evidence options:
   --push           evidence-mirror 에서 push 까지 수행
@@ -213,14 +221,79 @@ function cmdFetch(number, root, tracker, providedAuth) {
 
 /* --------------------------------------------------------------- worktree */
 
-function labelsOf(root, number) {
+function issueJson(root, number) {
   const file = path.join(issueDir(root, number), 'issue.json');
-  if (!existsSync(file)) return [];
+  if (!existsSync(file)) return {};
   try {
-    return (JSON.parse(readFileSync(file, 'utf8')).labels ?? []).map((l) => l.name);
+    return JSON.parse(readFileSync(file, 'utf8'));
   } catch {
-    return [];
+    return {};
   }
+}
+
+function labelsOf(root, number) {
+  return (issueJson(root, number).labels ?? []).map((l) => l.name);
+}
+
+/**
+ * 본문의 `## 영향 범위` 섹션에서 백틱으로 감싼 저장소 경로를 뽑는다.
+ * `/` 가 없는 토큰(명령·식별자), URL, glob·중괄호, 홈·절대 경로, 옵션은 경로로 보지 않는다.
+ * `path:line`, `path#L10`, `path::fn` 은 위치 표시를 뗀다. 섹션은 같은 단계 이상의 다음 제목에서 끝난다.
+ */
+export function affectedPaths(body) {
+  const lines = String(body ?? '').split(/\r?\n/);
+  const start = lines.findIndex((line) => /^#{1,6}\s*영향\s*범위/.test(line));
+  if (start === -1) return [];
+  const level = lines[start].match(/^#+/)[0].length;
+  const paths = new Set();
+  let fenced = false;
+  for (const line of lines.slice(start + 1)) {
+    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+    const heading = !fenced && line.match(/^(#{1,6})\s/);
+    if (heading && heading[1].length <= level) break;
+    for (const [, raw] of line.matchAll(/`([^`\s]+)`/g)) {
+      if (!raw.includes('/') || /^[a-z]+:\/\//i.test(raw) || /[*?{}]/.test(raw) || /^[~/-]/.test(raw)) continue;
+      const token = raw.replace(/(::|#).*$/, '').replace(/(:\d+)+(-\d+)?$/, '').replace(/^\.\//, '').replace(/\/+$/, '');
+      if (token.includes('/')) paths.add(token);
+    }
+  }
+  return [...paths];
+}
+
+/**
+ * 새 브랜치를 기준 브랜치에서 떼기 전에, 기준 기록이 낡았는지 본다.
+ * 영향 경로 중 기준에는 없고 origin/HEAD 에는 있는 것이 하나라도 있으면 낡은 기준으로 보고 만들기 전에 멈춘다 (exit 5).
+ * 새로 만들 파일·상대 경로처럼 어느 쪽에도 없는 경로는 판단 근거로 삼지 않는다.
+ */
+function checkBasePaths(root, remote, base, number) {
+  // clone 이 아니면 origin/HEAD 가 없으므로 detectBase 와 같은 main → master 순서로 폴백한다.
+  const head = git(['symbolic-ref', '--quiet', `refs/remotes/${remote}/HEAD`], { cwd: root }).out
+    .replace(`refs/remotes/${remote}/`, '')
+    || ['main', 'master'].find((b) => remoteBranchExists(root, remote, b));
+  if (!head || head === base) return;
+  const ref = `${remote}/${base}`;
+  const exists = (r, p) => git(['cat-file', '-e', `${r}:${p}`], { cwd: root }).code === 0;
+  const absent = affectedPaths(issueJson(root, number).body).filter((p) => !exists(ref, p));
+  if (!absent.length) return;
+  git(['fetch', remote, head, '--prune'], { cwd: root });
+  const missing = absent.filter((p) => exists(`${remote}/${head}`, p));
+  if (!missing.length) return;
+  const candidate = head;
+  const recorded = readProjectSettings(root).git;
+
+  console.error([
+    `✗ 기준 브랜치 ${ref} 에 이슈 #${number} 의 영향 경로가 없습니다. 워크트리를 만들지 않았습니다.`,
+    ...missing.map((p) => `    - ${p}`),
+    recorded?.baseBranch === base
+      ? `  기준 출처: ${WORKSPACE_DIR}/settings.json git.baseBranch (기록 시각 ${recorded.detectedAt ?? '알 수 없음'})`
+      : null,
+    `  위 경로는 ${remote}/${candidate} 에는 있습니다.`,
+    '  기준 고정: base --set <branch> / 이번만: --base <branch> / 이 기준이 맞으면: --allow-missing-paths',
+  ].filter(Boolean).join('\n'));
+  console.log(`BASE_PATHS_MISSING=${missing.join(',')}`);
+  console.log(`BASE=${base}`);
+  console.log(`BASE_CANDIDATE=${candidate}`);
+  process.exit(5);
 }
 
 function cmdWorktree(number, root, opts) {
@@ -289,8 +362,10 @@ function cmdWorktree(number, root, opts) {
     process.exit(1);
   }
 
-  mkdirSync(path.dirname(wtPath), { recursive: true });
   must('git', ['fetch', remote, base, '--prune'], { cwd: root });
+  const fromBase = !branchExists(root, branch) && !remoteBranchExists(root, remote, branch);
+  if (fromBase && !opts.allowMissingPaths) checkBasePaths(root, remote, base, number);
+  mkdirSync(path.dirname(wtPath), { recursive: true });
 
   const addOpts = { cwd: root };
   if (branchExists(root, branch)) {
@@ -438,6 +513,47 @@ function cmdSyncBase(root, opts) {
   console.log(JSON.stringify(syncBaseCheckout({ root, base: opts.base }), null, 2));
 }
 
+/* ------------------------------------------------------------------- base */
+
+/** 기준 브랜치를 확인하고, 요청하면 저장소 기록(--set)·사용자 기본값(--default)을 고정한다. */
+function cmdBase(root, opts) {
+  const remote = detectRemote(root);
+  const branchArg = (flag, value) => {
+    const name = String(value ?? '').replace(new RegExp(`^${remote}/`), '');
+    if (!name || git(['check-ref-format', '--branch', name], { cwd: root }).code !== 0 || name.startsWith('-')) {
+      fail(`${flag} 에 올바른 브랜치 이름이 필요합니다: ${value ?? '(없음)'}`);
+    }
+    return name;
+  };
+  if ('setDefault' in opts) setDefaultBaseBranch(branchArg('--default', opts.setDefault));
+  if ('set' in opts) {
+    const branch = branchArg('--set', opts.set);
+    if (!remoteBranchExists(root, remote, branch)) git(['fetch', remote, branch], { cwd: root });
+    if (!remoteBranchExists(root, remote, branch)) fail(`원격에 ${remote}/${branch} 가 없습니다.`);
+    const prev = readProjectSettings(root).git ?? {};
+    const saved = writeProjectSettings(root, {
+      git: { ...prev, baseBranch: branch, detectedAt: new Date().toISOString() },
+    });
+    if (!saved) fail(`${WORKSPACE_DIR}/settings.json 에 기록하지 못했습니다.`);
+  }
+
+  let source = 'project';
+  let base = readProjectSettings(root).git?.baseBranch;
+  if (!base) {
+    base = detectBase(root, remote);
+    // detectBase 는 .issue 가 무시 대상이 아니면 기록을 건너뛰므로, 기록 여부가 아니라 원격 ref 로 출처를 가린다.
+    const fromRemote = git(['symbolic-ref', '--quiet', `refs/remotes/${remote}/HEAD`], { cwd: root }).code === 0
+      || ['main', 'master'].some((b) => remoteBranchExists(root, remote, b));
+    if (fromRemote) source = 'detected';
+    else source = getDefaultBaseBranch() ? 'home-default' : 'fallback';
+  }
+  console.log(`BASE=${base}`);
+  console.log(`SOURCE=${source}`);
+  const detectedAt = readProjectSettings(root).git?.detectedAt;
+  if (detectedAt) console.log(`DETECTED_AT=${detectedAt}`);
+  if (source === 'fallback') console.log('DEFAULT_BASE_UNSET=1');
+}
+
 /* ---------------------------------------------------------------- migrate */
 
 /** `.issue-start/<n>` → `.issue/<n>`, `.issue-evidence/<k>` → `.issue/<k>/evidence` */
@@ -490,7 +606,7 @@ function cmdMigrate(root, opts) {
 const NEEDS_NUMBER = new Set([
   'fetch', 'worktree', 'evidence-init', 'evidence-commit', 'evidence-mirror', 'evidence-urls', 'report-check',
 ]);
-const MODES = new Set([...NEEDS_NUMBER, 'guard', 'migrate', 'sync-base', 'status']);
+const MODES = new Set([...NEEDS_NUMBER, 'guard', 'migrate', 'sync-base', 'status', 'base']);
 
 function main() {
   const argv = process.argv.slice(2);
@@ -530,6 +646,9 @@ function main() {
     else if (arg === '--base') opts.base = argv[++i];
     else if (arg === '--path') opts.path = argv[++i];
     else if (arg === '--layout') opts.layout = argv[++i];
+    else if (arg === '--set') opts.set = argv[++i];
+    else if (arg === '--default') opts.setDefault = argv[++i];
+    else if (arg === '--allow-missing-paths') opts.allowMissingPaths = true;
     else if (arg === '--repo') opts.repo = argv[++i];
     else if (arg === '--issue') number = parseIssueNumber(argv[++i]);
     else if (arg === '--mirrorRef') opts.mirrorRef = argv[++i];
@@ -577,6 +696,7 @@ function main() {
     case 'report-check': cmdReportCheck(number, root); break;
     case 'migrate': cmdMigrate(root, opts); break;
     case 'sync-base': cmdSyncBase(root, opts); break;
+    case 'base': cmdBase(root, opts); break;
     default: usage();
   }
 }

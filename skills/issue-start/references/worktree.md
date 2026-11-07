@@ -23,12 +23,13 @@
 ### 확인과 고정
 
 ```bash
-node <skill>/scripts/issue-create.mjs base                    # 지금 무엇으로 정해지는지 확인
-node <skill>/scripts/issue-create.mjs base --set master       # 이 저장소를 master 로 고정
-node <skill>/scripts/issue-create.mjs base --default master   # 사용자 기본값을 master 로 고정
+node <skill>/scripts/issue-start.mjs base                    # 지금 무엇으로 정해지는지 확인
+node <skill>/scripts/issue-start.mjs base --set master       # 이 저장소를 master 로 고정
+node <skill>/scripts/issue-start.mjs base --default master   # 사용자 기본값을 master 로 고정
 ```
 
-출력의 `SOURCE=` 가 어디서 왔는지 알려준다.
+출력의 `BASE=` 가 기준 브랜치, `SOURCE=` 가 어디서 왔는지, `DETECTED_AT=` 이 언제 기록됐는지 알려준다.
+`--set` 은 원격에 그 브랜치가 없으면 기록하지 않고 실패한다.
 
 ```text
 project        .issue/settings.json 에 이미 기록돼 있었다
@@ -46,6 +47,35 @@ fallback       판별도 실패, 사용자 기본값도 없다 → DEFAULT_BASE_
 1. main (권장)   요즘 대부분의 저장소가 쓰는 이름입니다.
 2. master        예전부터 쓰던 저장소가 많다면 이쪽입니다.
 ```
+
+### 기록이 낡았을 때 — 영향 경로 검사
+
+`.issue/settings.json` 의 기록은 한 번 적히면 다시 판별하지 않는다. 저장소가 `dev/...` 에서 `main` 으로 옮겨 가도 기록은 그대로 남는다.
+그래서 `worktree` 는 **새 브랜치를 기준 브랜치에서 뗄 때** 이슈 본문 `## 영향 범위` 의 백틱 경로를 먼저 본다.
+기준이 `origin/HEAD`(없으면 main → master)와 다르고, 영향 경로 중 `origin/<기준>` 에는 없는데 `origin/HEAD` 에는 있는 것이 하나라도 있으면
+낡은 기준으로 보고 워크트리도 브랜치도 만들지 않은 채 exit 5 로 빠진다.
+새로 만들 파일이나 스킬 폴더 기준 상대 경로처럼 어느 쪽에도 없는 경로는 판단 근거로 쓰지 않는다.
+
+```text
+✗ 기준 브랜치 origin/dev/0.4.0-alpha 에 이슈 #129 의 영향 경로가 없습니다. 워크트리를 만들지 않았습니다.
+    - skills/herdr-orch/SKILL.md
+BASE_PATHS_MISSING=skills/herdr-orch/SKILL.md
+BASE=dev/0.4.0-alpha
+BASE_CANDIDATE=main          ← 위 경로가 있는 origin/HEAD
+```
+
+이때 AskUserQuestion 으로 묻는다. 권장안은 `BASE_CANDIDATE` 가 있으면 그 브랜치로 고정하는 것이다.
+
+```text
+질문   issue-start 5단계(워크트리 생성)입니다. 기준 브랜치 dev/0.4.0-alpha 에 이슈가 고칠 파일이 없습니다.
+       어느 브랜치에서 작업할까요?
+
+1. main 으로 고정 (권장)   base --set main 후 다시 worktree. 이후 이슈도 main 을 씁니다.
+2. 이번만 main            worktree ... --base main. 기록은 그대로 둡니다.
+3. 그대로 진행             worktree ... --allow-missing-paths. 이 기준 브랜치에서 작업하는 게 맞을 때만 고릅니다.
+```
+
+기준이 `origin/HEAD` 와 같을 때, 이미 있는 브랜치·워크트리를 재사용할 때, `## 영향 범위` 가 없는 이슈는 검사하지 않는다.
 
 ## 배치 방식은 설정으로 고정한다
 
@@ -128,7 +158,8 @@ node <skill>/scripts/issue-start.mjs worktree {issue_number} --slug <영문-slug
 
 - `--prefix` 로 라벨 추론을 덮어쓴다.
 - `--branch` 로 이름 전체를 직접 지정한다.
-- `--base <branch>` 로 분기 기준을 고정한다. 기본은 `origin/HEAD` 자동 판별.
+- `--base <branch>` 로 이번 실행의 분기 기준을 정한다. 기본은 위의 `detectBase` 순서.
+- `--allow-missing-paths` 로 영향 경로 검사를 건너뛴다.
 - `--layout` 으로 이번 실행만 배치를 강제한다(설정은 바뀌지 않는다).
 - `--path` 로 경로를 직접 지정한다. 설정과 다르면 경고가 뜨지만 진행한다.
 
