@@ -161,8 +161,24 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree /Users/me/work/repo-issu
 
 ```json
 { "started": true, "clean": false,
-  "conflicts": [{ "path": "src/shared/api.ts", "kind": "content", "hunks": [42, 96] }] }
+  "conflicts": [
+    { "path": "src/shared/api.ts", "kind": "content", "hunks": [42, 96],
+      "incoming": ["a1b2c3d feat(#16): 검색 API 에 페이지네이션"] },
+    { "path": "src/legacy.ts", "kind": "deleted-by-us", "hunks": [],
+      "incoming": ["e4f5a6b fix(#16): legacy 리디렉트 유지"] }
+  ] }
 ```
+
+마커는 zdiff3 형식이라 `|||||||` 아래에 공통 조상이 찍힌다. `kind` 는 index stage 로 정한다.
+
+| kind | 뜻 | 처리 |
+| --- | --- | --- |
+| `content` | 양쪽이 수정 | resolver 가 합친다 |
+| `both-added` | 양쪽이 같은 경로를 새로 만듦 | resolver 가 합친다 |
+| `deleted-by-us` | 이 브랜치가 지웠고 base 가 수정 | 마커가 없다. 사용자에게 묻고 `git add`(남김) 또는 `git rm`(지움) |
+| `deleted-by-them` | base 가 지웠고 이 브랜치가 수정 | 위와 같다 |
+| `both-deleted` · `added-by-us` · `added-by-them` | 한쪽에만 남은 경로 (이름 변경, 디렉터리/파일 충돌) | 위와 같다 |
+| `generated` | lockfile·빌드 산출물 | 손으로 합치지 않고 `regenerate` 명령으로 다시 만든다. 한쪽이 지운 생성물은 삭제형으로 와서 사용자에게 묻는다 |
 
 - 저장 안 된 변경이 있으면 시작하지 않는다. 먼저 커밋하거나 치운다.
 - base 워크트리를 지정하면 거부된다.
@@ -179,7 +195,8 @@ Codex 에서는 `SKILL.md` 의 resolver 사다리 1단계(`gpt-6.1-sol` · `low`
 - 워크트리 경로와 브랜치
 - resolve 출력의 conflicts 전체
 - 이 브랜치가 연결된 이슈의 완료 기준
-- 반대쪽(이미 base 에 들어간) 변경이 무엇을 하려던 것인지 — 그쪽 이슈의 완료 기준
+- 반대쪽(이미 base 에 들어간) 변경이 무엇을 하려던 것인지 — 그쪽 이슈의 완료 기준. incoming 커밋 제목의 이슈 번호로 찾는다
+- 워크트리에서 돌릴 수 있는 검사 명령 (타입체크·린트·테스트 스크립트)
 - (2단계부터) 이전 단계의 resolver 출력, 해소 diff, 실패 사유 — 아래 "다시 확인한다" 참고
 ```
 
@@ -224,7 +241,8 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue     
 node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue --push    # 승인 후
 ```
 
-`--continue` 는 충돌 마커가 하나라도 남아 있으면 커밋하지 않고 거부한다. 남은 파일과 줄 번호를 돌려준다.
+`--continue` 는 충돌 마커가 하나라도 남았거나, 한쪽에만 있는 경로(`deleted-by-*`, `added-by-*`, `both-deleted`)를 아직 `git add`/`git rm` 으로 정하지 않았으면 커밋하지 않고 거부한다. 남은 파일과 줄 번호를 돌려준다.
+커밋에는 추적 중인 파일만 담는다(`git add -u`). resolver 가 고친 의미 충돌과 재생성한 생성물은 들어가고, 검사가 새로 만든 파일은 들어가지 않는다. 재생성으로 새로 생긴 파일이 있으면 승인 전에 직접 `git add` 한다.
 
 ### 다시 확인한다
 
