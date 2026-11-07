@@ -1,0 +1,33 @@
+fixture: 열린 #1(선행 없음) #5 #7(선행 #5 열림) #8(선행 #4 닫힘), 닫힌 #4
+
+$ node skills/issue-merge/scripts/issue-merge.mjs ready
+exit=0
+{
+  "ready": [
+    {
+      "number": 1,
+      "title": "선행 없음",
+      "url": "https://example.invalid/1"
+    },
+    {
+      "number": 5,
+      "title": "열린 선행",
+      "url": "https://example.invalid/5"
+    },
+    {
+      "number": 8,
+      "title": "선행 #4 완료",
+      "url": "https://example.invalid/8"
+    }
+  ],
+  "waiting": [
+    {
+      "number": 7,
+      "title": "선행 #5 대기",
+      "url": "https://example.invalid/7",
+      "pending": [
+        5
+      ]
+    }
+  ]
+}
