@@ -1,0 +1,10 @@
+# after 1 — 고친 문서 경로대로 PR 본문을 쓴 직후 (증거 파일은 아직 없는 깨끗한 트리)
+$ grep -n -- "--body-file .issue/59/pr-body" skills/issue-end/references/report-and-pr.md
+389:  --body-file .issue/59/pr-body.md
+
+$ printf "관련 이슈: #132\n" > .issue/132/pr-body.md
+$ git status --porcelain -uall
+(빈 출력 — 워크트리 clean)
+
+$ git check-ignore -v .issue/132/pr-body.md
+.gitignore:351:.issue/**	.issue/132/pr-body.md

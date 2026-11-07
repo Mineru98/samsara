@@ -1,0 +1,20 @@
+# before — 옛 문서 경로(report-and-pr.md:389)대로 PR 본문을 쓴 직후
+$ grep -n -- "--body-file" skills/issue-end/references/report-and-pr.md
+338:| 내가 단 리포트 코멘트가 이미 있다 | `gh issue comment 59 --edit-last --body-file .issue/59/evidence/comment.md` |
+339:| 없다 | `gh issue comment 59 --body-file .issue/59/evidence/comment.md` |
+389:  --body-file .issue/59/evidence/pr-body.md
+
+$ printf "관련 이슈: #132\n" > .issue/132/evidence/pr-body.md
+$ git status --porcelain -uall
+?? .issue/132/evidence/pr-body.md
+
+$ node skills/issue-end/scripts/issue-end.mjs context --issue 132 | jq ".evidence"
+{
+  "total": 1,
+  "before": 0,
+  "after": 0,
+  "hasComment": false,
+  "files": [
+    ".issue/132/evidence/pr-body.md"
+  ]
+}

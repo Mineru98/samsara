@@ -1,0 +1,18 @@
+# after 2 — 증거 폴더에 pr-body.md 가 남아 있으면 context 가 stray 로 따로 알린다
+$ find .issue/132/evidence -type f
+./before/dummy.txt
+./pr-body.md
+
+$ node skills/issue-end/scripts/issue-end.mjs context --issue 132 | jq ".evidence"
+{
+  "total": 1,
+  "before": 1,
+  "after": 0,
+  "hasComment": false,
+  "files": [
+    ".issue/132/evidence/before/dummy.txt"
+  ],
+  "stray": [
+    ".issue/132/evidence/pr-body.md"
+  ]
+}
