@@ -16,7 +16,7 @@
 항목 수가 87 → 41 로 줄었습니다. 같은 파일이 `.claude` / `.codex` 두 벌로 나뉘어 있던 것을 한 벌로 합쳤고, 지금은 없는 루트 `contracts/` `schemas/` `tools/` 와 무관한 `README.md` 는 뺐습니다.
 "설치본 모사"는 codex 0.3.7 설치본을 복사해 이 브랜치의 `skills/issue-{start,end,merge}` 와 생성기를 덮어쓴 폴더입니다. 실제 설치본은 릴리즈 뒤에 바뀝니다.
 
-원본 출력: [before](.issue/145/evidence/before/closure-check.txt) / [after](.issue/145/evidence/after/closure-check.txt) (`.issue/145/evidence/`)
+원본 출력: main 브랜치의 `.issue/145/evidence/before/closure-check.txt` / `.issue/145/evidence/after/closure-check.txt`
 
 ## 변경 파일
 
