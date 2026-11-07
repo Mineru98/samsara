@@ -1,11 +1,18 @@
-$ node --test skills/issue-merge/scripts/issue-merge-resolve.test.mjs skills/issue-merge/scripts/issue-unblocked.test.mjs   # 수정 후 코드
-ℹ tests 9
-ℹ pass 9
+$ node --test skills/issue-merge/scripts/issue-merge-resolve.test.mjs skills/issue-merge/scripts/issue-unblocked.test.mjs   # 수정 후 코드 (리뷰 반영 포함)
+✔ resolve 는 충돌 종류를 stage 로 구분하고 공통 조상과 반대편 커밋을 보여 준다
+✔ --continue 는 삭제형 충돌이 남아 있으면 커밋하지 않는다
+✔ --continue 는 추적 중인 파일의 수정을 담고 검사 산출물은 커밋하지 않는다
+✔ 이름 변경 충돌은 한쪽에만 있는 경로로 분류하고 커밋하지 않는다
+✔ 닫은 이슈만 선행으로 둔 열린 이슈는 ready 로 나온다
+✔ 다른 선행이 남아 있으면 후보지만 ready 가 아니다
+✔ 선행 섹션 밖에서만 번호를 언급한 이슈는 후보가 아니다
+✔ status:close 라벨도 끝난 것으로 보고, 조회 실패한 선행은 ready 를 막는다
+✔ 검색이 실패하면 ok:false 로 알린다
+✔ unblocked 명령은 번호 없이 부르면 실패한다
+ℹ tests 10
+ℹ pass 10
 ℹ fail 0
 $ node --check skills/issue-merge/scripts/issue-merge.mjs
 ok
 $ diff <(.md 본문) <(.toml 본문)
 same
-✔ resolve 는 충돌 종류를 stage 로 구분하고 공통 조상과 반대편 커밋을 보여 준다
-✔ --continue 는 삭제형 충돌이 남아 있으면 커밋하지 않는다
-✔ --continue 는 충돌 경로만 담고 추적하지 않는 파일은 커밋하지 않는다
