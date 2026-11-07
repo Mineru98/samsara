@@ -419,7 +419,7 @@ const staleMergeCode = (data) => {
   if (data.preflightClean !== true) return 'PREFLIGHT_NOT_CLEAN';
   if (data.criticVerdict !== 'proceed') return 'CRITIC_BLOCK';
   if (data.triggerCount !== 0) return 'AUTO_CLOSE_TRIGGER_REMAINS';
-  if (data.ci !== 'success') return 'CI_NOT_SUCCESSFUL';
+  if (!['success', 'none'].includes(data.ci)) return 'CI_NOT_SUCCESSFUL';
   if (data.mergeApproved !== true) return 'MERGE_APPROVAL_REQUIRED';
   return null;
 };
@@ -488,7 +488,7 @@ const phaseMergeVerify = (request) => {
     });
   }
   if (checkpoint === 'ci') {
-    return data.ci === 'success' ? envelope(request, { data: { ci: 'success' } })
+    return ['success', 'none'].includes(data.ci) ? envelope(request, { data: { ci: data.ci } })
       : hold(request, 'CI_NOT_SUCCESSFUL', { ci: data.ci });
   }
   if (checkpoint === 'merge') {
@@ -517,7 +517,7 @@ const phaseMergeVerify = (request) => {
       preflightClean: true,
       criticVerdict: 'proceed',
       triggerCount: 0,
-      ci: 'success',
+      ci: data.ci,
     })]);
   }
   if (checkpoint === 'base-refresh') {
