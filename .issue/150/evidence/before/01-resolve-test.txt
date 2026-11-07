@@ -1,0 +1,20 @@
+$ node --test skills/issue-merge/scripts/issue-merge-resolve.test.mjs   # 수정 전 코드
+ℹ tests 3
+ℹ pass 0
+ℹ fail 3
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  +   'lib.js': 'content',
+  +   'new.js': 'content',
+  +   'util.js': 'content',
+  -   'lib.js': 'deleted-by-us',
+  -   'new.js': 'both-added',
+  -   'util.js': 'deleted-by-them',
+    actual: { 'api.js': 'content', 'lib.js': 'content', 'new.js': 'content', 'util.js': 'content', 'yarn.lock': 'generated' },
+    expected: { 'api.js': 'content', 'lib.js': 'deleted-by-us', 'new.js': 'both-added', 'util.js': 'deleted-by-them', 'yarn.lock': 'generated' },
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    actual: 0,
+    expected: 1,
+  AssertionError [ERR_ASSERTION]: 검사 산출물은 커밋되지 않는다
+    actual: false,
+    expected: true,
