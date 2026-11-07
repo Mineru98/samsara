@@ -575,7 +575,11 @@ function main() {
     else if (arg === '--duplicate-review-file') opts.duplicateReviewFile = argv[++i];
     else if (arg === '--duplicate-decision-id') opts.duplicateDecisionId = argv[++i];
     else if (arg === '--skip-duplicate-review') opts.skipDuplicateReview = true;
-    else if (arg === '--label') opts.labels.push(argv[++i]);
+    else if (arg === '--label') {
+      // zsh 반복문이 배열을 못 만들면 --label "" 로 들어온다. 빈 값을 성격 라벨로 세지 않는다 (#136).
+      const label = (argv[++i] ?? '').trim();
+      if (label) opts.labels.push(label);
+    }
     else if (arg === '--remove-label') opts.removeLabels.push(argv[++i]);
     else if (arg === '--assignee') opts.assignee = argv[++i];
     else if (arg === '--after') opts.after.push(argv[++i]);
