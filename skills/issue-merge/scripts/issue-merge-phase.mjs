@@ -503,7 +503,7 @@ const phaseMergeVerify = (request) => {
     }
     return hold(request, 'EFFECT_PROPOSED', { pr, onto: data.onto }, approvalEffect({
       effectRequest: {
-        argv: ['merge', '--pr', String(pr), '--method', 'squash'],
+        argv: ['merge', '--pr', String(pr), '--head', requiredString(data.headSha, 'headSha'), '--method', 'squash'],
         onto: data.onto,
       },
       immutableState: {
