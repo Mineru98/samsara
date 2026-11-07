@@ -1,0 +1,47 @@
+$ issue-start.mjs guard --issue 147 --message $'fix(x): y
+
+Closes #147'  (commit eb89664)
+✗ 알 수 없는 옵션: --message
+Usage:
+  node issue-start.mjs fetch <issue-number> [--repo <owner/name>]
+  node issue-start.mjs worktree <issue-number> [options]
+  node issue-start.mjs guard [--issue <n>]
+  node issue-start.mjs evidence-init|evidence-commit|evidence-mirror|evidence-urls|report-check <issue-number> [options]
+  node issue-start.mjs migrate [--dry-run]
+  node issue-start.mjs sync-base [--base <branch>]
+
+fetch:
+  이슈 본문·코멘트·라벨을 .issue/<번호>/issue.json / issue.md 로 저장하고
+  본문에 포함된 이미지를 .issue/<번호>/images/ 로 내려받는다.
+
+worktree options:
+  --slug <slug>    브랜치 영문 slug (예: fab-tab-active-state). 생략 시 issue-<번호>
+  --prefix <p>     브랜치 prefix (fix|feat|docs|chore|refactor). 생략 시 라벨로 추론
+  --branch <name>  브랜치 이름 전체를 직접 지정 (--slug/--prefix 무시)
+  --base <branch>  분기 기준 브랜치 (기본: origin/HEAD 자동 판별)
+  --layout <l>     이번 실행에 한해 배치 강제 (sibling|children)
+  --path <dir>     워크트리 경로 직접 지정 (설정을 우회하는 탈출구)
+  --dry-run        실행 계획만 출력
+
+evidence options:
+  --push           evidence-mirror 에서 push 까지 수행
+  --mirrorRef <r>  evidence-urls 에서 쓸 미러 ref
+  --repo <o/n>     대상 저장소 (기본: 현재 디렉터리의 origin)
+  -h, --help       이 도움말
+
+exit=1
+
+$ issue-start.mjs guard --issue 147   # 커밋 메시지를 볼 수단이 없어 Closes 가 든 커밋도 그대로 통과
+{
+  "ok": true,
+  "branch": "fix/147-block-closing-keyword-report-links",
+  "baseBranch": "main",
+  "issue": 147,
+  "checks": {
+    "isLinkedWorktree": true,
+    "notOnBaseBranch": true,
+    "branchHasIssueNumber": true
+  },
+  "reason": null
+}
+exit=0
