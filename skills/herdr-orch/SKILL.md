@@ -44,9 +44,10 @@ herdr pane rename "$P" "#<N> start: <짧은 제목>"
 herdr pane run "$P" "cc --mode=dev --model=opus"
 # pane get 의 agent=claude, agent_status=idle|done|blocked 가 될 때까지 2초 간격 확인 (보통 2~5초)
 herdr agent rename "$P" issue-<N>
-herdr pane read "$P" --source visible --lines 60   # 신뢰·hooks 화면이면 보내지 않고 멈춘다
+herdr pane read "$P" --source visible --lines 60   # 신뢰·hooks·업데이트 화면이면 보내지 않고 멈춘다
 herdr agent prompt issue-<N> "/issue-start #<N>" --wait --until working --timeout 15000
-# 성공하면 착수된 것. 실패하면 화면을 다시 읽어 신뢰·hooks 화면인지 가린다
+# 성공하면 착수된 것. 실패하면 화면을 다시 읽어 신뢰·hooks·업데이트 화면인지 가린다
+# 입력창에 프롬프트 글자만 남아 있으면 Enter 가 빠진 것이다: agent send-keys enter → agent wait --until working (1회)
 ```
 
 출력의 마지막 칸과 exit 로 결과를 가린다.
@@ -56,7 +57,12 @@ herdr agent prompt issue-<N> "/issue-start #<N>" --wait --until working --timeou
 | `working` | 0 | 첫 프롬프트가 들어가 착수됐다 |
 | `TRUST_PROMPT` | 2 | 폴더 신뢰 화면("Is this a project you created or one you trust?")이 떠 있다. 프롬프트는 보내지 않았거나 화면이 삼켰다 |
 | `HOOKS_REVIEW` | 2 | codex "hooks need review" 화면이 떠 있다. 6 통합의 "cx tab 동작" 항목대로 처리한다 |
-| `NOT_STARTED:<status>` | 3 | 프롬프트를 보냈지만 `working` 이 되지 않았다. 화면을 읽어 원인을 가린다 |
+| `UPDATE_PROMPT` | 2 | codex "Update available" 화면이 떠 있다. 아래 "업데이트 화면 처리" 를 따른다 |
+| `NOT_STARTED:<status>` | 3 | 프롬프트를 보냈지만 Enter 재전송(1회) 뒤에도 `working` 이 되지 않았다. 화면을 읽어 원인을 가린다 |
+
+- 입력창에 프롬프트 글자만 남고 `working` 이 아니면(기동 중 Enter 누락) 스크립트가 `enter` 를 한 번 더 보내고 다시 확인한다. 그래서 `NOT_STARTED` 는 재전송까지 실패한 경우다.
+- `working` 판정 대기는 기본 15초다. 실측에서 착수는 2~10초 안에 끝났고, 15초를 넘기면 화면이 프롬프트를 삼킨 경우였다. 느린 모델·기기에서는 `START_TIMEOUT_MS=<ms>` 로 늘린다(예: `START_TIMEOUT_MS=30000 scripts/start-tab.sh …`). Enter 재전송 뒤 대기에도 같은 값을 쓴다.
+- exit 2 는 화면이 프롬프트를 삼켰거나 삼킬 수 있다는 뜻이다. 화면을 처리한 뒤 첫 프롬프트를 다시 보낸다(아래 신뢰 화면 처리 4·5와 같은 순서).
 
 ### 폴더 신뢰 화면 처리 [검증: 새 폴더 `TRUST_PROMPT` · 재전송]
 
@@ -65,11 +71,23 @@ herdr agent prompt issue-<N> "/issue-start #<N>" --wait --until working --timeou
 
 1. 신뢰 여부를 정한다.
    - 오케스트레이터가 이번 작업에서 직접 만든 폴더(예: 방금 `git init` 한 저장소)면 묻지 않고 신뢰한다.
-   - 그 밖의 폴더는 AskUserQuestion 으로 경로를 보여 주고 묻는다. 사용자가 거절하면 `esc` 로 닫고 그 tab 을 닫는다.
+   - 그 밖의 폴더는 AskUserQuestion 으로 경로를 보여 주고 묻는다. 3 질문 대리 규칙대로 질문 제목에 `[#<N> tab 질문 대리]`(merge tab 은 `[#<N> #<M> tab 질문 대리]`)를 붙이고 `header` 를 `#<N>` 으로 둔다.
+     예: `[#<N> tab 질문 대리] 새 폴더 <경로> 를 신뢰할까요?` — 선택지 `신뢰한다` / `거절하고 tab 닫기`. 사용자가 거절하면 `esc` 로 닫고 그 tab 을 닫는다.
 2. 선택한다. 커서 기본값은 `No, exit` 다. `agent send-keys issue-<N> down` 뒤 화면을 다시 읽어 `❯ Yes, I trust this folder` 를 확인하고 `enter`.
 3. `agent wait issue-<N> --until idle --timeout 20000` 으로 기동을 기다린다.
 4. 첫 프롬프트를 다시 보낸다: `agent prompt issue-<N> "<첫 프롬프트>" --wait --until working --timeout 15000`.
-5. 4 가 실패하고 입력창(`❯ <첫 프롬프트>`)에 글자만 남아 있으면 기동 중에 Enter 가 빠진 것이다. `agent send-keys issue-<N> enter` 뒤 `agent wait issue-<N> --until working --timeout 10000` (실측: 이 경우로 한 번 걸렸다).
+5. 4 가 실패하고 입력창(`❯ <첫 프롬프트>`)에 글자만 남아 있으면 기동 중에 Enter 가 빠진 것이다. `agent send-keys issue-<N> enter` 뒤 `agent wait issue-<N> --until working --timeout 10000` (실측: 이 경우로 한 번 걸렸다). `start-tab.sh` 는 처음 보낼 때 이 확인을 스스로 한다.
+
+### codex 업데이트 화면 처리 [검증: fake 화면으로 `UPDATE_PROMPT` · 미검증: 실제 codex 화면으로 감지]
+
+codex 새 버전이 나오면 `cx` 가 시작할 때 "Update available! <현재> -> <새 버전>" 화면(`Update now` / `Skip` / `Skip until next version`)을 띄워 첫 프롬프트를 삼킨다.
+업데이트는 실행 중인 다른 tab 의 codex 까지 바꾸는 설치라 스크립트는 고르지 않는다. 오케스트레이터가 아래 순서로 처리한다.
+
+1. AskUserQuestion 으로 묻는다. 질문 제목 `[#<N> tab 질문 대리] codex <현재> → <새 버전> 업데이트 화면입니다. 어떻게 할까요?`, `header` `#<N>`.
+   선택지 `건너뛰기 (권장)`(이번만 Skip) / `이 버전은 건너뛰기`(Skip until next version) / `업데이트`(tab 을 닫고 사용자가 직접 업데이트한 뒤 다시 연다).
+2. 건너뛰기면 화면을 읽어 커서(`›`)를 해당 선택지로 옮기고 `enter`. 키마다 화면을 다시 읽어 확인한다.
+3. `agent wait <agent> --until idle --until done --timeout 20000` 뒤 첫 프롬프트를 다시 보낸다(신뢰 화면 처리 4·5).
+4. 업데이트를 고르면 그 tab 은 `herdr tab close <tab_id>` 로 닫고, 업데이트가 끝났다는 답을 받은 뒤 `start-tab.sh` 로 다시 연다.
 
 - tab 이름 형식: 착수 `#<N> start: <제목>`, 통합 `#<N> #<M> merge` [통합은 미검증].
 - 포커스는 오케스트레이터 tab 에 남긴다(`--no-focus`).
@@ -104,14 +122,14 @@ agent 여러 개를 한 번에 넘길 수 있다. 하나라도 이벤트가 나�
 | 질문 | 답 | 확인할 것 |
 | --- | --- | --- |
 | issue-start 12 · issue-end 7 메인 최신화 `dirty` | 잠시 치워두고 받아오기 | 여러 tab 이 동시에 이 질문에 있으면 **하나씩** 답한다. 옛 스킬은 맨 위 stash 를 꺼내므로, 메인 폴더 `git stash list` 에 `issue-sync` 가 사라진 뒤 다음 tab 에 답한다 |
-| issue-start 13 다음 행동 | 검토 승인하고 PR 만들기 | 화면의 검증 결과가 통과(실패는 환경 원인으로 설명됨)일 때. 실패가 남아 있으면 사용자에게 묻는다 |
+| issue-start 13 다음 행동 | 검토 승인하고 PR 만들기 (tab 이 "검토 후 issue-end" / "바로 issue-end" 로 띄우면 "바로 issue-end". "검토 후" 는 고르지 않는다) | 화면의 검증 결과가 통과(실패는 환경 원인으로 설명됨)일 때. 실패가 남아 있으면 사용자에게 묻는다. 두 문구 어느 것도 없으면 사용자에게 묻는다 |
 | issue-start 11 증거 이미지 렌더링 | 잘 보인다 | 코멘트 본문의 이미지 URL 이 모두 HTTP 200 이고, 내려받아 열어 본 after 이미지가 주장과 맞을 때. 아니면 "깨져 보인다" |
 | issue-start 4 등 "도구 설치" | 이미 있으면 설치하지 않게 직접 입력 | 예: Go 는 `/home/mineru/.local/go/bin` 에 있다. 설치 선택지는 기존 설치를 덮어쓸 수 있으니 고르지 않는다(실측: #69) |
 | issue-end 10 PR 생성 | 만든다 | 대상 브랜치가 작업 기준 브랜치와 같을 때. 다르면 사용자에게 묻는다 |
 | issue-end 11 다음 행동 | 여기서 종료 → tab 닫기 | 4 참조 |
 | issue-merge 3 후보 확정 · 6 PR merge · 7 정리 | 6 참조 | 6 참조 |
 
-issue-start 마지막 화면(메인 최신화 + 다음 행동)은 `scripts/start-finish.sh <agent> <메인 경로>` 로 한 번에 답한다. 다른 세션의 `issue-sync` stash 가 있으면 멈추고(exit 2) 기다린다(실측: #96).
+issue-start 마지막 화면(메인 최신화 + 다음 행동)은 `scripts/start-finish.sh <agent> <메인 경로>` 로 한 번에 답한다. 다음 행동은 "검토 승인하고 PR" 또는 "바로 issue-end" 줄을 고르고, "검토 후 issue-end" 는 지나친다. 다른 세션의 `issue-sync` stash 가 있으면 멈추고(exit 2) 기다린다(실측: #96).
 
 설계 범위·해석을 정하는 질문(issue-start 4단계 등), 원격 브랜치에 push·revert 하는 선택은 자동 응답하지 않고 사용자에게 묻는다.
 선택지에 없는 지시를 넣을 때는 `Type something.` 줄로 커서를 옮기고 `herdr pane send-text <pane> "<지시>"` → 화면에 입력된 것을 확인 → `enter` (실측: #88 main revert + dev 재미러 지시).
@@ -178,6 +196,15 @@ python3 scripts/codex-usage.py            # REMAINING=<n> (최근 codex 세션�
 scripts/merge-launch.sh <단계> <N> <M>...  # LADDER · LAUNCH · PROMPT 출력, 단계가 끝나면 EXHAUSTED=1
 LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 모델>]: …" "<PROMPT>"
 ```
+
+merge tab 도 `start-tab.sh` 의 출력 상태·exit 로 기동 결과를 가린다. `working`(0) 이 아니면 감시기를 띄우지 않고 아래대로 처리한 뒤 첫 프롬프트(`PROMPT`)를 다시 보낸다.
+
+| 출력 상태 | exit | 처리 |
+| --- | --- | --- |
+| `TRUST_PROMPT` | 2 | 1 "폴더 신뢰 화면 처리". 질문 제목은 `[#<N> #<M> tab 질문 대리]` |
+| `HOOKS_REVIEW` | 2 | 아래 "cx tab 동작" 의 hooks 항목 |
+| `UPDATE_PROMPT` | 2 | 1 "codex 업데이트 화면 처리" (실측: astra low·medium tab 에서 첫 프롬프트를 두 번 삼켰다) |
+| `NOT_STARTED:<status>` | 3 | Enter 재전송까지 실패했다. `agent read <agent> --source visible` 로 화면을 읽어 위 세 화면인지 가리고, 아니면 사용자에게 화면을 보여 주고 묻는다. 같은 단계로 한 번 다시 열어도 같으면 사다리 다음 단계로 올리지 말고 묻는다(모델 문제가 아니다) |
 
 | 남은 사용량 | 사다리 (앞에서부터) | 첫 프롬프트 |
 | --- | --- | --- |
