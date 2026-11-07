@@ -1,0 +1,15 @@
+## A 검사 head == 현재 head
+exit=0
+gh pr merge 호출: gh pr merge 42 --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+merged=true cause=-
+
+## B 검사 head != 현재 head (사이에 push)
+exit=1
+gh pr merge 호출: (없음)
+merged=false cause=head-changed
+
+## C gh 가 Head branch was modified 로 거부
+exit=1
+gh pr merge 호출: gh pr merge 42 --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+merged=false cause=head-changed
+

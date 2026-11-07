@@ -1,0 +1,59 @@
+## 1. 문서의 기준 변경 명령
+$ node issue-start.mjs base --set main
+✗ 알 수 없는 모드: base
+Usage:
+  node issue-start.mjs fetch <issue-number> [--repo <owner/name>]
+  node issue-start.mjs worktree <issue-number> [options]
+  node issue-start.mjs guard [--issue <n>]
+  node issue-start.mjs evidence-init|evidence-commit|evidence-mirror|evidence-urls|report-check <issue-number> [options]
+  node issue-start.mjs migrate [--dry-run]
+  node issue-start.mjs sync-base [--base <branch>]
+
+fetch:
+  이슈 본문·코멘트·라벨을 .issue/<번호>/issue.json / issue.md 로 저장하고
+  본문에 포함된 이미지를 .issue/<번호>/images/ 로 내려받는다.
+
+worktree options:
+  --slug <slug>    브랜치 영문 slug (예: fab-tab-active-state). 생략 시 issue-<번호>
+  --prefix <p>     브랜치 prefix (fix|feat|docs|chore|refactor). 생략 시 라벨로 추론
+  --branch <name>  브랜치 이름 전체를 직접 지정 (--slug/--prefix 무시)
+  --base <branch>  분기 기준 브랜치 (기본: origin/HEAD 자동 판별)
+  --layout <l>     이번 실행에 한해 배치 강제 (sibling|children)
+  --path <dir>     워크트리 경로 직접 지정 (설정을 우회하는 탈출구)
+  --dry-run        실행 계획만 출력
+
+evidence options:
+  --push           evidence-mirror 에서 push 까지 수행
+  --mirrorRef <r>  evidence-urls 에서 쓸 미러 ref
+  --repo <o/n>     대상 저장소 (기본: 현재 디렉터리의 origin)
+  -h, --help       이 도움말
+
+(exit 1)
+
+## 2. 낡은 기준(dev/0.4.0-alpha)에서 워크트리 생성
+$ node issue-start.mjs worktree 129 --slug herdr-tab --no-status
+  브랜치 : fix/129-herdr-tab (신규, origin/dev/0.4.0-alpha 기준)
+  워크트리: <tmp>/repo-issue-129
+
+✓ 워크트리 준비 완료
+  .issue/129/ 를 워크트리로 복사했다 (1개 항목)
+WORKTREE_PATH=<tmp>/repo-issue-129
+WORKTREE_DISPLAY=<tmp>/repo-issue-129
+BRANCH=fix/129-herdr-tab
+(exit 0)
+
+  결과: 워크트리 생성됨, 그 안의 skills/herdr-orch 없음
+
+## 3. 기준을 main 으로 고친 뒤 워크트리 생성
+$ node issue-start.mjs worktree 129 --slug herdr-tab --no-status
+  브랜치 : fix/129-herdr-tab (신규, origin/main 기준)
+  워크트리: <tmp>/repo-issue-129
+
+✓ 워크트리 준비 완료
+  .issue/129/ 를 워크트리로 복사했다 (1개 항목)
+WORKTREE_PATH=<tmp>/repo-issue-129
+WORKTREE_DISPLAY=<tmp>/repo-issue-129
+BRANCH=fix/129-herdr-tab
+(exit 0)
+
+  결과: 워크트리 생성됨, 그 안의 skills/herdr-orch 있음

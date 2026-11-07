@@ -35,8 +35,12 @@ gh pr view <PR> --json body -q .body | grep -icE '(close[sd]?|fix(e[sd])?|resolv
 
 ```bash
 gh pr checks 103                                   # 먼저 확인
-node <skill>/scripts/issue-merge.mjs merge --pr 103 --method squash
+HEAD_SHA=$(gh pr view 103 --json headRefOid -q .headRefOid)   # 검사·승인한 head
+node <skill>/scripts/issue-merge.mjs merge --pr 103 --head "$HEAD_SHA" --method squash
 ```
+
+- **`--head` 는 preflight·CI·critic 을 돌리고 승인받은 그 head 다.** merge 직전에 다시 조회한 값을 넣지 않는다.
+  그 사이 push 된 커밋이 있으면 스크립트와 `gh --match-head-commit` 이 merge 를 거부한다.
 
 - **CI 가 실패한 PR 은 merge 하지 않는다.** 계획에서 빼고 사유를 기록한다.
 - `--method` 는 저장소의 기존 관행을 따른다. `git log --merges -5` 로 확인한다. 기본은 `squash`.
@@ -46,10 +50,14 @@ merge 가 실패하면 출력의 `cause` 를 읽는다. 스크립트가 이미 �
 
 | cause | 뜻 | 다음 행동 |
 | --- | --- | --- |
+| `head-changed` | 검사한 뒤 PR head 가 바뀌었다 | **merge 하지 않는다.** 새 head 로 preflight·CI·critic 을 다시 돌리고 이 PR 승인을 다시 받는다 |
 | `conflict` | 합쳐지지 않는다 | `preflight` 로 다시 확정하고 `resolve` 로 해소한다 |
 | `checks` | CI 가 실패했다 | **merge 하지 않는다.** 계획에서 빼고 사유를 기록한다 |
 | `approval` | 리뷰 승인이나 브랜치 보호 | 스크립트가 우회하지 않는다. 사용자에게 알린다 |
 | `state` | 이미 닫혔거나 merge 됨 | `gh pr view` 로 확인하고 정리 대상으로 넘긴다 |
+
+**스크립트 merge 가 어떤 이유로 실패해도 `gh pr merge` 를 직접 호출하지 않는다.** 우회하면 head 고정과 PR 별 승인이 함께 빠진다.
+다음 PR 로 넘어가기 전에도 그 PR 의 승인 질문을 따로 받는다.
 
 `conflict` 이면 4단계에서 preflight 를 통과했는데도 실패했다는 뜻이다 —
 그 사이 base 가 움직였거나, 5단계 해소 이후 다른 PR 이 먼저 들어갔다. 계획이 틀린 것이 아니라 기준선이 바뀐 것이다.
