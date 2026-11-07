@@ -143,8 +143,8 @@ export function collectImageReferences(sources) {
       const rawUrl = match[1] ?? match[2];
       const resolvedUrl = resolveUrl(rawUrl, item.sourceUrl);
       if (!resolvedUrl) continue;
-      const kind = classifyImageUrl(resolvedUrl);
-      if (!IMAGE_EXT_RE.test(rawUrl) && !['blob', 'raw', 'release', 'user-attachment'].includes(kind)) continue;
+      // 확장자 없는 user-attachments 만 예외다. blob/raw 라도 .txt 같은 증거 파일 링크는 이미지가 아니다.
+      if (!IMAGE_EXT_RE.test(rawUrl) && classifyImageUrl(resolvedUrl) !== 'user-attachment') continue;
       add(makeReference({
         syntax: 'markdown-link',
         rawUrl,
@@ -160,8 +160,7 @@ export function collectImageReferences(sources) {
       const start = match.index;
       const end = start + match[0].length;
       if (occupied.some(([a, b]) => start >= a && end <= b)) continue;
-      const kind = classifyImageUrl(match[0]);
-      if (!IMAGE_EXT_RE.test(match[0]) && !['blob', 'raw', 'release', 'user-attachment'].includes(kind)) continue;
+      if (!IMAGE_EXT_RE.test(match[0]) && classifyImageUrl(match[0]) !== 'user-attachment') continue;
       add(makeReference({
         syntax: 'bare-url',
         rawUrl: match[0],
