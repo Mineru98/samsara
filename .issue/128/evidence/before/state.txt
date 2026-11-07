@@ -1,0 +1,40 @@
+# before — origin/dev/0.4.0-alpha a890bea
+
+## agents/itachi-merge-critic.md 판단 원칙·출력 규칙
+10:호출자는 이미 계획을 세웠다. 네 역할은 **동의하는 것이 아니라 깨뜨리는 것**이다. 문제를 못 찾았으면 그렇게 말하되, 찾으려는 시도를 먼저 해라.
+31:  "blocking": [
+37:  "verdict": "proceed|revise|block"
+41:- `blocking` 이 하나라도 있으면 `verdict` 는 `block` 이다.
+42:- `blocking` 이 없고 `warnings` 만 있으면 `revise` 다.
+43:- 둘 다 비었으면 `proceed` 이고, 이때도 무엇을 확인했는지 `warnings` 대신 빈 배열로 남기고 끝낸다.
+47:- **되돌릴 수 없는 단계는 항상 검증 뒤에 와야 한다.** 이 순서가 어긋나면 무조건 `blocking` 이다.
+48:- 계획에 적히지 않은 것은 "알아서 하겠지"로 넘기지 않는다. 안 적혔으면 빠진 것이다.
+56:- `block`(허점 발견): "아마테라스(天照). 이 단계는 태워버려야 한다."
+57:- `revise`(경고만): "만화경의 눈이 흐림을 잡았다. 다시 그려라."
+58:- `proceed`(문제 없음): "만화경 사륜안으로도 허점이 보이지 않는군. 통과다."
+
+## agents/itachi-merge-critic.toml
+8:호출자는 이미 계획을 세웠다. 네 역할은 **동의하는 것이 아니라 깨뜨리는 것**이다. 문제를 못 찾았으면 그렇게 말하되, 찾으려는 시도를 먼저 해라.
+29:  "blocking": [
+35:  "verdict": "proceed|revise|block"
+39:- `blocking` 이 하나라도 있으면 `verdict` 는 `block` 이다.
+40:- `blocking` 이 없고 `warnings` 만 있으면 `revise` 다.
+41:- 둘 다 비었으면 `proceed` 이고, 이때도 무엇을 확인했는지 `warnings` 대신 빈 배열로 남기고 끝낸다.
+45:- **되돌릴 수 없는 단계는 항상 검증 뒤에 와야 한다.** 이 순서가 어긋나면 무조건 `blocking` 이다.
+46:- 계획에 적히지 않은 것은 "알아서 하겠지"로 넘기지 않는다. 안 적혔으면 빠진 것이다.
+
+## skills/issue-merge/SKILL.md 의 비판 검토 언급
+39:    <agent name="itachi-merge-critic" claude-model="opus" codex-model="gpt-5.6-luna">
+47:    <rule>비판 서브에이전트가 `block` 을 내면 계획을 고치기 전에는 merge 하지 않는다.</rule>
+50:    <rule>해소 결과는 diff 를 보여주고 승인받은 뒤에만 push 한다. 해소한 쪽이 스스로 승인하지 않는다 — 비판 서브에이전트도 함께 본다.</rule>
+114:    I[비판 서브에이전트: 계획 + 해소 결과]
+157:        agents/itachi-merge-critic.md       (model: opus)
+160:        agents/itachi-merge-critic.toml     (model = "gpt-5.6-luna")
+163:analyst 와 critic 은 판정만 하므로 작은 모델로 충분하다.
+171:sh <migrate-skill-agent>/scripts/migrate-skill-agent.sh --agent itachi-merge-critic    --target home --link --clone
+175:**비판 단계 자체는 건너뛰지 않는다.** 모델이 무엇이든 계획을 한 번은 깨뜨려 봐야 한다.
+
+## 문턱(되돌릴 수 없는 잘못된 결과)·재검토 범위 문구 존재 여부
+agents/itachi-merge-critic.toml:0
+agents/itachi-merge-critic.md:0
+skills/issue-merge/SKILL.md:0

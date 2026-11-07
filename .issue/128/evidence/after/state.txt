@@ -1,0 +1,33 @@
+# after — 01735b9 (feat/128-critic-blocking-threshold)
+
+## 공통 기준 블록 위치
+agents/itachi-merge-critic.md:29:**blocking 문턱** — blocking 은 "이 계획을 그대로 실행하면 되돌릴 수 없는 잘못된 결과(잘못된 merge·close·push, 데이터 손실)로 이어지는가" 하나로 가른다.
+agents/itachi-merge-critic.md:35:**검토 범위** — 묶음 위험도에 비례시킨다. 위험도는 PR 수·파일 overlap·충돌 해소 여부·보정 push 유무로 정한다.
+agents/itachi-merge-critic.md:45:**재검토** — 2차 이후는 직전 지적의 반영 여부와 그 수정이 만든 새 위험만 본다. 이미 통과한 영역에서 새 세부를 다시 파지 않는다. 예외는 되돌릴 수 없는 단계가 검증 앞에 놓인 순서 오류뿐이고, 어디서 발견해도 blocking 이다.
+skills/issue-merge/SKILL.md:231:**blocking 문턱** — blocking 은 "이 계획을 그대로 실행하면 되돌릴 수 없는 잘못된 결과(잘못된 merge·close·push, 데이터 손실)로 이어지는가" 하나로 가른다.
+skills/issue-merge/SKILL.md:237:**검토 범위** — 묶음 위험도에 비례시킨다. 위험도는 PR 수·파일 overlap·충돌 해소 여부·보정 push 유무로 정한다.
+skills/issue-merge/SKILL.md:247:**재검토** — 2차 이후는 직전 지적의 반영 여부와 그 수정이 만든 새 위험만 본다. 이미 통과한 영역에서 새 세부를 다시 파지 않는다. 예외는 되돌릴 수 없는 단계가 검증 앞에 놓인 순서 오류뿐이고, 어디서 발견해도 blocking 이다.
+agents/itachi-merge-critic.toml:27:**blocking 문턱** — blocking 은 "이 계획을 그대로 실행하면 되돌릴 수 없는 잘못된 결과(잘못된 merge·close·push, 데이터 손실)로 이어지는가" 하나로 가른다.
+agents/itachi-merge-critic.toml:33:**검토 범위** — 묶음 위험도에 비례시킨다. 위험도는 PR 수·파일 overlap·충돌 해소 여부·보정 push 유무로 정한다.
+agents/itachi-merge-critic.toml:43:**재검토** — 2차 이후는 직전 지적의 반영 여부와 그 수정이 만든 새 위험만 본다. 이미 통과한 영역에서 새 세부를 다시 파지 않는다. 예외는 되돌릴 수 없는 단계가 검증 앞에 놓인 순서 오류뿐이고, 어디서 발견해도 blocking 이다.
+
+## 공통 블록 바이트 동일성 (md / toml developer_instructions / SKILL.md)
+agents/itachi-merge-critic.md: 포함
+agents/itachi-merge-critic.toml: 포함
+skills/issue-merge/SKILL.md: 포함
+
+## 유지된 규칙
+agents/itachi-merge-critic.toml:66:- **되돌릴 수 없는 단계는 항상 검증 뒤에 와야 한다.** 이 순서가 어긋나면 무조건 `blocking` 이다.
+agents/itachi-merge-critic.md:68:- **되돌릴 수 없는 단계는 항상 검증 뒤에 와야 한다.** 이 순서가 어긋나면 무조건 `blocking` 이다.
+
+## 검사
+toml 파싱: python tomllib OK
+sh scripts/check-shared.sh: exit 0
+node --test scripts/*.test.mjs (3개): 모두 exit 0
+
+## critic 판정 (opus, 지침 파일만 기준, 저장소 무접촉)
+변경 전 · 재현 계획 1차 : block  (blocking 2, warnings 9)
+변경 후 · 재현 계획 1차 : block  (blocking 2 — grep 거짓 통과, 자동 close 경로 / warnings 4)
+변경 후 · 2차 rev2 (불완전 수정) : block (blocking 1 — 직전 지적 2 의 수정이 아직 거짓 통과)
+변경 후 · 2차 rev2b (지적 반영) : revise (blocking 0, warnings 9 — 반영 확인 2·수정이 만든 거짓 보류 3·미반영 1차 warnings 4)
+변경 후 · 반례 1차 (merge·close 가 통합 테스트 앞) : block (blocking 2 — 둘 다 되돌릴 수 없는 단계가 검증 앞)
