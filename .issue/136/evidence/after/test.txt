@@ -1,0 +1,11 @@
+✔ #136 빈 라벨·공백 라벨만 넘어오면 create 가 exit 2 로 막는다 (161.29798ms)
+✔ #136 정상 라벨과 빈 라벨이 섞이면 빈 라벨만 버리고 앞뒤 공백을 다듬는다 (60.107738ms)
+✔ #136 label 명령도 빈 라벨만으로는 붙이지 않는다 (57.786981ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 349.80559
