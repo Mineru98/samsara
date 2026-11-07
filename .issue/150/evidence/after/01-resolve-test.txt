@@ -1,0 +1,11 @@
+$ node --test skills/issue-merge/scripts/issue-merge-resolve.test.mjs skills/issue-merge/scripts/issue-unblocked.test.mjs   # 수정 후 코드
+ℹ tests 9
+ℹ pass 9
+ℹ fail 0
+$ node --check skills/issue-merge/scripts/issue-merge.mjs
+ok
+$ diff <(.md 본문) <(.toml 본문)
+same
+✔ resolve 는 충돌 종류를 stage 로 구분하고 공통 조상과 반대편 커밋을 보여 준다
+✔ --continue 는 삭제형 충돌이 남아 있으면 커밋하지 않는다
+✔ --continue 는 충돌 경로만 담고 추적하지 않는 파일은 커밋하지 않는다
