@@ -44,9 +44,13 @@
 선택지를 제시하기 전에 재료를 모아 함께 보여준다.
 
 ```bash
-gh issue list --state open --limit 10 --json number,title,url,labels
+node <skill>/scripts/issue-merge.mjs ready --limit 20   # 열린 이슈를 착수 가능(ready) / 선행 대기(waiting)로 나눈다
 git worktree list
 ```
+
+`ready` 는 열린 이슈마다 본문 `## 선행 이슈` 의 이슈를 실제로 조회해, 전부 끝난(CLOSED 또는 `status:close`) 것만 `ready` 에 넣는다.
+선행이 하나라도 남았거나 조회에 실패하면 `waiting` 에 `pending`(남은 선행 번호)과 함께 들어간다. 판정 기준은 `issue-start` 의 `prereq` 와 같다.
+본문 체크박스(`[ ]`/`[x]`)는 믿지 않는다. `gh issue list` 결과를 그대로 착수 후보로 쓰지 않는다.
 
 `.issue/graph.json` 이 있으면(issue-onboard 사용 중) close 로 새로 풀린 이슈를 함께 보여준다.
 close 는 `setTrackerStatus` 를 지나며 그래프 노드를 자동으로 `close` 로 바꾸므로, 아래는 최신 상태를 낸다.
@@ -61,14 +65,23 @@ node <issue-onboard>/scripts/issue-onboard.mjs plan     # 방금 close 로 BLOCK
 
 - **보류된 워크트리가 있으면 2번을 권장으로 올린다.** 무엇이 왜 빠졌는지 한 줄씩 적는다.
 - **통합 테스트에서 회귀가 나왔으면** 회귀는 그 자체로 후속 이슈 후보다. 3번(새 이슈 등록)을 넣고 권장으로 올린다. 회귀는 기억이 아니라 이슈로 남겨야 한다.
-- 남은 열린 이슈가 하나도 없으면 1번(다른 이슈 착수)을 선택지에서 뺀다. 이때 후속 이슈 후보가 있으면 3번(새 이슈 등록)을 권장으로 올리고, 없으면 2번 또는 4번이 권장이 된다.
+- 착수 가능한 이슈(`ready`)가 하나도 없으면 1번(다른 이슈 착수)을 선택지에서 뺀다. `waiting` 만 남은 경우도 같다. 이때 후속 이슈 후보가 있으면 3번(새 이슈 등록)을 권장으로 올리고, 없으면 2번 또는 4번이 권장이 된다.
 - 그 외에는 1번이 권장이다.
 
 이슈·PR 은 `[설명](링크)` 형식으로, 워크트리 경로는 `inventory` 출력의 `display` 값으로 보여준다. 세부는 SKILL.md 의 `링크와 경로 쓰는 법`.
 
 ## 1번 — 다른 이슈 착수
 
-이슈 목록을 번호·제목·라벨로 보여주고 고르게 한 뒤 `/issue-start <번호>` 로 넘긴다.
+`ready` 의 이슈만 착수 목록으로 보여주고 고르게 한 뒤 `/issue-start <번호>` 로 넘긴다.
+`waiting` 의 이슈는 착수 목록에 넣지 않는다. 목록 아래에 `대기(선행 #N)` 로 따로 적어 왜 빠졌는지만 알린다.
+
+```text
+착수 가능
+  [#1 선행 없는 이슈](<url>)
+  [#8 선행 #4 끝난 이슈](<url>)
+대기
+  [#7 …](<url>) — 대기(선행 #5)
+```
 
 `.issue/merge/base` 에서 시작하지 않는다. `issue-start` 가 새 워크트리를 만든다. base-tree 를 이미 제거했다면 그대로 둔다.
 

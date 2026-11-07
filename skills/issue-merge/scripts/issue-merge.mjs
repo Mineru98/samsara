@@ -11,6 +11,7 @@
  *   merge --pr <n>         PR merge 래퍼. 실패 사유를 구조화해 출력
  *   close --issue <n> [--comment-file <f>]  이슈를 닫고 후행 이슈 본문의 선행 체크를 [x] 로 바꾼다
  *   mark-successors --issue <n>            후행 체크만 다시 돌린다 (멱등, close 실패 복구용)
+ *   ready [--limit <n>]    열린 이슈를 선행 완료 여부로 착수 가능(ready)·대기(waiting)로 나눈다
  *   close-check <n> [<n>...]  회차 끝에 merge 된 이슈가 status:close + CLOSED 인지 재확인 (--fix 로 보정)
  *   cleanup                통합이 끝난 워크트리와 base-tree 를 정리
  *
@@ -33,9 +34,9 @@ import {
 import { createTracker, gitHost, setTrackerStatus } from './issue-tracker.mjs';
 import { cmdPhase } from './issue-merge-phase.mjs';
 import { gateAction } from './issue-ontology.mjs';
-import { markSuccessors } from './issue-links.mjs';
+import { markSuccessors, parseLinks, isIssueDone } from './issue-links.mjs';
 
-const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|mark-successors|close-check|status|cleanup> [options]
+const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|mark-successors|ready|close-check|status|cleanup> [options]
 
   inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
   base-tree [--remove]         base 전용 임시 워크트리 생성/정리
@@ -45,6 +46,7 @@ const USAGE = `Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflig
   merge --pr <n> [--method squash|merge|rebase]
   close --issue <n> [--comment-file <f>]
   mark-successors --issue <n> [--dry-run]
+  ready [--limit <n>]          열린 이슈를 착수 가능 / 선행 대기로 나눈다
   close-check <n> [<n>...] [--hold <n,...>] [--comment-dir <dir>] [--fix]
   status <n> <open|plan|in-process|review|close>
   cleanup --worktree <path> [--branch <name>]
@@ -583,6 +585,35 @@ function cmdMarkSuccessors(args) {
   if (!result.ok) process.exit(5);
 }
 
+/* ------------------------------------------------------------------ ready */
+
+/**
+ * 다음 행동의 "다른 이슈 착수" 재료 (이슈 #133). 열린 이슈마다 본문 `## 선행 이슈` 를 실제로 조회해
+ * 선행이 모두 끝난(CLOSED 또는 status:close) 이슈만 ready 로, 남은 이슈는 waiting 으로 나눈다.
+ * 판정 기준은 issue-start prereq 와 같다. 조회에 실패한 선행은 미완료로 센다 — 모르면 막는다.
+ */
+function cmdReady(args) {
+  const tracker = createTracker(repoRoot());
+  const limit = Number(args.limit) || 20;
+  const open = tracker.issueList({ state: 'open', limit, fields: 'number,title,labels,url,state,body' });
+  if (!open) fail('열린 이슈 목록을 가져오지 못했습니다.');
+  // gh 목록은 본문을 싣지만 Jira 목록은 description 을 받지 않아 body 가 비므로, 그때는 이슈마다 다시 조회한다.
+  const known = new Map(tracker.provider === 'github' ? open.map((it) => [Number(it.number), it]) : []);
+  const lookup = (n) => {
+    if (!known.has(n)) known.set(n, tracker.issueView(n));
+    return known.get(n);
+  };
+  const out = { ready: [], waiting: [] };
+  for (const it of open) {
+    const body = lookup(Number(it.number))?.body ?? '';
+    const pending = parseLinks(body).predecessors.map((p) => p.number).filter((n) => !isIssueDone(lookup(n)));
+    const row = { number: Number(it.number), title: it.title, url: it.url ?? null };
+    if (pending.length) out.waiting.push({ ...row, pending });
+    else out.ready.push(row);
+  }
+  console.log(JSON.stringify(out, null, 2));
+}
+
 /* ------------------------------------------------------------ close-check */
 
 /**
@@ -679,6 +710,7 @@ switch (sub) {
   case 'merge': cmdMerge(args); break;
   case 'close': cmdClose(args); break;
   case 'mark-successors': cmdMarkSuccessors(args); break;
+  case 'ready': cmdReady(args); break;
   case 'close-check': cmdCloseCheck(args); break;
   case 'status': {
     const result = setTrackerStatus(createTracker(repoRoot(), { repo: args.repo }), args._[0] ?? args.issue, args._[1], { dryRun: args.dryRun });
