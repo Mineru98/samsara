@@ -1,0 +1,23 @@
+$ node probe-report.mjs <worktree>  (commit 27f5b4d)
+## a. 증거 텍스트 파일 링크만
+원본: [guard.txt](https://github.com/Mineru98/samsara/blob/main/.issue/147/evidence/after/guard.txt)
+ok=true
+
+## a2. 증거 텍스트 raw bare URL
+원본: https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/147/evidence/after/guard.txt
+ok=true
+
+## b. blob 이미지 (깨진 이미지 링크)
+![after](https://github.com/Mineru98/samsara/blob/main/.issue/147/evidence/after/a.webp)
+ok=false
+- GitHub 페이지 URL은 직접 이미지 링크가 아닙니다: https://github.com/Mineru98/samsara/blob/main/.issue/147/evidence/after/a.webp
+
+## b2. 이미지 파일을 일반 링크로
+[after](https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/147/evidence/after/a.webp)
+ok=false
+- 이미지가 일반 링크로 작성되었습니다: https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/147/evidence/after/a.webp
+
+## c. 정상 raw 이미지
+![after](https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/147/evidence/after/a.webp)
+ok=true
+

@@ -56,6 +56,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
     <rule>`evidence/issue-*` 브랜치는 삭제하지 않는다. 증거 URL 이 의존한다.</rule>
     <rule>사용자가 정해야 할 것은 전부 `references/ask.md` 의 질문 블록으로 묻는다. 형식을 즉석에서 만들지 않는다.</rule>
     <rule>merge 는 승인받은 뒤에 한다. 여러 PR 을 묶어서 한 번에 승인받지 않는다.</rule>
+    <rule>merge 는 승인받은 head 로 고정한다(`merge --pr <n> --head <sha>`). 스크립트 merge 가 실패하면 `gh pr merge` 를 직접 호출하지 않는다. `head-changed` 면 새 head 로 재검사하고 그 PR 승인을 다시 받는다.</rule>
     <rule>사용자에게 말을 걸 때는 — 전이 보고든 질문이든 — 현재 단계를 반드시 함께 밝힌다. `references/ask.md` 를 따른다.</rule>
   </hard-rules>
 
@@ -131,6 +132,7 @@ flowchart TD
 재조정 계약과 raw-byte 폐쇄는 `contracts/issue-phase-capability-bundle-v1.json`이다.
 누적 preflight, PR별 승인, 통합 검증 뒤 close, 마지막 cleanup 순서는 유지하며,
 계약 또는 폐쇄 검증이 실패하면 active 실행을 시작하지 않는다.
+폐쇄 경로는 플러그인 루트(`skills/<name>/…` 가 있는 폴더) 기준이며 `node <플러그인 루트>/scripts/build-phase-capability-bundle.mjs --check` 로 검증한다.
 
 # 스크립트 경로
 

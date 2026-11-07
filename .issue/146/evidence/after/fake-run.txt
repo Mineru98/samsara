@@ -1,0 +1,63 @@
+## start-tab · normal
+$ LAUNCH="cx --model gpt-6-astra -c model_reasoning_effort=low" start-tab.sh merge-1-2 "#1 #2 merge" '$issue-merge #1 #2'
+merge-1-2 fT:1 fP:1 working
+exit=0
+# herdr agent prompt/send-keys/wait 호출
+  herdr agent prompt merge-1-2 $issue-merge #1 #2 --wait --until working --timeout 15000
+
+## start-tab · update
+$ LAUNCH="cx --model gpt-6-astra -c model_reasoning_effort=low" start-tab.sh merge-1-2 "#1 #2 merge" '$issue-merge #1 #2'
+merge-1-2 fT:1 fP:1 UPDATE_PROMPT
+exit=2
+# herdr agent prompt/send-keys/wait 호출
+
+## start-tab · enter-miss
+$ LAUNCH="cx --model gpt-6-astra -c model_reasoning_effort=low" start-tab.sh merge-1-2 "#1 #2 merge" '$issue-merge #1 #2'
+merge-1-2 fT:1 fP:1 working
+exit=0
+# herdr agent prompt/send-keys/wait 호출
+  herdr agent prompt merge-1-2 $issue-merge #1 #2 --wait --until working --timeout 15000
+  herdr agent send-keys merge-1-2 enter
+  herdr agent wait merge-1-2 --until working --timeout 15000
+
+## start-tab · dead
+$ LAUNCH="cx --model gpt-6-astra -c model_reasoning_effort=low" start-tab.sh merge-1-2 "#1 #2 merge" '$issue-merge #1 #2'
+merge-1-2 fT:1 fP:1 NOT_STARTED:idle
+exit=3
+# herdr agent prompt/send-keys/wait 호출
+  herdr agent prompt merge-1-2 $issue-merge #1 #2 --wait --until working --timeout 15000
+
+## start-tab · normal + START_TIMEOUT_MS=40000
+issue-9 fT:1 fP:1 working
+exit=0
+  herdr agent prompt issue-9 /issue-start #9 --wait --until working --timeout 40000
+
+## start-finish · finish-canon
+# 첫 화면
+  issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
+  ❯ 1. 검토 승인하고 PR 만들기 (권장)
+    2. 이 이슈 더 손보기
+    3. 다른 이슈 착수
+    4. 여기서 종료
+ → 다음 행동 → 검토 승인하고 PR 만들기 (권장)
+submitted
+exit=0
+# 보낸 키
+  herdr agent send-keys issue-9 enter
+  herdr agent send-keys issue-9 enter
+
+## start-finish · finish-variant
+# 첫 화면
+  issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
+  ❯ 1. 검토 후 issue-end
+    2. 바로 issue-end
+    3. 이 이슈 더 손보기
+    4. 여기서 종료
+ → 다음 행동 → 바로 issue-end
+submitted
+exit=0
+# 보낸 키
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 enter
+  herdr agent send-keys issue-9 enter
+

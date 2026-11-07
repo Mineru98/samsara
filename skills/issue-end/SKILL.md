@@ -176,6 +176,7 @@ flowchart TD
 재조정 계약과 raw-byte 폐쇄는 `contracts/issue-phase-capability-bundle-v1.json`이다.
 사람의 증거/리포트 승인, branch push 승인, PR 생성 승인은 합치지 않으며, 계약 또는
 폐쇄 검증이 실패하면 active 실행을 시작하지 않는다.
+폐쇄 경로는 플러그인 루트(`skills/<name>/…` 가 있는 폴더) 기준이며 `node <플러그인 루트>/scripts/build-phase-capability-bundle.mjs --check` 로 검증한다.
 
 # 스크립트 경로
 

@@ -121,7 +121,7 @@ base 대비로는 셋 다 clean 인데 누적하면 마지막이 충돌하는 �
 | --- | --- | --- |
 | 1 | `preflight --branch feat/21-search-filter --onto <B>` | `clean: true`. 아니면 resolve 로 간다 |
 | 2 | `gh pr checks 103` | 모든 체크 SUCCESS. 하나라도 FAILURE 면 중단 |
-| 3 | `merge --pr 103` | `merged: true` |
+| 3 | `merge --pr 103 --head <검사한 sha>` | `merged: true` |
 | 4 | base-tree 에서 `git pull` | 충돌 0 |
 | 5 | #53 통합 테스트 | 아래 재현 조건 참조 |
 | ... | | |

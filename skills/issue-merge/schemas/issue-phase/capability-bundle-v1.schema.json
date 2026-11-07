@@ -29,7 +29,7 @@
         "required": ["id", "root"],
         "properties": {
           "id": { "enum": ["claude", "codex"] },
-          "root": { "enum": [".claude", ".codex"] }
+          "root": { "const": "." }
         }
       }
     },

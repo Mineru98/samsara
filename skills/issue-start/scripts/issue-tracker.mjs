@@ -103,8 +103,12 @@ export const gitHost = {
     }
   },
 
+  /** matchHead 를 주면 그 커밋이 PR head 일 때만 merge 된다. 다르면 gh 가 거부한다. */
   prMerge(number, method = 'squash', opts = {}) {
-    const r = run('gh', ['pr', 'merge', String(number), `--${method}`], opts);
+    const { matchHead, ...runOpts } = opts;
+    const args = ['pr', 'merge', String(number), `--${method}`];
+    if (matchHead) args.push('--match-head-commit', matchHead);
+    const r = run('gh', args, runOpts);
     return { ok: r.code === 0, out: r.out, err: r.err };
   },
 
