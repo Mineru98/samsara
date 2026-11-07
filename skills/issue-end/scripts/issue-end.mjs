@@ -63,9 +63,14 @@ const USAGE = `Usage: node issue-end.mjs <context|init|commit|mirror|urls|report
   --ref <ref>        pure-tree 기준 ref
   --remove           pure-tree 정리`;
 
+// 증거 폴더는 커밋 대상이라, 여기 남은 작업 파일은 워크트리를 dirty 로 만든다.
+const NON_EVIDENCE_FILES = new Set(['pr-body.md']);
+
 /** before/after 각각에 파일이 있는지 — 증거 완결성 판단의 근거 */
 function evidenceSummary(root, key) {
-  const files = listEvidence(root, key);
+  const all = listEvidence(root, key);
+  const isStray = (f) => NON_EVIDENCE_FILES.has(path.posix.basename(f));
+  const files = all.filter((f) => !isStray(f));
   const phase = (p) => (p.includes('/before/') ? 'before' : p.includes('/after/') ? 'after' : 'other');
   return {
     total: files.length,
@@ -73,6 +78,7 @@ function evidenceSummary(root, key) {
     after: files.filter((f) => phase(f) === 'after').length,
     hasComment: files.some((f) => f.endsWith('/comment.md')),
     files,
+    stray: all.filter(isStray),
   };
 }
 

@@ -16,6 +16,7 @@ isPrivate         true 면 raw URL 이 <img> 로 렌더링되지 않는다 → 7
 dirty             커밋되지 않은 변경 개수
 upstream/ahead    push 필요 여부
 evidence          before/after 개수, comment.md 유무, 파일 목록
+evidence.stray    증거 폴더에 남은 증거 아닌 파일(pr-body.md). 집계·게시 비교에서 빠진다
 evidenceComplete  before 와 after 가 모두 존재하는지
 evidencePublished 로컬 증거가 원격 게시본과 같은지
 evidencePublishedRef 일치하는 기본/폴백 브랜치
@@ -42,6 +43,7 @@ evidencePublished = true                 승인된 게시본을 유지하고 PR 
 evidencePublished = false                누락·변경 파일만 보강·재게시한 뒤 PR 준비
 evidence.total = 0                       AskUserQuestion: issue-start 로 복귀 / 여기서 증거 생성
 pureTree ≠ null                          이전 실행이 정리하지 못했다. --remove 로 먼저 치운다
+evidence.stray ≠ []                      증거 폴더 밖(.issue/<번호>/)으로 옮긴다. 남기면 PR 뒤 워크트리가 dirty
 ```
 
 `AskUserQuestion` 이 적히지 않은 행은 사용자에게 묻는 지점이 아니다. 그대로 수행한다.
