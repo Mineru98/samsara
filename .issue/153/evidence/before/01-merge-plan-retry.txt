@@ -1,0 +1,55 @@
+# merge-plan.md 5절 — 결과를 보여주고 승인받는다 / 다시 확인한다 (변경 전)
+# 원본: skills/issue-merge/references/merge-plan.md
+
+1:### 결과를 보여주고 승인받는다
+2:
+3:**해소한 diff 를 사용자에게 보여준 뒤에만 push 한다.** resolver 결과를 그대로 밀지 않는다.
+4:
+5:```bash
+6:git -C <워크트리> diff --stat
+7:git -C <워크트리> diff        # 파일이 적으면 전문, 많으면 파일별로 나눠서
+8:```
+9:
+10:승인 전까지는 커밋만 하고 멈출 수 있다.
+11:
+12:```bash
+13:node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue           # 커밋만
+14:node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue --push    # 승인 후
+15:```
+16:
+17:`--continue` 는 충돌 마커가 하나라도 남았거나, 한쪽에만 있는 경로(`deleted-by-*`, `added-by-*`, `both-deleted`)를 아직 `git add`/`git rm` 으로 정하지 않았으면 커밋하지 않고 거부한다. 남은 파일과 줄 번호를 돌려준다.
+18:커밋에는 추적 중인 파일만 담는다(`git add -u`). resolver 가 고친 의미 충돌과 재생성한 생성물은 들어가고, 검사가 새로 만든 파일은 들어가지 않는다. 재생성으로 새로 생긴 파일이 있으면 승인 전에 직접 `git add` 한다.
+19:
+20:### 다시 확인한다
+21:
+22:push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를 확인한다.
+23:
+24:해소가 실패하면 resolver 를 다음 단계로 올려 5절을 다시 돈다. 아래 중 하나면 실패다.
+25:
+26:```text
+27:- verdict 가 partial 이거나 escalate 인데, 남은 항목이 제품 판단이 아니다
+28:- --continue 가 남은 충돌 때문에 커밋을 거부했다
+29:- push 뒤 preflight 가 아직 clean: false 다
+30:- 6절 비판 서브에이전트가 해소 결과를 block 했다 (한쪽 변경을 버림, 근거 없는 해소)
+31:```
+32:
+33:`escalate` 의 `options` 가 저마다 한쪽 이슈의 완료 기준을 깨는 경우는 제품 판단이다. 더 강한 모델로도 풀리지 않으므로 사다리를 올리지 않고 위 질문으로 바로 묻는다.
+34:
+35:다음 단계로 올리기 전에 `resolve --worktree <경로> --abort` 로 판을 되돌리고 `resolve` 로 다시 깐다. 이전 단계가 남긴 편집 위에서 이어 붙이지 않는다.
+36:새 resolver 프롬프트에는 위 기본 항목에 더해 아래를 넣는다. 같은 실수를 반복하지 않게 하려는 것이다.
+37:
+38:```text
+39:- 이전 단계 번호와 모델·effort
+40:- 이전 resolver 의 JSON 출력 전체
+41:- 이전 해소 diff (git -C <워크트리> diff 를 abort 전에 저장해 둔 것)
+42:- 실패 사유 — 위 네 가지 중 무엇이었는지, --continue 의 remaining, preflight 의 conflicts, critic 의 blocking 항목
+43:```
+44:
+45:| 실행 계열 | 상한 | 다 쓴 뒤 |
+46:| --- | --- | --- |
+47:| Codex | 사다리 5단계 (`gpt-6.1-sol` low → medium → high → `gpt-6-astra` low → medium) | 그 PR 을 보류하고 단계별 실패 사유를 계획에 적은 뒤 사용자에게 묻는다 |
+48:| Claude | 최대 2회 (`opus` 고정) | 그 PR 을 보류하고 사유를 계획에 적는다 |
+49:
+50:단계를 건너뛰지 않는다. 각 단계의 모델·effort·실패 사유는 `plan.md` 의 충돌 현황에 한 줄씩 남긴다.
+51:
+52:## 6. 비판 서브에이전트

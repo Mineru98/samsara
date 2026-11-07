@@ -203,6 +203,7 @@ flowchart TD
 `contracts/issue-start-phase-api-v1.json`, 전체 13단계 능력·효과·승인·체크포인트·
 재조정 계약과 raw-byte 폐쇄는 `contracts/issue-phase-capability-bundle-v1.json`이다.
 두 계약 또는 폐쇄 검증이 실패하면 active 실행을 시작하지 않는다.
+폐쇄 경로는 플러그인 루트(`skills/<name>/…` 가 있는 폴더) 기준이며 `node <플러그인 루트>/scripts/build-phase-capability-bundle.mjs --check` 로 검증한다.
 
 # 스크립트 경로
 
