@@ -375,12 +375,14 @@ function cmdGuard(root, opts) {
   if (opts.message !== undefined) checks.noClosingKeyword = closingKeywords.length === 0;
   const ok = Object.values(checks).every(Boolean);
 
-  let reason = null;
+  const reasons = [];
   if (closingKeywords.length) {
-    reason = `커밋 메시지에 자동 종료 문구가 있습니다(${closingKeywords.join(', ')}) — 지우고 다시 검사하세요. 이슈는 issue-merge 가 닫습니다.`;
-  } else if (!ok) {
-    reason = '무확인 커밋 조건 미충족 — 사용자에게 확인을 받고 진행하세요.';
+    reasons.push(`커밋 메시지에 자동 종료 문구가 있습니다(${closingKeywords.join(', ')}) — 지우고 다시 검사하세요. 이슈는 issue-merge 가 닫습니다.`);
   }
+  if (!checks.isLinkedWorktree || !checks.notOnBaseBranch || !checks.branchHasIssueNumber) {
+    reasons.push('무확인 커밋 조건 미충족 — 사용자에게 확인을 받고 진행하세요.');
+  }
+  const reason = reasons.length ? reasons.join(' / ') : null;
 
   console.log(JSON.stringify({
     ok, branch, baseBranch: base, issue, checks,
