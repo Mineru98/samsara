@@ -1,0 +1,59 @@
+# after — 01ec376 (fix/145-capability-bundle-plugin-layout)
+
+e1b0b47ce92500b4a204a5a4b1d5b299792b15fa7b2631ec8c1496e944237d38  skills/issue-start/contracts/issue-phase-capability-bundle-v1.json
+e1b0b47ce92500b4a204a5a4b1d5b299792b15fa7b2631ec8c1496e944237d38  skills/issue-end/contracts/issue-phase-capability-bundle-v1.json
+e1b0b47ce92500b4a204a5a4b1d5b299792b15fa7b2631ec8c1496e944237d38  skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json
+
+## 1. closure 대조 (before 와 같은 독립 스크립트)
+   두 번째 루트 = codex 0.3.7 설치본 복사본에 이 브랜치의 skills/issue-{start,end,merge} 와 생성기를 덮어쓴 것 (릴리즈 후 설치본 모사)
+bundle   skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json
+sha256   e1b0b47ce92500b4a204a5a4b1d5b299792b15fa7b2631ec8c1496e944237d38
+mirrors  [{"id":"claude","root":"."},{"id":"codex","root":"."}]
+root     ~/workspace/samsara-issue-145
+  일치 41/41  없음 0  해시 불일치 0
+root     <codex-sim>
+  일치 41/41  없음 0  해시 불일치 0
+
+## 2. 체크아웃 검사
+$ node scripts/build-phase-capability-bundle.mjs --check
+closure: 41/41 match
+capability bundle: 3 copies match
+exit=0
+
+## 3. 설치본 모사 검사
+$ node <codex-sim>/scripts/build-phase-capability-bundle.mjs --check --root <codex-sim>
+closure: 41/41 match
+capability bundle: 3 copies match
+exit=0
+
+## 4. 재생성 결정성
+$ node scripts/build-phase-capability-bundle.mjs && git diff --exit-code -- skills/*/contracts
+capability bundle written: 41 entries, sha256 e1b0b47ce92500b4a204a5a4b1d5b299792b15fa7b2631ec8c1496e944237d38
+exit=0
+
+## 5. 스킬 파일만 바꾸고 번들은 그대로 (임시 사본에서 issue-merge/SKILL.md 끝에 한 줄 추가)
+stale bundle: skills/issue-start/contracts/issue-phase-capability-bundle-v1.json
+stale bundle: skills/issue-end/contracts/issue-phase-capability-bundle-v1.json
+stale bundle: skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json
+closure drift: skills/issue-merge/SKILL.md
+closure: 40/41 match
+capability bundle is stale — run: node scripts/build-phase-capability-bundle.mjs
+exit=1
+
+## 6. 테스트
+$ node --test scripts/build-phase-capability-bundle.test.mjs scripts/check-shared.test.mjs
+✔ 저장소의 번들 세 사본은 실제 파일과 일치한다 (65.827383ms)
+✔ closure 경로는 모두 플러그인 루트의 skills/ 또는 생성기다 (1.265992ms)
+✔ 다시 생성해도 같은 바이트가 나온다 (62.153317ms)
+✔ 스킬 파일만 바꾸고 번들을 안 바꾸면 검사가 실패한다 (64.648641ms)
+✔ scripts/ 하위 폴더에 스크립트를 추가해도 검사가 실패한다 (66.296862ms)
+✔ 번들 사본 하나만 달라도 검사가 실패한다 (61.392163ms)
+✔ closure 대상 파일이 없으면 검사가 실패한다 (61.288229ms)
+✔ 현재 사본은 공유 블록 검사를 통과한다 (25.312149ms)
+✔ 공유 블록이 한 사본에서만 달라지면 drift 로 실패한다 (25.463761ms)
+✔ 공유 블록 시작 표식이 없으면 not found 로 실패한다 (19.126936ms)
+ℹ tests 10
+ℹ pass 10
+ℹ fail 0
+$ sh scripts/check-shared.sh
+shared block: 4 copies match
