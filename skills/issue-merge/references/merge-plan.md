@@ -175,7 +175,7 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree /Users/me/work/repo-issu
 | --- | --- | --- |
 | `content` | 양쪽이 수정 | resolver 가 합친다 |
 | `both-added` | 양쪽이 같은 경로를 새로 만듦 | resolver 가 합친다 |
-| `deleted-by-us` | 이 브랜치가 지웠고 base 가 수정 | 마커가 없다. 사용자에게 묻고 `git add`(남김) 또는 `git rm`(지움) |
+| `deleted-by-us` | 이 브랜치가 지웠고 base 가 수정 | 마커가 없다. 사용자에게 묻고 `git add`(남김) 또는 `git rm`(지움). 적용 시점은 아래 "결과를 보여주고 승인받는다" |
 | `deleted-by-them` | base 가 지웠고 이 브랜치가 수정 | 위와 같다 |
 | `both-deleted` · `added-by-us` · `added-by-them` | 한쪽에만 남은 경로 (이름 변경, 디렉터리/파일 충돌) | 위와 같다 |
 | `generated` | lockfile·빌드 산출물 | 손으로 합치지 않고 `regenerate` 명령으로 다시 만든다. 한쪽이 지운 생성물은 삭제형으로 와서 사용자에게 묻는다 |
@@ -234,7 +234,7 @@ git -C <워크트리> diff --stat
 git -C <워크트리> diff        # 파일이 적으면 전문, 많으면 파일별로 나눠서
 ```
 
-승인 전까지는 커밋만 하고 멈출 수 있다.
+승인 전까지는 커밋만 하고 멈출 수 있다. 한쪽에만 있는 경로가 남아 있으면 결정을 적용하기 전이라 `--continue` 가 거부되므로, 그때는 승인과 결정 적용을 마친 뒤에 돌린다.
 
 ```bash
 node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue           # 커밋만
@@ -244,6 +244,10 @@ node <skill>/scripts/issue-merge.mjs resolve --worktree <경로> --continue --pu
 `--continue` 는 충돌 마커가 하나라도 남았거나, 한쪽에만 있는 경로(`deleted-by-*`, `added-by-*`, `both-deleted`)를 아직 `git add`/`git rm` 으로 정하지 않았으면 커밋하지 않고 거부한다. 남은 파일과 줄 번호를 돌려준다.
 커밋에는 추적 중인 파일만 담는다(`git add -u`). resolver 가 고친 의미 충돌과 재생성한 생성물은 들어가고, 검사가 새로 만든 파일은 들어가지 않는다. 재생성으로 새로 생긴 파일이 있으면 승인 전에 직접 `git add` 한다.
 
+한쪽에만 있는 경로의 결정(남김/지움)은 diff 승인을 받을 때 함께 묻는다. 삭제 결정은 diff 에 보이지 않으므로 경로마다 따로 적어 보여준다.
+받은 결정은 즉시 적용하지 않는다. 경로별 결정을 `plan.md` 의 충돌 현황에 적어 두고, 해소 diff 를 승인받은 뒤 `--continue` 바로 앞에서 `git add`(남김) 또는 `git rm`(지움)으로 적용한다.
+`--abort` 는 index 에 반영된 결정까지 되돌리므로, 결정을 일찍 적용하면 다음 단계로 올라갈 때 지워진다. abort 뒤 `resolve` 로 다시 깔았으면 적어 둔 결정을 같은 시점에 다시 적용한다. 사용자에게 다시 묻지 않는다.
+
 ### 다시 확인한다
 
 push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를 확인한다.
@@ -252,12 +256,15 @@ push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를
 
 ```text
 - verdict 가 partial 이거나 escalate 인데, 남은 항목이 제품 판단이 아니다
-- --continue 가 남은 충돌 때문에 커밋을 거부했다
+- --continue 가 마커나 생성물이 남아서 커밋을 거부했다 (remaining 에 hunks 나 unreadable 이 있는 항목, 또는 한쪽 경로가 아닌 kind 가 있다)
 - push 뒤 preflight 가 아직 clean: false 다
 - 6절 비판 서브에이전트가 해소 결과를 block 했다 (한쪽 변경을 버림, 근거 없는 해소)
 ```
 
 `escalate` 의 `options` 가 저마다 한쪽 이슈의 완료 기준을 깨는 경우는 제품 판단이다. 더 강한 모델로도 풀리지 않으므로 사다리를 올리지 않고 위 질문으로 바로 묻는다.
+
+사람 결정을 기다리는 상태도 실패로 세지 않는다. `--continue` 의 `remaining` 이 전부 마커 없는 한쪽 경로(`deleted-by-*`, `added-by-*`, `both-deleted`)이고 결정이 아직 없으면, abort 하지 않고 사다리도 그대로 둔 채 `references/ask.md` 3절 형식으로 경로마다 남길지 지울지 묻는다. 이 시점은 diff 승인이 이미 끝났고 abort 도 예정돼 있지 않으므로, 답을 `plan.md` 에 적고 바로 적용한 뒤 `--continue` 를 다시 돌린다.
+`remaining` 에 마커와 한쪽 경로가 섞여 있으면 마커 쪽만 실패로 세어 다음 단계로 올린다. 한쪽 경로는 마커가 풀린 뒤 위 순서대로 묻는다.
 
 다음 단계로 올리기 전에 `resolve --worktree <경로> --abort` 로 판을 되돌리고 `resolve` 로 다시 깐다. 이전 단계가 남긴 편집 위에서 이어 붙이지 않는다.
 새 resolver 프롬프트에는 위 기본 항목에 더해 아래를 넣는다. 같은 실수를 반복하지 않게 하려는 것이다.
@@ -272,7 +279,9 @@ push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를
 | 실행 계열 | 상한 | 다 쓴 뒤 |
 | --- | --- | --- |
 | Codex | 사다리 5단계 (`gpt-6.1-sol` low → medium → high → `gpt-6-astra` low → medium) | 그 PR 을 보류하고 단계별 실패 사유를 계획에 적은 뒤 사용자에게 묻는다 |
-| Claude | 최대 2회 (`opus` 고정) | 그 PR 을 보류하고 사유를 계획에 적는다 |
+| Claude | 최대 2회 재시도 (`opus` 고정. 첫 시도가 1단계, 재시도가 2·3단계) | 그 PR 을 보류하고 사유를 계획에 적는다 |
+
+abort 후 다시 깔고 위 네 항목을 넘기는 재시도 절차는 실행 계열과 무관하게 같다. Claude 는 모델이 바뀌지 않을 뿐, 재시도마다 단계 번호를 올려 resolver 를 "2단계 이상" 으로 부른다.
 
 단계를 건너뛰지 않는다. 각 단계의 모델·effort·실패 사유는 `plan.md` 의 충돌 현황에 한 줄씩 남긴다.
 

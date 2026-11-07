@@ -49,7 +49,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
     <rule>충돌 해소는 작업 브랜치의 워크트리에서 한다. base 브랜치나 base 워크트리에서 해소하지 않는다.</rule>
     <rule>해소 결과는 diff 를 보여주고 승인받은 뒤에만 push 한다. 해소한 쪽이 스스로 승인하지 않는다 — 비판 서브에이전트도 함께 본다.</rule>
     <rule>해소 서브에이전트가 `escalate` 한 파일은 자동으로 합치지 않는다. 그 PR 을 보류한다.</rule>
-    <rule>같은 PR 의 해소 재시도는 Codex 에서 resolver 사다리 5단계, Claude 에서 최대 2회까지다. 그 뒤에는 보류로 넘긴다.</rule>
+    <rule>같은 PR 의 해소 재시도는 Codex 에서 resolver 사다리 5단계, Claude 에서 최대 2회까지다. 그 뒤에는 보류로 넘긴다. 어느 쪽이든 재시도마다 abort 후 다시 깔고 이전 출력·해소 diff·실패 사유를 넘긴다. 한쪽 경로의 사람 결정을 기다리는 것은 실패가 아니다.</rule>
     <rule>이슈 close 는 통합 테스트 뒤에 한다. 순서를 바꾸지 않는다.</rule>
     <rule>merge 전에 PR 본문의 `Closes/Fixes/Resolves #N` 을 제거한다. 두면 merge 순간 자동 close 되어 위 순서가 깨진다. 제거 실패 시 merge 하지 않는다.</rule>
     <rule>CI 가 실패한 PR 은 merge 하지 않는다.</rule>
@@ -106,7 +106,7 @@ flowchart TD
     R1 -- resolved --> R3{diff 승인}
     R3 -- 거부 --> R4[resolve --abort] --> R2
     R3 -- 승인 --> R5[--continue --push] --> R6[preflight 재확인]
-    R6 -- 여전히 충돌 --> R7[resolver 다음 단계 · 이전 결과 전달] --> R0
+    R6 -- 여전히 충돌 --> R7[resolve --abort · resolver 다음 단계 · 이전 결과 전달] --> R0
     R6 -- clean --> I
 
     I[비판 서브에이전트: 계획 + 해소 결과]
@@ -177,7 +177,8 @@ Codex 에서는 resolver 를 낮은 설정에서 시작해, 해소가 실패할 
 `.toml` 에 model 을 고정하면 `spawn_agent` 의 덮어쓰기가 무시되므로 resolver `.toml` 에는 model 을 적지 않는다.
 넘기지 않으면 부모 세션의 모델을 물려받는다. 단계를 올리는 조건과 넘길 맥락은 `references/merge-plan.md` 5절.
 
-Claude 에서는 `opus` 고정이고 사다리가 없다. 재시도는 최대 2회다.
+Claude 에서는 `opus` 고정이고 모델 사다리가 없다. 재시도는 최대 2회이며 첫 시도가 1단계, 재시도가 2·3단계다.
+재시도 절차는 Codex 와 같다. abort 후 다시 깔고, resolver 를 "2단계 이상" 으로 부르며 이전 출력·해소 diff·실패 사유를 넘긴다.
 
 없으면 설치한다.
 
