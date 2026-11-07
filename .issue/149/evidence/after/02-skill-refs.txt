@@ -1,0 +1,21 @@
+$ grep -nE "codex-model|gpt-|2회|사다리" skills/issue-merge/SKILL.md skills/issue-merge/references/merge-plan.md skills/issue-merge/references/verify-and-close.md
+skills/issue-merge/SKILL.md:33:    <agent name="shikamaru-merge-analyst" claude-model="opus" codex-model="gpt-6.1-terra medium">
+skills/issue-merge/SKILL.md:36:    <agent name="yamato-merge-resolver" claude-model="opus" codex-model="사다리: gpt-6.1-sol low → medium → high → gpt-6-astra low → medium">
+skills/issue-merge/SKILL.md:39:    <agent name="itachi-merge-critic" claude-model="opus" codex-model="gpt-6.1-sol high">
+skills/issue-merge/SKILL.md:52:    <rule>같은 PR 의 해소 재시도는 Codex 에서 resolver 사다리 5단계, Claude 에서 최대 2회까지다. 그 뒤에는 보류로 넘긴다.</rule>
+skills/issue-merge/SKILL.md:154:codex   agents/shikamaru-merge-analyst.toml (model = "gpt-6.1-terra", effort = "medium")
+skills/issue-merge/SKILL.md:155:        agents/yamato-merge-resolver.toml   (model 없음. 스폰할 때 사다리 단계로 지정)
+skills/issue-merge/SKILL.md:156:        agents/itachi-merge-critic.toml     (model = "gpt-6.1-sol", effort = "high")
+skills/issue-merge/SKILL.md:162:## Codex resolver 사다리
+skills/issue-merge/SKILL.md:168:| 1 | `gpt-6.1-sol` | `low` |
+skills/issue-merge/SKILL.md:169:| 2 | `gpt-6.1-sol` | `medium` |
+skills/issue-merge/SKILL.md:170:| 3 | `gpt-6.1-sol` | `high` |
+skills/issue-merge/SKILL.md:171:| 4 | `gpt-6-astra` | `low` |
+skills/issue-merge/SKILL.md:172:| 5 | `gpt-6-astra` | `medium` |
+skills/issue-merge/SKILL.md:178:Claude 에서는 `opus` 고정이고 사다리가 없다. 재시도는 최대 2회다.
+skills/issue-merge/references/verify-and-close.md:68:**같은 PR 에 대한 해소 재시도 상한은 `merge-plan.md` 5절을 따른다.** Codex 는 resolver 사다리 5단계, Claude 는 최대 2회다. 상한을 다 쓰면 1번 선택지를 빼고 보류로 넘긴다.
+skills/issue-merge/references/verify-and-close.md:69:1번을 고르면 사다리는 처음으로 돌아가지 않고 이 PR 이 직전에 쓴 단계의 다음부터 잇는다.
+skills/issue-merge/references/merge-plan.md:174:Codex 에서는 `SKILL.md` 의 resolver 사다리 1단계(`gpt-6.1-sol` · `low`)로 띄우고, `model` 과 `reasoning_effort` 를 스폰 인자로 넘긴다.
+skills/issue-merge/references/merge-plan.md:242:`escalate` 의 `options` 가 저마다 한쪽 이슈의 완료 기준을 깨는 경우는 제품 판단이다. 더 강한 모델로도 풀리지 않으므로 사다리를 올리지 않고 위 질문으로 바로 묻는다.
+skills/issue-merge/references/merge-plan.md:256:| Codex | 사다리 5단계 (`gpt-6.1-sol` low → medium → high → `gpt-6-astra` low → medium) | 그 PR 을 보류하고 단계별 실패 사유를 계획에 적은 뒤 사용자에게 묻는다 |
+skills/issue-merge/references/merge-plan.md:257:| Claude | 최대 2회 (`opus` 고정) | 그 PR 을 보류하고 사유를 계획에 적는다 |

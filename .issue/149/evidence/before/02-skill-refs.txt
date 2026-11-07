@@ -1,0 +1,9 @@
+$ grep -nE "codex-model|gpt-|최대 2회" skills/issue-merge/SKILL.md skills/issue-merge/references/merge-plan.md
+skills/issue-merge/references/merge-plan.md:231:**아직 충돌하면 5절을 한 번 더 돈다. 최대 2회다.** 두 번째에도 안 되면 그 PR 을 보류하고 사유를 계획에 적는다.
+skills/issue-merge/SKILL.md:33:    <agent name="shikamaru-merge-analyst" claude-model="opus" codex-model="gpt-5.6-luna">
+skills/issue-merge/SKILL.md:36:    <agent name="yamato-merge-resolver" claude-model="opus" codex-model="gpt-5.6-terra">
+skills/issue-merge/SKILL.md:39:    <agent name="itachi-merge-critic" claude-model="opus" codex-model="gpt-5.6-luna">
+skills/issue-merge/SKILL.md:52:    <rule>같은 PR 에 대한 해소 재시도는 최대 2회. 그 뒤에는 보류로 넘긴다.</rule>
+skills/issue-merge/SKILL.md:154:codex   agents/shikamaru-merge-analyst.toml (model = "gpt-5.6-luna")
+skills/issue-merge/SKILL.md:155:        agents/yamato-merge-resolver.toml   (model = "gpt-5.6-terra")
+skills/issue-merge/SKILL.md:156:        agents/itachi-merge-critic.toml     (model = "gpt-5.6-luna")

@@ -1,0 +1,5 @@
+$ grep -n "^model" agents/*merge*.toml
+agents/shikamaru-merge-analyst.toml:3:model = "gpt-6.1-terra"
+agents/shikamaru-merge-analyst.toml:4:model_reasoning_effort = "medium"
+agents/itachi-merge-critic.toml:3:model = "gpt-6.1-sol"
+agents/itachi-merge-critic.toml:4:model_reasoning_effort = "high"
