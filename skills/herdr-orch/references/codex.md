@@ -56,14 +56,21 @@ herdr pane rename "$P" "#<N> start[6.1 terra]: <짧은 제목>"
 herdr pane run "$P" "cx --mode=dev --model gpt-6.1-terra -c model_reasoning_effort=high"
 # pane get 의 agent=codex, agent_status=idle|done|blocked 가 될 때까지 2초 간격 확인
 herdr agent rename "$P" issue-<N>
-herdr pane read "$P" --source visible --lines 60   # 신뢰·hooks 화면이면 보내지 않고 멈춘다
+herdr pane read "$P" --source visible --lines 60   # 신뢰·hooks·업데이트 화면이면 보내지 않고 멈춘다
 herdr agent prompt issue-<N> '$issue-start #<N>' --wait --until working --timeout 15000
-# 성공하면 착수된 것. 실패하면 화면을 다시 읽어 신뢰·hooks 화면인지 가린다
+# 성공하면 착수된 것. 실패하면 화면을 다시 읽어 신뢰·hooks·업데이트 화면인지 가린다
+# 입력창에 프롬프트 글자만 남아 있으면 Enter 가 빠진 것이다: agent send-keys enter → agent wait --until working (1회)
 ```
 
-- 출력 상태와 exit 는 SKILL.md 1단계 표와 같다: `working`(0), `TRUST_PROMPT`(2), `HOOKS_REVIEW`(2), `NOT_STARTED:<status>`(3).
+- 출력 상태와 exit 는 SKILL.md 1단계 표와 같다: `working`(0), `TRUST_PROMPT`(2), `HOOKS_REVIEW`(2), `UPDATE_PROMPT`(2), `NOT_STARTED:<status>`(3).
+- 입력창에 프롬프트 글자만 남고 `working` 이 아니면 스크립트가 `enter` 를 한 번 더 보내고 다시 확인한다. `NOT_STARTED` 는 재전송까지 실패한 경우다.
+- `working` 판정 대기는 기본 15초이고 `START_TIMEOUT_MS=<ms>` 로 바꾼다. 근거는 SKILL.md 1단계.
+- `UPDATE_PROMPT` 면 codex "Update available" 화면이 떠 있는 것이다. 업데이트는 스크립트도 오케스트레이터도 스스로 고르지 않는다.
+  3 질문 대리처럼 `[#<N> tab 질문 대리] codex <현재> → <새 버전> 업데이트 화면입니다. 어떻게 할까요?` 를 일반 메시지로 묻고(선택지 `건너뛰기 (권장)` / `이 버전은 건너뛰기` / `업데이트`) 턴을 끝낸다.
+  건너뛰기면 화면을 읽어 커서(`›`)를 해당 선택지로 옮겨 `enter` 한 뒤 첫 프롬프트를 다시 보낸다. 업데이트면 tab 을 닫고 사용자가 업데이트한 뒤 다시 연다. [미검증: 실제 codex 화면으로 감지, fake 화면으로만 확인]
 - `HOOKS_REVIEW` 면 "hooks need review" 화면이 떠 있는 것이다. 6 통합의 "cx tab 동작" 항목대로 처리한 뒤 첫 프롬프트를 다시 보낸다. [미검증: cx 화면 문구로 감지 실측 전]
 - `TRUST_PROMPT` 면 SKILL.md 1단계 "폴더 신뢰 화면 처리" 순서를 따른다. codex 신뢰 화면은 선택지 문구가 다르므로 화면을 읽어 고른다. [미검증: cx]
+  신뢰 여부를 물을 때는 `[#<N> tab 질문 대리] 새 폴더 <경로> 를 신뢰할까요?`(merge tab 은 `[#<N> #<M> tab 질문 대리]`)를 일반 메시지로 적고 턴을 끝낸다.
 
 - tab 이름 형식: 착수 `#<N> start[<모델>]: <제목>`, 통합 `#<N> #<M> merge[<단계 모델>]: <요지>`.
 - 포커스는 오케스트레이터 tab 에 남긴다(`--no-focus`).
@@ -103,7 +110,7 @@ cx tab 은 질문을 띄우고 입력을 기다릴 때도 `done`/`idle` 이다. 
 | 질문 | 답 | 확인할 것 |
 | --- | --- | --- |
 | issue-start 12 · issue-end 7 메인 최신화 `dirty` | 잠시 치워두고 받아오기 | 여러 tab 이 동시에 이 질문에 있으면 **하나씩** 답한다. 옛 스킬은 맨 위 stash 를 꺼내므로, 메인 폴더 `git stash list` 에 `issue-sync` 가 사라진 뒤 다음 tab 에 답한다 |
-| issue-start 13 다음 행동 | 검토 승인하고 PR 만들기 | 화면의 검증 결과가 통과(실패는 환경 원인으로 설명됨)일 때. 실패가 남아 있으면 사용자에게 묻는다 |
+| issue-start 13 다음 행동 | 검토 승인하고 PR 만들기 (tab 이 "검토 후 issue-end" / "바로 issue-end" 로 띄우면 "바로 issue-end". "검토 후" 는 고르지 않는다) | 화면의 검증 결과가 통과(실패는 환경 원인으로 설명됨)일 때. 실패가 남아 있으면 사용자에게 묻는다. 두 문구 어느 것도 없으면 사용자에게 묻는다 |
 | issue-start 11 증거 이미지 렌더링 | 잘 보인다 | 코멘트 본문의 이미지 URL 이 모두 HTTP 200 이고, 내려받아 열어 본 after 이미지가 주장과 맞을 때. 아니면 "깨져 보인다" |
 | issue-start 4 등 "도구 설치" | 이미 있으면 설치하지 않게 직접 입력 | 예: Go 는 `/home/mineru/.local/go/bin` 에 있다. 설치 선택지는 기존 설치를 덮어쓸 수 있으니 고르지 않는다(실측: #69) |
 | issue-end 10 PR 생성 | 만든다 | 대상 브랜치가 작업 기준 브랜치와 같을 때. 다르면 사용자에게 묻는다 |
@@ -175,6 +182,15 @@ python3 scripts/codex-usage.py            # REMAINING=<n> (최근 codex 세션�
 ORCH=codex scripts/merge-launch.sh <단계> <N> <M>...  # RUNG · LAUNCH · PROMPT 출력, 단계가 끝나면 EXHAUSTED=1, 사용량 부족이면 LOW_USAGE=1
 LAUNCH="<LAUNCH>" scripts/start-tab.sh merge-<N>-<M> "#<N> #<M> merge[<단계 모델>]: …" '<PROMPT>'   # PROMPT 는 작은따옴표로 감싼다(`$issue` 가 변수로 풀리지 않게)
 ```
+
+merge tab 도 `start-tab.sh` 의 출력 상태·exit 로 기동 결과를 가린다. `working`(0) 이 아니면 감시기를 띄우지 않고 아래대로 처리한 뒤 첫 프롬프트(`PROMPT`)를 다시 보낸다.
+
+| 출력 상태 | exit | 처리 |
+| --- | --- | --- |
+| `TRUST_PROMPT` | 2 | 1 의 `TRUST_PROMPT` 항목. 질문 제목은 `[#<N> #<M> tab 질문 대리]` |
+| `HOOKS_REVIEW` | 2 | 아래 "cx tab 동작" 의 hooks 항목 |
+| `UPDATE_PROMPT` | 2 | 1 의 `UPDATE_PROMPT` 항목 (실측: astra low·medium tab 에서 첫 프롬프트를 두 번 삼켰다) |
+| `NOT_STARTED:<status>` | 3 | Enter 재전송까지 실패했다. `agent read <agent> --source visible` 로 화면을 읽어 위 세 화면인지 가리고, 아니면 사용자에게 화면을 보여 주고 묻는다. 같은 단계로 한 번 다시 열어도 같으면 사다리 다음 단계로 올리지 말고 묻는다(모델 문제가 아니다) |
 
 | 사다리 (앞에서부터) | 첫 프롬프트 |
 | --- | --- |
