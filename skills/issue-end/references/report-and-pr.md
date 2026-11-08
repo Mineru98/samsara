@@ -386,8 +386,12 @@ skip하고, island이 있으면 tracker 인증·이슈 식별·before/after evid
 BASE=$(node <skill>/scripts/issue-end.mjs context | python3 -c "import json,sys; print(json.load(sys.stdin)['baseBranch'])")
 gh pr create --base "$BASE" --head "$(git branch --show-current)" \
   --title "<type>(<scope>): <한 줄 요약>" \
-  --body-file .issue/59/evidence/pr-body.md
+  --body-file .issue/59/pr-body.md
 ```
+
+PR 본문은 **증거 폴더 밖**인 `.issue/59/pr-body.md` 에 쓴다. 이 경로는 `.issue/**` 로 무시되지만 `.issue/59/evidence/` 는 커밋 대상이라,
+거기 쓰면 PR 을 만든 뒤에도 untracked 파일로 남아 워크트리가 dirty 가 된다. PR 생성 뒤 `git status --porcelain` 이 비어 있어야 한다.
+`context` 의 `evidence.stray` 에 `pr-body.md` 가 보이면 증거 폴더 밖으로 옮긴 뒤 마무리한다.
 
 PR 생성에 성공하면 **곧바로** 진행 상태를 옮긴다. 이 저장소에서 유일하게 수동으로 불러야 하는 상태 전환이다.
 
