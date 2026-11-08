@@ -1,0 +1,23 @@
+fixture: 열린 #1(선행 없음) #5 #7(선행 #5 열림) #8(선행 #4 닫힘), 닫힌 #4
+
+$ gh issue list --state open --limit 10 --json number,title,url,labels
+exit=0
+[{"number":1,"title":"선행 없음","state":"OPEN","body":"## 배경\n\nx\n\n## 선행 이슈\n\n없음\n\n## 후행 이슈\n\n없음\n","labels":[{"name":"bug"}],"url":"https://example.invalid/1"},{"number":5,"title":"열린 선행","state":"OPEN","body":"## 배경\n\nx\n\n## 선행 이슈\n\n없음\n\n## 후행 이슈\n\n없음\n","labels":[{"name":"status:in-process"}],"url":"https://example.invalid/5"},{"number":7,"title":"선행 #5 대기","state":"OPEN","body":"## 배경\n\nx\n\n## 선행 이슈\n\n- [ ] #5\n\n## 후행 이슈\n\n없음\n","labels":[{"name":"enhancement"}],"url":"https://example.invalid/7"},{"number":8,"title":"선행 #4 완료","state":"OPEN","body":"## 배경\n\nx\n\n## 선행 이슈\n\n- [x] #4\n\n## 후행 이슈\n\n없음\n","labels":[{"name":"enhancement"}],"url":"https://example.invalid/8"}]
+
+$ node skills/issue-merge/scripts/issue-merge.mjs ready
+exit=1
+[stderr] Usage: node issue-merge.mjs <inventory|base-tree|plan-dir|preflight|resolve|merge|close|mark-successors|close-check|status|cleanup> [options]
+
+  inventory                    워크트리·이슈·PR·증거 상태를 JSON 으로
+  base-tree [--remove]         base 전용 임시 워크트리 생성/정리
+  plan-dir <n> [<n>...]        .issue/merge/<번호들>/ 생성
+  preflight --branch <b> [--onto <commit>]
+  resolve --worktree <path> [--continue [--push] | --abort]
+  merge --pr <n> [--method squash|merge|rebase]
+  close --issue <n> [--comment-file <f>]
+  mark-successors --issue <n> [--dry-run]
+  close-check <n> [<n>...] [--hold <n,...>] [--comment-dir <dir>] [--fix]
+  status <n> <open|plan|in-process|review|close>
+  cleanup --worktree <path> [--branch <name>]
+
+  --base <branch>   기준 브랜치 고정

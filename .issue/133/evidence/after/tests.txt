@@ -1,0 +1,10 @@
+✔ 선행이 열린 이슈는 착수 목록(ready)에 없고 waiting 에 남은 선행과 함께 나온다 (139.529838ms)
+✔ 선행이 모두 끝난 이슈(CLOSED 또는 status:close)와 선행 없는 이슈는 ready 에 그대로 나온다 (158.83355ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 368.191534
