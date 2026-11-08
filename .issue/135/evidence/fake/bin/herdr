@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Fake herdr 0.9.3 CLI for #146 evidence. Scenario via $FAKE_SCENARIO, state in $FAKE_STATE.
+# start-tab scenarios: normal | update | enter-miss | dead
+# start-finish scenarios: finish-canon | finish-variant | finish-single (0.4.0: 1문항, Submit 화면 없음) | finish-single-scroll (화면 위에 예전 답이 있다가 밀려남)
+# (#135: #146 의 fake 에 finish-single 추가)
+S=${FAKE_SCENARIO:?}; D=${FAKE_STATE:?}; mkdir -p "$D"
+echo "herdr $*" >> "$D/calls.log"
+st() { cat "$D/status" 2>/dev/null || echo idle; }
+cur() { cat "$D/cursor" 2>/dev/null || echo 0; }
+opts() { case "$S" in
+  finish-canon|finish-single*) printf '%s\n' "검토 승인하고 PR 만들기 (권장)" "이 이슈 더 손보기" "다른 이슈 착수" "여기서 종료";;
+  finish-variant) printf '%s\n' "검토 후 issue-end" "바로 issue-end" "이 이슈 더 손보기" "여기서 종료";; esac; }
+screen() {
+  case "$S" in
+    update) cat <<'S2'
+  ✨ Update available! 0.166.0 -> 0.167.0
+
+  Release notes: https://github.com/openai/codex/releases/latest
+
+› 1. Update now (runs `npm install -g @openai/codex`)
+  2. Skip
+  3. Skip until next version
+
+  Press enter to continue
+S2
+    ;;
+    enter-miss) [ "$(st)" = working ] && echo "• Working (2s • esc to interrupt)" || printf '╭──────────────╮\n› %s\n╰──────────────╯\n  gpt-6-astra low · weekly 72%% left\n' "$(cat "$D/prompt")";;
+    finish-*)
+      if [ -f "$D/answered" ] && [ "${S#finish-single}" != "$S" ]; then printf '⏺ User answered Claude'"'"'s questions:\n  ⎿  · 다음으로 무엇을 할까요? → %s\n\n❯ \n' "$(cat "$D/answer")"; return; fi
+      if [ -f "$D/submit" ]; then printf ' ☒ 다음 행동  ✔ Submit\n\nReview your answers\n → 다음 행동 → %s\n\n❯ 1. Submit answers\n  2. Cancel\n' "$(cat "$D/answer")"; return; fi
+      [ "$S" = finish-single-scroll ] && printf '⏺ User answered Claude'"'"'s questions:\n  ⎿  · 예전 질문 → 예전 답\n\n'
+      echo "issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?"; i=0
+      while IFS= read -r o; do if [ $i = "$(cur)" ]; then echo "❯ $((i+1)). $o"; else echo "  $((i+1)). $o"; fi; i=$((i+1)); done < <(opts);;
+    *) echo "› ";;
+  esac; }
+case "$1 $2" in
+  "tab create") echo '{"result":{"tab":{"tab_id":"fT:1"},"root_pane":{"pane_id":"fP:1"}}}';;
+  "pane rename"|"pane run"|"agent rename") echo '{}';;
+  "pane get") echo "{\"result\":{\"pane\":{\"agent\":\"codex\",\"agent_status\":\"$(st)\"}}}";;
+  "pane wait-output") case "$*" in *"User answered"*) [ -f "$D/answered" ];; *) exit 1;; esac;;
+  "pane read"|"agent read") screen;;
+  "agent get") echo "{\"result\":{\"agent\":{\"pane_id\":\"fP:1\",\"agent_status\":\"$(st)\"}}}";;
+  "agent prompt") echo "$4" > "$D/prompt"; [ "$S" = normal ] && { echo working > "$D/status"; exit 0; }; exit 1;;
+  "agent send-keys") case "$S:$4" in
+      enter-miss:enter) echo working > "$D/status";;
+      finish-*:down) echo $(( $(cur) + 1 )) > "$D/cursor";;
+      finish-single*:enter) opts | sed -n "$(( $(cur) + 1 ))p" > "$D/answer"; touch "$D/answered";;
+      finish-*:enter) if [ -f "$D/submit" ]; then touch "$D/answered"; else opts | sed -n "$(( $(cur) + 1 ))p" > "$D/answer"; touch "$D/submit"; fi;;
+    esac; echo '{}';;
+  "agent wait") case "$*" in *"--until working"*) [ "$(st)" = working ];; *) exit 0;; esac;;
+  *) echo "fake herdr: unsupported $*" >&2; exit 9;;
+esac

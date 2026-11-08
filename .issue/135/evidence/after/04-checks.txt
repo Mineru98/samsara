@@ -1,0 +1,29 @@
+$ for f in skills/herdr-orch/scripts/*.sh; do bash -n "$f"; done
+ok skills/herdr-orch/scripts/end-tab.sh
+ok skills/herdr-orch/scripts/handle.sh
+ok skills/herdr-orch/scripts/merge-launch.sh
+ok skills/herdr-orch/scripts/start-finish.sh
+ok skills/herdr-orch/scripts/start-tab.sh
+ok skills/herdr-orch/scripts/watch.sh
+
+$ python3 -m py_compile skills/herdr-orch/scripts/*.py
+ok
+
+$ sh scripts/check-shared.sh
+shared cache-safety block: 6 copies match
+git detection code: 2 copies match (12 declarations)
+base branch code: 6 copies match (4 declarations)
+issue-links: 3 copies match
+exit=0
+
+$ node --test scripts/*.test.mjs
+ℹ tests 40
+ℹ pass 40
+ℹ fail 0
+
+# 매니페스트: "skills": "./skills/" 디렉터리 자동 탐색 — 목록 수정 불필요
+.codex-plugin/plugin.json:19:  "skills": "./skills/",
+.claude-plugin/plugin.json:20:  "skills": "./skills/",
+
+# 계약 해시: issue-*/contracts 만 대상, herdr-orch 는 대상 아님
+(herdr-orch 참조 없음)

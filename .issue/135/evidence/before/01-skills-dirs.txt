@@ -1,0 +1,21 @@
+$ git ls-tree -d --name-only origin/dev/0.4.0-alpha skills/
+skills/gh-setup
+skills/github-issue-pr-convention
+skills/issue-create
+skills/issue-end
+skills/issue-merge
+skills/issue-onboard
+skills/issue-start
+skills/issue-sync
+skills/issue-version
+skills/issue-viz
+
+$ git ls-tree -d --name-only origin/main skills/
+skills/gh-setup
+skills/github-issue-pr-convention
+skills/herdr-orch
+skills/issue-create
+skills/issue-end
+skills/issue-merge
+skills/issue-start
+skills/issue-version

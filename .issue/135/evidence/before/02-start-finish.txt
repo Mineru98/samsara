@@ -1,0 +1,71 @@
+# main(61120ba) 의 start-finish.sh 를 가짜 herdr 로 실행
+## start-finish · finish-canon
+# 첫 화면
+  issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
+  ❯ 1. 검토 승인하고 PR 만들기 (권장)
+    2. 이 이슈 더 손보기
+    3. 다른 이슈 착수
+    4. 여기서 종료
+ → 다음 행동 → 검토 승인하고 PR 만들기 (권장)
+submitted
+exit=0
+# 보낸 키
+  herdr agent send-keys issue-9 enter
+  herdr agent send-keys issue-9 enter
+
+## start-finish · finish-variant
+# 첫 화면
+  issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
+  ❯ 1. 검토 후 issue-end
+    2. 바로 issue-end
+    3. 이 이슈 더 손보기
+    4. 여기서 종료
+ → 다음 행동 → 바로 issue-end
+submitted
+exit=0
+# 보낸 키
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 enter
+  herdr agent send-keys issue-9 enter
+
+## start-finish · finish-single
+# 첫 화면
+  issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
+  ❯ 1. 검토 승인하고 PR 만들기 (권장)
+    2. 이 이슈 더 손보기
+    3. 다른 이슈 착수
+    4. 여기서 종료
+STOP: Submit 화면에 도달하지 못함
+exit=1
+# 보낸 키
+  herdr agent send-keys issue-9 enter
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+
+## start-finish · finish-single-scroll
+# 첫 화면
+  ⏺ User answered Claude's questions:
+    ⎿  · 예전 질문 → 예전 답
+  
+  issue-start 13단계(다음 행동 선택)입니다. 다음으로 무엇을 할까요?
+  ❯ 1. 검토 승인하고 PR 만들기 (권장)
+    2. 이 이슈 더 손보기
+    3. 다른 이슈 착수
+    4. 여기서 종료
+STOP: Submit 화면에 도달하지 못함
+exit=1
+# 보낸 키
+  herdr agent send-keys issue-9 enter
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+  herdr agent send-keys issue-9 down
+
