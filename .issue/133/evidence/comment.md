@@ -13,7 +13,7 @@ issue-merge 다음 행동의 "다른 이슈 착수" 재료가 `gh issue list` �
 | 착수 후보 재료 | `gh issue list` → #1 #5 #7 #8 전부 (#7 포함) | `ready` → #1 #5 #8 |
 | 선행 대기 구분 | 없음 (`ready` 명령 없음, exit 1) | `waiting` → #7 (`pending: [5]`) |
 
-원본: [before/ready.txt](https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/133/evidence/before/ready.txt) · [after/ready.txt](https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/133/evidence/after/ready.txt) · [after/tests.txt](https://raw.githubusercontent.com/Mineru98/samsara/main/.issue/133/evidence/after/tests.txt)
+원본: [before/ready.txt](https://raw.githubusercontent.com/Mineru98/samsara/dev/0.4.0-alpha/.issue/133/evidence/before/ready.txt) · [after/ready.txt](https://raw.githubusercontent.com/Mineru98/samsara/dev/0.4.0-alpha/.issue/133/evidence/after/ready.txt) · [after/tests.txt](https://raw.githubusercontent.com/Mineru98/samsara/dev/0.4.0-alpha/.issue/133/evidence/after/tests.txt)
 
 ## 변경 파일
 
