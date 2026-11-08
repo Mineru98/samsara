@@ -18,7 +18,7 @@
 | `create --label "" --label bug` | `--label  --label bug` 전달 | `--label bug` 만 전달 |
 | `label 1 --label ""` | EXIT=0, `#1 ← ` (빈 라벨 부착) | EXIT=1, `--label 또는 --remove-label 이 하나 이상 필요하다` |
 
-원본 출력: [before/cli.txt](https://github.com/Mineru98/samsara/blob/main/.issue/136/evidence/before/cli.txt) · [after/cli.txt](https://github.com/Mineru98/samsara/blob/main/.issue/136/evidence/after/cli.txt)
+원본 출력: [before/cli.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/136/evidence/before/cli.txt) · [after/cli.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/136/evidence/after/cli.txt)
 
 CLI 동작 변경이라 화면 캡처 대신 동일 명령의 터미널 출력을 증거로 남겼습니다(같은 명령 스크립트로 수정 전 `a890bea` / 수정 후 `9fdf367` 에서 실행).
 
@@ -31,7 +31,7 @@ CLI 동작 변경이라 화면 캡처 대신 동일 명령의 터미널 출력�
 
 ## 검증
 
-- `node --test skills/issue-create/scripts/issue-create.test.mjs` — 수정 후 3/3 통과, 수정 전 코드에서는 3/3 실패 확인 ([after/test.txt](https://github.com/Mineru98/samsara/blob/main/.issue/136/evidence/after/test.txt))
+- `node --test skills/issue-create/scripts/issue-create.test.mjs` — 수정 후 3/3 통과, 수정 전 코드에서는 3/3 실패 확인 ([after/test.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/136/evidence/after/test.txt))
 - `node --test scripts/check-shared.test.mjs` — 12/12 통과
 
 ## 완료 기준
