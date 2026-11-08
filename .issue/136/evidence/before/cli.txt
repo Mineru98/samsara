@@ -1,0 +1,23 @@
+# commit: a890bea (fix/136-empty-label-check)
+
+$ node skills/issue-create/scripts/issue-create.mjs create --title t --body-file <tmp>/body.md --label "" --skip-duplicate-review --dry-run
+(dry-run) gh issue create --title t --body-file <tmp>/body.md --label 
+
+아무것도 생성하지 않았다.
+EXIT=0
+
+$ node skills/issue-create/scripts/issue-create.mjs create --title t --body-file <tmp>/body.md --label "  " --skip-duplicate-review --dry-run
+(dry-run) gh issue create --title t --body-file <tmp>/body.md --label "  "
+
+아무것도 생성하지 않았다.
+EXIT=0
+
+$ node skills/issue-create/scripts/issue-create.mjs create --title t --body-file <tmp>/body.md --label "" --label bug --skip-duplicate-review --dry-run
+(dry-run) gh issue create --title t --body-file <tmp>/body.md --label  --label bug
+
+아무것도 생성하지 않았다.
+EXIT=0
+
+$ node skills/issue-create/scripts/issue-create.mjs label 1 --label "" --dry-run
+(dry-run) github: #1 ← 
+EXIT=0
