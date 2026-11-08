@@ -53,7 +53,7 @@ index 381f135..e3eb865 100644
  - 그 밖에 계획에 없던 되돌릴 수 없는 단계도 사용자에게 묻는다.
  - issue-merge 가 끝나면 4 와 같이 묻지 않고 tab 을 닫는다. 닫은 뒤 판정을 다시 돌려 묶은 PR 이 사라졌는지(merged) 확인하고 결과를 알린다.
 diff --git a/skills/issue-merge/references/merge-plan.md b/skills/issue-merge/references/merge-plan.md
-index bbcd29f..36211a0 100644
+index bbcd29f..aed99ca 100644
 --- a/skills/issue-merge/references/merge-plan.md
 +++ b/skills/issue-merge/references/merge-plan.md
 @@ -256,7 +256,20 @@ push 한 뒤 같은 `--onto` 로 `preflight` 를 다시 돌려 `clean: true` 를
@@ -70,7 +70,7 @@ index bbcd29f..36211a0 100644
 +| 연속 block | 마지막 사용자 결정·`revise`·`proceed` 이후 이어진 `block` | 사용자 결정(예: "반영 후 재검토") 뒤 0 | 2 가 되면 자동 수정을 멈추고 사용자에게 판단을 넘긴다. 무한 루프를 돌지 않는다 |
 +| 누적 block | 묶음(`.issue/merge/<묶음>/`) 전체의 `block` | 되돌리지 않는다. 사용자 결정 뒤에도, tab 을 새로 열어도 이어 센다 | 외부 오케스트레이터(herdr-orch)가 실행 단계를 바꿀지 정한다 |
 +
-+- 회차를 시작할 때 기존 `review.md` 가 있으면 마지막 회차의 누적값부터 잇는다. 연속은 0 에서 시작한다(이전 tab 이 "중단"으로 끝난 것을 사용자 결정으로 본다).
++- 새 tab 으로 같은 묶음을 다시 시작할 때 기존 `review.md` 의 마지막 누적값부터 잇는다. 누적값 표기가 없는 이전 기록은 `block` 판정 회차를 직접 세어 복구한다. 새 tab 의 연속은 0 에서 시작한다(이전 tab 이 "중단"으로 끝난 것을 사용자 결정으로 본다). 같은 tab 에서 재검토할 때는 위 초기화 사유가 없는 한 연속값을 유지한다.
 +- `review.md` 각 회차 헤더에 두 값을 적는다. 예: `## 3차 검토 — block (block 누적 3회 / 연속 1회)`.
 +- 사용자 판단 질문과 회차 결과 보고에도 같은 문구 `block 누적 N회 / 연속 M회` 를 넣는다. 화면만 읽는 쪽도 같은 값을 보게 한다.
 +
