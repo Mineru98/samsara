@@ -13,8 +13,8 @@
 | 문서 예시대로 PR 본문을 쓴 뒤 `git status --porcelain -uall` | `?? .issue/132/evidence/pr-body.md` (dirty) | 빈 출력 (clean, `.issue/**` 로 무시) |
 | 증거 폴더에 `pr-body.md` 가 있을 때 `context` 의 `evidence` | 증거로 집계됨 (`total: 1`, `files` 에 포함) | `files` 에서 빠지고 `stray` 로 따로 보고 |
 
-- 전: [01-old-path-dirty.txt](https://github.com/Mineru98/samsara/blob/main/.issue/132/evidence/before/01-old-path-dirty.txt)
-- 후: [01-new-path-clean.txt](https://github.com/Mineru98/samsara/blob/main/.issue/132/evidence/after/01-new-path-clean.txt), [02-stray-detected.txt](https://github.com/Mineru98/samsara/blob/main/.issue/132/evidence/after/02-stray-detected.txt)
+- 전: [01-old-path-dirty.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/132/evidence/before/01-old-path-dirty.txt)
+- 후: [01-new-path-clean.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/132/evidence/after/01-new-path-clean.txt), [02-stray-detected.txt](https://github.com/Mineru98/samsara/blob/dev/0.4.0-alpha/.issue/132/evidence/after/02-stray-detected.txt)
 
 ## 변경 파일
 
