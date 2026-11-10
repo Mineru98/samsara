@@ -1,0 +1,6 @@
+$ node issue-create.mjs version-label
+✗ 알 수 없는 모드: version-label
+Usage:
+  node issue-create.mjs mode
+  node issue-create.mjs gate
+exit=1
