@@ -53,9 +53,11 @@ description: 이미 굴러가는 저장소에서 코드를 바꾸는 요청이�
     <rule>유사한 열린 이슈가 있으면 새로 만들지 않고 그 번호를 제시한다.
       항목이 여러 개면 중복인 항목만 빼고 나머지는 그대로 진행한다.</rule>
     <rule>만든 이슈에는 성격 라벨을 반드시 하나 이상 붙인다. 스크립트가 성격 라벨 없는 `create` 를 exit 2 로 막는다.</rule>
+    <rule>버전 관리를 하는 저장소면 대상 버전 라벨(`version:X.Y.Z`)을 함께 붙인다. 기본은 현재 버전의 패치 +1 이고 묻지 않는다.
+      큰 변경일 때만 마이너 올림을 제안하고, 메이저는 사용자가 명시했을 때만 쓴다.</rule>
     <rule>진행 상태 라벨(`status:*`)은 상호배타다. 바꿀 때는 `status` 명령으로 교체하고, 직접 add/remove 를 조합하지 않는다.</rule>
     <rule>상태 전환 실패는 흐름을 막지 않는다. 경고만 남기고 진행한 뒤 마무리 보고에 적는다.</rule>
-    <rule>라벨을 새로 만들거나 기존 이슈의 라벨을 바꾸는 것은 사용자 승인 후에만 한다. `status:open` 자동 부착은 예외다.</rule>
+    <rule>라벨을 새로 만들거나 기존 이슈의 라벨을 바꾸는 것은 사용자 승인 후에만 한다. `status:open` 자동 부착과 대상 버전 라벨 생성·부착은 예외다.</rule>
     <rule>이슈 상태 변경, 코멘트 작성, PR 생성을 하지 않는다.</rule>
   </hard-rules>
 
@@ -116,7 +118,7 @@ flowchart TD
     H -- 수정 --> G
     H -- 등록 없이 진행 --> Z1
     H -- 취소 --> Z0
-    H -- 등록 --> I[create × N: 성격 라벨 + status:open · 실패는 건너뛰고 계속]
+    H -- 등록 --> I[create × N: 성격 라벨 + status:open + version · 실패는 건너뛰고 계속]
 
     I --> M[unlabeled: 성격·상태 라벨 점검]
     M -- 없음 --> J
@@ -263,6 +265,21 @@ both            사용자 플로우 전체를 다루거나 API 계약 변경이 
 항목마다 초안을 채우고 **전문을 한 번에** 보여준 뒤, AskUserQuestion 으로 등록 / 등록 없이 진행 / 수정 / 취소를 받는다.
 `등록 없이 진행` 을 고르면 이슈를 만들지 않고 스킬을 조용히 빠져 원래 변경 요청을 그대로 수행한다.
 
+대상 버전 라벨은 초안에 함께 적는다. `version-label` 로 현재 버전을 읽어 패치 +1 을 기본으로 쓰고, 이것만으로는 묻지 않는다.
+
+```bash
+node <skill>/scripts/issue-create.mjs version-label
+```
+
+```text
+VERSIONED=0    버전 태그·버전 파일이 없다. 버전 라벨 없이 진행한다
+기본           PATCH_LABEL (패치 +1). 묻지 않는다
+큰 변경        초안 승인 질문에 MINOR_LABEL(마이너 +1) 선택지를 함께 낸다
+메이저         사용자가 명시했을 때만. 먼저 제안하지 않는다
+```
+
+큰 변경의 기준과 질문 형식은 `references/issue-draft.md` 의 `대상 버전 라벨`.
+
 ## 6단계 — 등록
 
 `references/create-and-handoff.md` 를 따른다. **성격 라벨 없이 등록하지 않는다.**
@@ -270,6 +287,7 @@ both            사용자 플로우 전체를 다루거나 API 계약 변경이 
 
 항목마다 `create` 를 따로 호출한다. 실패한 항목은 **건너뛰고 계속** 하고, 성공·실패를 모아 마지막에 한 번 보고한다.
 `status:open` 은 등록 성공 직후 스크립트가 자동으로 붙인다. `--label` 로 직접 넘기지 않는다.
+대상 버전 라벨도 `create` 가 붙인다. 라벨이 없으면 노란색으로 만들어 붙이며, 마이너로 정했으면 `--bump minor`, 사용자가 메이저를 명시했으면 `--bump major` 를 넘긴다.
 
 ## 7단계 — 기존 이슈 라벨 점검
 
@@ -289,7 +307,7 @@ node <skill>/scripts/issue-create.mjs unlabeled --state open
 
 ```text
 이슈      [#{issue_number} <제목>](<이슈 URL>)
-라벨      <붙인 성격 라벨> + status:open
+라벨      <붙인 성격 라벨> + status:open + <version:X.Y.Z>
 라벨 점검  성격 <n>건 확인 / <m>건 보정, 상태 <p>건 확인 / <q>건 보정
 기본 브랜치 <base> (<판별 출처>)
 요청 기록  .issue/{issue_number}/request.md
