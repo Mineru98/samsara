@@ -128,7 +128,7 @@ fan-out/fan-in 관계 근거** 를 함께 담는다.
 
 ## 라벨
 
-저장소에 **실제로 있는 라벨만** 붙인다.
+저장소에 **실제로 있는 라벨만** 붙인다. 대상 버전 라벨만 예외로, 없으면 `create` 가 만든다.
 
 ```bash
 node <skill>/scripts/issue-create.mjs labels
@@ -154,7 +154,7 @@ node <skill>/scripts/issue-create.mjs labels
 node <skill>/scripts/issue-create.mjs version-label
 ```
 
-`VERSIONED=0` 이면 버전 라벨 없이 진행한다. 아니면 `VERSION_LABEL`(패치 +1)을 기본으로 쓴다. **패치는 묻지 않는다.**
+`VERSIONED=0` 이면 버전 라벨 없이 진행한다. 아니면 `PATCH_LABEL`(패치 +1)을 기본으로 쓴다. **패치는 묻지 않는다.**
 
 변경이 크다고 판단될 때만 마이너 올림을 제안한다. 아래 중 하나라도 해당하면 큰 변경이다.
 
@@ -172,7 +172,7 @@ node <skill>/scripts/issue-create.mjs version-label
 ```text
 질문   변경 규모가 커 보입니다. 대상 버전을 무엇으로 할까요?
 - 마이너 version:0.4.0 (권장)   MINOR_LABEL. create 에 --bump minor 를 넘긴다
-- 패치 version:0.3.9            VERSION_LABEL. 기본값 그대로 등록한다
+- 패치 version:0.3.9            PATCH_LABEL. 기본값 그대로 등록한다
 ```
 
 **메이저는 선택지에 넣지 않는다.** 사용자가 요청에서 메이저 버전을 명시했을 때만 `--bump major` 를 쓰고, 그때는 묻지 않는다.

@@ -102,11 +102,13 @@ gate:
 create options:
   --title <t>          이슈 제목 (필수)
   --body-file <f>      이슈 본문 마크다운 파일 (필수)
-  --label <name>       라벨 (필수, 여러 번 지정 가능, 저장소에 있는 것만)
-  --no-label           라벨 없이 만든다. 의도적으로 규칙을 벗어날 때만 쓴다
+  --label <name>       라벨 (필수, 여러 번 지정 가능, 저장소에 있는 것만. version:X.Y.Z 는 없으면 만든다)
+  --no-label           성격 라벨 없이 만든다. 의도적으로 규칙을 벗어날 때만 쓴다
   --no-status          생성 후 status:open 자동 부착을 생략한다
   --bump <단계>        대상 버전 라벨의 단계 (patch 기본 | minor | major). major 는 사용자가 명시했을 때만
   --no-version         대상 버전 라벨(version:X.Y.Z) 자동 부착을 생략한다
+                       --label version:X.Y.Z 를 직접 넘기면 --bump·--no-version 보다 그 값이 우선한다
+                       --repo 로 다른 저장소에 등록할 때는 자동으로 붙이지 않는다
   --assignee <login>   담당자 (@me 가능)
   --request-file <f>   원본 요청 기록. 생략 시 --body-file 을 복사
   --duplicate-review-file <f>  candidate/targets JSON으로 생성 전 중복을 검토
@@ -346,7 +348,19 @@ const VERSION_LABEL_COLOR = 'fbca04';
 const BUMP_LEVELS = ['patch', 'minor', 'major'];
 
 const jsonVersion = (raw) => JSON.parse(raw)?.version;
-const tomlVersion = (raw) => /^version\s*=\s*"([^"]+)"/m.exec(raw)?.[1];
+// 의존성·도구 설정 테이블의 version 은 프로젝트 버전이 아니다. 패키지 테이블 안에서만 읽는다.
+const tomlVersion = (raw) => {
+  let inPackage = false;
+  for (const line of raw.split('\n')) {
+    const table = /^\s*\[([^\]]+)\]/.exec(line);
+    if (table) inPackage = ['package', 'project', 'tool.poetry'].includes(table[1].trim());
+    else if (inPackage) {
+      const version = /^\s*version\s*=\s*"([^"]+)"/.exec(line);
+      if (version) return version[1];
+    }
+  }
+  return undefined;
+};
 
 /** 버전이 적혀 있을 만한 파일. 저장소마다 다르므로 흔한 것만 본다. */
 const VERSION_FILES = [
@@ -424,14 +438,17 @@ function cmdVersionLabel(root, opts) {
   console.log(`MINOR_LABEL=${versionLabelFor(current.version, 'minor')}`);
 }
 
-/** 버전 라벨이 저장소에 없으면 노란색으로 만든다. 붙여도 되는 상태면 true. */
-function ensureVersionLabel(tracker, name) {
+/**
+ * 버전 라벨이 저장소에 없으면 노란색으로 만든다. 붙여도 되는 상태면 true.
+ * 라벨 목록은 100개까지만 오므로 목록에 없다고 없는 것이 아니다. "이미 있다"는 생성 실패는 성공으로 본다.
+ */
+export function ensureVersionLabel(tracker, name) {
   if ((tracker.labelList() ?? []).some((l) => l.name === name)) return true;
   const res = tracker.labelCreate(name, {
     color: VERSION_LABEL_COLOR,
     description: `v${name.slice('version:'.length)} 릴리즈 대상 작업`,
   });
-  return Boolean(res.noop || res.created);
+  return Boolean(res.noop || res.created || /already exists/i.test(String(res.err ?? '')));
 }
 
 /* ----------------------------------------------------------------- create */
@@ -501,7 +518,12 @@ function cmdCreate(root, opts, tracker) {
 
   // 대상 버전 라벨. 직접 넘긴 version:* 이 있으면 그 값을, 없으면 현재 버전에서 계산한 값을 쓴다.
   const explicitVersions = opts.labels.filter(isVersionLabel);
-  const current = opts.noVersion || explicitVersions.length ? null : detectCurrentVersion(root);
+  if (explicitVersions.length > 1 || explicitVersions.some((label) => !parseSemver(label.slice('version:'.length)))) {
+    console.error(`✗ 버전 라벨은 version:X.Y.Z 형식으로 하나만 넘길 수 있다: ${explicitVersions.join(', ')}`);
+    process.exit(2);
+  }
+  // --repo 로 다른 저장소에 등록할 때는 이 체크아웃의 버전이 그 저장소의 버전이 아니다.
+  const current = opts.noVersion || opts.repo || explicitVersions.length ? null : detectCurrentVersion(root);
   const versionLabels = explicitVersions.length
     ? explicitVersions
     : current ? [versionLabelFor(current.version, opts.bump ?? 'patch')] : [];
@@ -591,7 +613,7 @@ function main() {
     else if (arg === '--no-label') opts.noLabel = true;
     else if (arg === '--no-status') opts.noStatus = true;
     else if (arg === '--no-version') opts.noVersion = true;
-    else if (arg === '--bump') opts.bump = argv[++i];
+    else if (arg === '--bump') opts.bump = argv[++i] ?? '';
     else if (arg === '--title') opts.title = argv[++i];
     else if (arg === '--body-file') opts.bodyFile = argv[++i];
     else if (arg === '--request-file') opts.requestFile = argv[++i];

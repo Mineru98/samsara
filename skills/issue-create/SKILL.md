@@ -273,7 +273,7 @@ node <skill>/scripts/issue-create.mjs version-label
 
 ```text
 VERSIONED=0    버전 태그·버전 파일이 없다. 버전 라벨 없이 진행한다
-기본           VERSION_LABEL (패치 +1). 묻지 않는다
+기본           PATCH_LABEL (패치 +1). 묻지 않는다
 큰 변경        초안 승인 질문에 MINOR_LABEL(마이너 +1) 선택지를 함께 낸다
 메이저         사용자가 명시했을 때만. 먼저 제안하지 않는다
 ```

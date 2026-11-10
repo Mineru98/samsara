@@ -11,7 +11,8 @@
 
 세 축은 **독립**이다. 한 이슈에 성격 라벨 하나 + 진행 상태 라벨 하나가 함께 붙고, 버전 관리를 하는 저장소면 대상 버전 라벨 하나가 더 붙는다.
 성격 라벨이 없으면 브랜치 prefix 연결이 끊기고, 진행 상태 라벨이 없으면 이슈 목록만 보고 진행을 읽을 수 없다.
-**새로 만드는 이슈에는 둘 다 붙이고, 기존 이슈도 두 축 모두 점검한다.**
+**새로 만드는 이슈에는 성격·진행 상태 라벨을 둘 다 붙이고, 기존 이슈도 이 두 축을 모두 점검한다.**
+대상 버전 라벨은 `create` 가 붙이며 기존 이슈 점검 대상이 아니다.
 
 ## 성격 라벨과 매핑
 
@@ -58,8 +59,10 @@ node <skill>/scripts/issue-create.mjs status 59 in-process
 
 ```bash
 node <skill>/scripts/issue-create.mjs version-label
-# VERSIONED=1 / CURRENT_VERSION=0.3.8 / VERSION_LABEL=version:0.3.9 / MINOR_LABEL=version:0.4.0
+# VERSIONED=1 / CURRENT_VERSION=0.3.8 / VERSION_LABEL=version:0.3.9 / PATCH_LABEL=version:0.3.9 / MINOR_LABEL=version:0.4.0
 ```
+
+`VERSION_LABEL` 은 `--bump` 로 고른 단계의 값이고(기본 패치), `PATCH_LABEL` · `MINOR_LABEL` 은 단계별 후보다.
 
 ```text
 단계      현재 0.3.8 일 때     언제
@@ -72,6 +75,9 @@ node <skill>/scripts/issue-create.mjs version-label
 - 라벨을 만들지 못하면 경고만 남기고 버전 라벨 없이 등록한다. 버전 라벨은 메타데이터이지 게이트가 아니다.
 - 버전 라벨은 성격 라벨로 세지 않는다. `--label version:0.3.9` 만 넘기면 성격 라벨 게이트에서 exit 2 로 막힌다.
 - 기존 이슈의 버전 라벨은 점검·보정 대상이 아니다. 이미 붙은 버전 라벨도 바꾸지 않는다.
+- 판정이 틀렸으면(프로젝트 버전이 아닌 태그·파일을 잡았을 때) `--label version:X.Y.Z` 로 직접 넘기거나 `--no-version` 으로 끈다.
+- `--repo` 로 다른 저장소에 등록할 때는 자동으로 붙이지 않는다. 이 체크아웃의 버전이 그 저장소의 버전이 아니기 때문이다.
+- `--no-label` 은 성격 라벨만 생략한다. 라벨을 하나도 붙이지 않으려면 `--no-version --no-status` 를 함께 넘긴다.
 
 ## 1. 저장소 라벨 확인
 
@@ -79,7 +85,7 @@ node <skill>/scripts/issue-create.mjs version-label
 node <skill>/scripts/issue-create.mjs labels
 ```
 
-출력의 `LABELS=` 목록에 있는 이름만 쓴다.
+출력의 `LABELS=` 목록에 있는 이름만 쓴다. 대상 버전 라벨은 예외로, 없으면 `create` 가 만든다.
 
 ## 2. 쓸 라벨이 없을 때
 
