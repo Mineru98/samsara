@@ -2,7 +2,7 @@
 /**
  * issue-create.mjs — 착수 전에 이슈를 만드는 보조 스크립트 (저장소·트래커 비종속).
  *
- * 아홉 가지 모드로 나뉜다.
+ * 열 가지 모드로 나뉜다.
  *
  *   1) mode      : 암묵적인 issue-create 개입 여부를 사용자 설정에서 읽는다.
  *   2) gate      : "이슈를 만들 만큼 자리 잡은 프로젝트인가"를 신호로 판정한다.
@@ -13,6 +13,7 @@
  *   7) label     : 기존 이슈에 라벨을 붙인다.
  *   8) ensure-label : 표준 라벨이 없을 때 만든다 (사용자 승인 후에만 호출).
  *   9) status    : 진행 상태 라벨을 상호배타적으로 전환한다.
+ *  10) version-label : 현재 버전에서 다음 대상 버전 라벨(version:X.Y.Z)을 계산한다.
  *
  * 사용:
  *   node issue-create.mjs mode
@@ -23,6 +24,7 @@
  *   node issue-create.mjs unlabeled --state open
  *   node issue-create.mjs label 59 --label bug
  *   node issue-create.mjs ensure-label enhancement
+ *   node issue-create.mjs version-label
  *
  * 이슈 백엔드는 ~/.issue/settings.json 의 provider 설정이 정한다 (github 기본 | jira).
  * 트래커 호출은 전부 issue-tracker.mjs 를 거친다. 이 파일은 gh 를 직접 부르지 않는다.
@@ -91,6 +93,7 @@ function usage(exitCode = 1) {
   node issue-create.mjs label <issue-number> --label <name> [--label <name>...]
   node issue-create.mjs ensure-label <name> [--color <hex>] [--desc <설명>]
   node issue-create.mjs status <issue-number> <${STATUS_ORDER.map((s) => s.slice(7)).join('|')}>
+  node issue-create.mjs version-label [--bump patch|minor|major]
 
 gate:
   커밋 수·원격·이슈 이력·빌드 설정·소스 규모를 확인해
@@ -102,6 +105,8 @@ create options:
   --label <name>       라벨 (필수, 여러 번 지정 가능, 저장소에 있는 것만)
   --no-label           라벨 없이 만든다. 의도적으로 규칙을 벗어날 때만 쓴다
   --no-status          생성 후 status:open 자동 부착을 생략한다
+  --bump <단계>        대상 버전 라벨의 단계 (patch 기본 | minor | major). major 는 사용자가 명시했을 때만
+  --no-version         대상 버전 라벨(version:X.Y.Z) 자동 부착을 생략한다
   --assignee <login>   담당자 (@me 가능)
   --request-file <f>   원본 요청 기록. 생략 시 --body-file 을 복사
   --duplicate-review-file <f>  candidate/targets JSON으로 생성 전 중복을 검토
@@ -246,7 +251,7 @@ function cmdUnlabeled(opts, tracker) {
     return;
   }
   const names = (it) => (it.labels ?? []).map((label) => label.name);
-  const bare = list.filter((it) => !typeLabels(names(it)).length);
+  const bare = list.filter((it) => !natureLabels(names(it)).length);
   const noStatus = list.filter((it) => !names(it).some(isStatusLabel));
   console.log('성격 라벨 없음:');
   for (const it of bare) {
@@ -335,6 +340,100 @@ function cmdEnsureLabel(name, opts, tracker) {
   console.log(`LABEL=${name}`);
 }
 
+/* ---------------------------------------------------------- 대상 버전 라벨 */
+
+const VERSION_LABEL_COLOR = 'fbca04';
+const BUMP_LEVELS = ['patch', 'minor', 'major'];
+
+const jsonVersion = (raw) => JSON.parse(raw)?.version;
+const tomlVersion = (raw) => /^version\s*=\s*"([^"]+)"/m.exec(raw)?.[1];
+
+/** 버전이 적혀 있을 만한 파일. 저장소마다 다르므로 흔한 것만 본다. */
+const VERSION_FILES = [
+  ['VERSION', (raw) => raw.trim()],
+  ['package.json', jsonVersion],
+  ['.claude-plugin/plugin.json', jsonVersion],
+  ['pyproject.toml', tomlVersion],
+  ['Cargo.toml', tomlVersion],
+];
+
+export function parseSemver(input) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(input ?? '').trim());
+  return match ? match.slice(1).map(Number) : null;
+}
+
+const compareSemver = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+
+export function isVersionLabel(name) {
+  return /^version:/i.test(String(name ?? ''));
+}
+
+/** status·version 을 걸러낸 성격 라벨만 남긴다. 버전 라벨만으로는 성격 라벨 게이트를 통과하지 못한다. */
+export function natureLabels(labels = []) {
+  return typeLabels(labels).filter((l) => !isVersionLabel(l));
+}
+
+/** "0.3.8" + patch → "version:0.3.9" */
+export function versionLabelFor(current, level = 'patch') {
+  const version = parseSemver(current);
+  if (!version || !BUMP_LEVELS.includes(level)) return null;
+  const [major, minor, patch] = version;
+  const next = level === 'major' ? [major + 1, 0, 0] : level === 'minor' ? [major, minor + 1, 0] : [major, minor, patch + 1];
+  return `version:${next.join('.')}`;
+}
+
+/**
+ * 지금 체크아웃의 현재 버전. HEAD 에서 도달 가능한 semver 태그와 버전 파일 중 가장 높은 값을 쓴다.
+ * bump 는 merge 됐는데 태그가 아직 없는 상태에서도 파일 쪽이 이기므로 다음 버전이 밀리지 않는다.
+ * 둘 다 없으면 버전 관리를 하지 않는 저장소로 보고 null 을 돌려준다.
+ */
+export function detectCurrentVersion(root) {
+  const candidates = [];
+  const tags = run('git', ['tag', '--list', '--merged', 'HEAD'], { cwd: root }).stdout ?? '';
+  for (const tag of tags.split('\n').map((line) => line.trim()).filter(Boolean)) {
+    candidates.push({ raw: tag, source: `tag ${tag}` });
+  }
+  for (const [file, read] of VERSION_FILES) {
+    const full = path.join(root, file);
+    if (!existsSync(full)) continue;
+    try { candidates.push({ raw: read(readFileSync(full, 'utf8')), source: file }); } catch { /* 못 읽는 파일은 버전 소스가 아니다 */ }
+  }
+  let best = null;
+  for (const { raw, source } of candidates) {
+    const parsed = parseSemver(raw);
+    if (!parsed) continue;
+    if (!best || compareSemver(parsed, best.parsed) > 0) best = { parsed, version: parsed.join('.'), source };
+  }
+  return best ? { version: best.version, source: best.source } : null;
+}
+
+function cmdVersionLabel(root, opts) {
+  const current = detectCurrentVersion(root);
+  if (!current) {
+    console.log('  (버전 태그·버전 파일 없음 — 버전 라벨을 붙이지 않는다)');
+    console.log('');
+    console.log('VERSIONED=0');
+    return;
+  }
+  console.log(`  현재 버전 ${current.version}  (${current.source})`);
+  console.log('');
+  console.log('VERSIONED=1');
+  console.log(`CURRENT_VERSION=${current.version}`);
+  console.log(`VERSION_LABEL=${versionLabelFor(current.version, opts.bump ?? 'patch')}`);
+  console.log(`PATCH_LABEL=${versionLabelFor(current.version, 'patch')}`);
+  console.log(`MINOR_LABEL=${versionLabelFor(current.version, 'minor')}`);
+}
+
+/** 버전 라벨이 저장소에 없으면 노란색으로 만든다. 붙여도 되는 상태면 true. */
+function ensureVersionLabel(tracker, name) {
+  if ((tracker.labelList() ?? []).some((l) => l.name === name)) return true;
+  const res = tracker.labelCreate(name, {
+    color: VERSION_LABEL_COLOR,
+    description: `v${name.slice('version:'.length)} 릴리즈 대상 작업`,
+  });
+  return Boolean(res.noop || res.created);
+}
+
 /* ----------------------------------------------------------------- create */
 
 function reviewDuplicates(file) {
@@ -368,7 +467,7 @@ function cmdCreate(root, opts, tracker) {
   }
   // "만든 이슈에는 라벨을 반드시 하나 이상 붙인다"는 규칙을 문서에만 두면
   // --label 을 빠뜨린 호출이 조용히 통과한다. 여기서 막는다.
-  if (!typeLabels(opts.labels).length && !opts.noLabel) {
+  if (!natureLabels(opts.labels).length && !opts.noLabel) {
     console.error('✗ 성격 라벨(--label)이 하나 이상 필요하다. 라벨 없는 이슈는 만들지 않는다.');
     console.error('  쓸 수 있는 라벨: node issue-create.mjs labels');
     console.error('  없으면 만들기:   node issue-create.mjs ensure-label <이름>   (사용자 승인 후)');
@@ -400,12 +499,21 @@ function cmdCreate(root, opts, tracker) {
     process.exit(1);
   }
 
+  // 대상 버전 라벨. 직접 넘긴 version:* 이 있으면 그 값을, 없으면 현재 버전에서 계산한 값을 쓴다.
+  const explicitVersions = opts.labels.filter(isVersionLabel);
+  const current = opts.noVersion || explicitVersions.length ? null : detectCurrentVersion(root);
+  const versionLabels = explicitVersions.length
+    ? explicitVersions
+    : current ? [versionLabelFor(current.version, opts.bump ?? 'patch')] : [];
+  const labels = opts.labels.filter((label) => !isVersionLabel(label));
+
   if (opts.dryRun) {
     const args = ['issue', 'create', '--title', opts.title, '--body-file', bodyPath];
-    for (const label of opts.labels) args.push('--label', label);
+    for (const label of [...labels, ...versionLabels]) args.push('--label', label);
     if (opts.assignee) args.push('--assignee', opts.assignee);
     console.log(`(dry-run) gh ${args.map((arg) => (/\s/.test(arg) ? JSON.stringify(arg) : arg)).join(' ')}`);
     console.log('\n아무것도 생성하지 않았다.');
+    console.log(`VERSION_LABEL=${versionLabels.join(',')}`);
     return;
   }
 
@@ -418,10 +526,17 @@ function cmdCreate(root, opts, tracker) {
     process.exit(2);
   }
 
+  // 없는 라벨을 넘기면 등록이 통째로 실패한다. 버전 라벨은 메타데이터라 못 만들면 빼고 등록한다.
+  const attachedVersions = versionLabels.filter((label) => {
+    if (ensureVersionLabel(tracker, label)) return true;
+    console.warn(`  ! ${label} 라벨을 만들지 못해 버전 라벨 없이 등록합니다.`);
+    return false;
+  });
+
   const res = tracker.issueCreate({
     title: opts.title,
     bodyFile: bodyPath,
-    labels: opts.labels,
+    labels: [...labels, ...attachedVersions],
     assignee: opts.assignee,
   });
   if (!res.ok) {
@@ -452,6 +567,7 @@ function cmdCreate(root, opts, tracker) {
   console.log('');
   console.log(`ISSUE_NUMBER=${number}`);
   console.log(`ISSUE_URL=${url}`);
+  console.log(`VERSION_LABEL=${attachedVersions.join(',')}`);
   console.log(`NEXT=/issue-start #${number}`);
 }
 
@@ -462,7 +578,7 @@ function main() {
   if (!argv.length || argv.includes('-h') || argv.includes('--help')) usage(argv.length ? 0 : 1);
 
   const mode = argv[0];
-  if (!['mode', 'gate', 'search', 'labels', 'create', 'unlabeled', 'label', 'ensure-label', 'status'].includes(mode)) {
+  if (!['mode', 'gate', 'search', 'labels', 'create', 'unlabeled', 'label', 'ensure-label', 'status', 'version-label'].includes(mode)) {
     console.error(`✗ 알 수 없는 모드: ${mode}`);
     usage();
   }
@@ -474,6 +590,8 @@ function main() {
     if (arg === '--dry-run') opts.dryRun = true;
     else if (arg === '--no-label') opts.noLabel = true;
     else if (arg === '--no-status') opts.noStatus = true;
+    else if (arg === '--no-version') opts.noVersion = true;
+    else if (arg === '--bump') opts.bump = argv[++i];
     else if (arg === '--title') opts.title = argv[++i];
     else if (arg === '--body-file') opts.bodyFile = argv[++i];
     else if (arg === '--request-file') opts.requestFile = argv[++i];
@@ -495,6 +613,10 @@ function main() {
   }
 
   const positional = positionals[0] ?? null;
+  if (opts.bump !== undefined && !BUMP_LEVELS.includes(opts.bump)) {
+    console.error(`✗ --bump 은 ${BUMP_LEVELS.join(' | ')} 중 하나여야 한다: ${opts.bump}`);
+    process.exit(2);
+  }
 
   if (mode === 'mode') {
     cmdMode();
@@ -502,11 +624,15 @@ function main() {
   }
 
   const root = repoRoot();
+  if (mode === 'version-label') {
+    cmdVersionLabel(root, opts);
+    return;
+  }
   const tracker = createTracker(root, { repo: opts.repo });
 
   // 이슈를 실제로 건드리는 모드는 인증이 안 되어 있으면 먼저 멈춘다.
   // gate 는 인증 실패도 신호의 하나라 통과시킨다.
-  if (mode !== 'gate' && tracker.provider === 'jira' && !opts.dryRun && !(mode === 'create' && !typeLabels(opts.labels).length && !opts.noLabel)) {
+  if (mode !== 'gate' && tracker.provider === 'jira' && !opts.dryRun && !(mode === 'create' && !natureLabels(opts.labels).length && !opts.noLabel)) {
     const auth = tracker.auth();
     if (!auth.ok) {
       console.error(`✗ ${tracker.provider} 인증 실패: ${auth.detail}`);

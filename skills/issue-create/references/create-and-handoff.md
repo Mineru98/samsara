@@ -13,9 +13,15 @@ node <skill>/scripts/issue-create.mjs create \
 # 확인만: --dry-run
 # 다른 저장소: --repo <owner>/<name>
 # 원본 요청을 따로 남길 때: --request-file /tmp/user-request.md
+# 대상 버전을 마이너로: --bump minor   (메이저는 사용자가 명시했을 때만 --bump major)
+# 버전 라벨 없이: --no-version
 ```
 
-출력 마지막의 `ISSUE_NUMBER` / `ISSUE_URL` / `NEXT` 를 그대로 보고에 쓴다.
+출력 마지막의 `ISSUE_NUMBER` / `ISSUE_URL` / `VERSION_LABEL` / `NEXT` 를 그대로 보고에 쓴다.
+
+버전 관리를 하는 저장소면 `create` 가 대상 버전 라벨(`version:X.Y.Z`, 기본 패치 +1)을 함께 붙인다.
+라벨이 없으면 노란색으로 만들어 붙이므로 `--label` 로 따로 넘기지 않는다. 버전 소스가 없으면 `VERSION_LABEL=` 이 빈 값으로 나온다.
+판정 규칙은 `references/label-audit.md` 의 `대상 버전 라벨`.
 
 `--label` 은 생략할 수 없다. **스크립트가 막는다** — 라벨 없이 `create` 를 부르면 exit 2 로 빠지고 이슈를 만들지 않는다.
 
