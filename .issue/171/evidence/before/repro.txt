@@ -1,0 +1,47 @@
+$ (메인) git branch --show-current
+main
+
+$ (메인) issue-start.mjs base --set dev
+BASE=dev
+SOURCE=project
+DETECTED_AT=<time>
+
+$ (워크트리) issue-start.mjs base
+BASE=main
+SOURCE=detected
+DETECTED_AT=<time>
+
+$ (워크트리) issue-start.mjs sync-base
+{
+  "ok": true,
+  "base": "main",
+  "path": "<tmp>/repo",
+  "branch": "main",
+  "skipped": null,
+  "reason": null,
+  "received": 0,
+  "discarded": [],
+  "before": "<sha>",
+  "after": "<sha>"
+}
+
+$ (워크트리) ls -A .issue
+1
+settings.json
+
+$ (메인) issue-start.mjs sync-base
+{
+  "ok": false,
+  "base": "dev",
+  "path": "<tmp>/repo",
+  "branch": "main",
+  "skipped": "other-branch",
+  "reason": "주 체크아웃이 main 에 있어 dev 를 받아오지 않았습니다.",
+  "received": 0
+}
+
+$ (메인) cat .issue/settings.json | grep baseBranch
+    "baseBranch": "dev",
+
+$ (메인) git branch --show-current
+main
