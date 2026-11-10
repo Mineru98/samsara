@@ -55,7 +55,8 @@ function fixture(t) {
   const settings = path.join(repo, '.issue/settings.json');
   const setBase = (b) => writeFileSync(settings, JSON.stringify({ git: { baseBranch: b, detectedAt: '2026-09-28T00:00:00.000Z' } }));
   const run = (...args) => sh(repo, process.execPath, [SCRIPT, ...args], env);
-  return { dir, repo, settings, setBase, setBody, run };
+  const runIn = (cwd, ...args) => sh(cwd, process.execPath, [SCRIPT, ...args], env);
+  return { dir, repo, settings, setBase, setBody, run, runIn };
 }
 
 test('affectedPaths 는 영향 범위 섹션의 경로만 뽑는다', () => {
@@ -149,4 +150,36 @@ test('base 는 .issue 가 무시 대상이 아니어서 기록을 못 해도 SOU
   assert.equal(r.code, 0, r.err);
   assert.match(r.out, /^SOURCE=detected$/m);
   assert.doesNotMatch(r.out, /DEFAULT_BASE_UNSET/);
+});
+
+test('워크트리에서도 주 체크아웃의 기준 브랜치 기록을 읽고 쓰며 주 체크아웃 브랜치는 그대로다', (t) => {
+  const f = fixture(t);
+  const branchOf = (cwd) => sh(cwd, 'git', ['branch', '--show-current']).out.trim();
+  const wt = path.join(f.dir, 'repo-issue-9');
+  const wtSettings = path.join(wt, '.issue/settings.json');
+  assert.equal(f.run('base', '--set', STALE).code, 0);
+  assert.equal(sh(f.repo, 'git', ['worktree', 'add', '-b', 'fix/9-x', wt, `origin/${STALE}`]).code, 0);
+  assert.equal(branchOf(f.repo), 'main');
+
+  const base = f.runIn(wt, 'base');
+  assert.equal(base.code, 0, base.err);
+  assert.match(base.out, new RegExp(`^BASE=${STALE}$`, 'm'));
+  assert.match(base.out, /^SOURCE=project$/m);
+
+  // 주 체크아웃은 main 에 있고 기준은 STALE 이다. 어디서 실행해도 같은 판정으로 건너뛴다.
+  const fromWt = JSON.parse(f.runIn(wt, 'sync-base').out);
+  const fromMain = JSON.parse(f.run('sync-base').out);
+  assert.equal(fromWt.base, STALE);
+  assert.equal(fromWt.skipped, 'other-branch');
+  assert.deepEqual(fromWt, fromMain);
+  assert.equal(existsSync(wtSettings), false);
+
+  const set = f.runIn(wt, 'base', '--set', 'main');
+  assert.equal(set.code, 0, set.err);
+  assert.equal(JSON.parse(readFileSync(f.settings, 'utf8')).git.baseBranch, 'main');
+  assert.match(f.run('base').out, /^BASE=main$/m);
+  assert.equal(existsSync(wtSettings), false);
+
+  assert.equal(branchOf(f.repo), 'main');
+  assert.equal(branchOf(wt), 'fix/9-x');
 });
