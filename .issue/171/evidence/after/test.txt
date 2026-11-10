@@ -1,0 +1,12 @@
+$ node --test skills/*/scripts/*.test.mjs scripts/*.test.mjs
+✔ 워크트리에서도 주 체크아웃의 기준 브랜치 기록을 읽고 쓰며 주 체크아웃 브랜치는 그대로다 (717.030831ms)
+ℹ tests 104
+ℹ pass 104
+ℹ fail 0
+
+$ sh scripts/check-shared.sh
+shared block: 4 copies match
+
+$ node scripts/build-phase-capability-bundle.mjs --check
+closure: 41/41 match
+capability bundle: 3 copies match
