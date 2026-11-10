@@ -672,9 +672,19 @@ export function writeIssueSettings(patch) {
  *
  * 홈 설정(`~/.issue-plugin/settings.json`)은 "사용자가 보통 어떻게 하는가"를 담고,
  * 이 파일은 "이 저장소에서는 실제로 무엇을 쓰는가"를 담는다. 저장소 쪽이 우선이다.
+ *
+ * 저장소에 하나만 둔다. 링크된 워크트리에서 불러도 주 체크아웃의 파일을 읽고 쓴다.
+ * 워크트리마다 따로 두면 `base --set` 기록을 못 보고 기준 브랜치를 다시 판별해 서로 어긋난다.
  */
 export function projectSettingsPath(root) {
-  return path.join(root, WORKSPACE_DIR, PROJECT_SETTINGS_FILE);
+  return path.join(projectSettingsRoot(root), WORKSPACE_DIR, PROJECT_SETTINGS_FILE);
+}
+
+/** 프로젝트 설정이 놓이는 체크아웃. 주 체크아웃에 작업 트리가 없으면(bare) 현재 체크아웃을 쓴다. */
+function projectSettingsRoot(root) {
+  const main = mainCheckout(root);
+  if (!main || path.resolve(main) === path.resolve(root)) return root;
+  return git(['rev-parse', '--is-inside-work-tree'], { cwd: main }).out === 'true' ? main : root;
 }
 
 export function readProjectSettings(root) {
@@ -698,10 +708,11 @@ export function readProjectSettings(root) {
  */
 export function writeProjectSettings(root, patch, { ensureIgnored = true } = {}) {
   if (!root) return null;
-  if (!isIgnored(root, PROJECT_SETTINGS_REL)) {
+  const home = projectSettingsRoot(root);
+  if (!isIgnored(home, PROJECT_SETTINGS_REL)) {
     if (!ensureIgnored) return null;
-    ensureIgnoreBlock(root);
-    if (!isIgnored(root, PROJECT_SETTINGS_REL)) {
+    ensureIgnoreBlock(home);
+    if (!isIgnored(home, PROJECT_SETTINGS_REL)) {
       console.error(`! ${PROJECT_SETTINGS_REL} 이 .gitignore 에 걸리지 않아 설정을 기록하지 않습니다.`);
       return null;
     }
