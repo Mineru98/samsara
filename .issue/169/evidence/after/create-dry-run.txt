@@ -1,0 +1,6 @@
+$ node issue-create.mjs create --dry-run --title t --body-file .issue/169/issue.md --label enhancement --skip-duplicate-review
+(dry-run) gh issue create --title t --body-file .issue/169/issue.md --label enhancement --label version:0.3.9
+
+아무것도 생성하지 않았다.
+VERSION_LABEL=version:0.3.9
+exit=0

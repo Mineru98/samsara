@@ -1,0 +1,18 @@
+$ node --test skills/issue-create/scripts/issue-create.test.mjs
+✔ parseSemver 는 v 접두와 세 자리 숫자만 받는다
+✔ versionLabelFor 는 기본이 패치 올림이다
+✔ natureLabels 는 status 와 version 라벨을 성격 라벨로 세지 않는다
+✔ detectCurrentVersion 은 태그와 버전 파일 중 높은 값을 고른다
+✔ 버전 소스가 없는 저장소는 버전 라벨을 붙이지 않는다
+✔ version-label 은 패치를 기본으로, 마이너를 후보로 출력한다
+✔ create --dry-run 은 버전 라벨을 붙이고, 버전 라벨만으로는 성격 라벨 게이트를 못 넘는다
+✔ detectCurrentVersion 은 HEAD 에서 닿지 않는 태그와 패키지 테이블 밖의 version 을 쓰지 않는다
+✔ ensureVersionLabel 은 이미 있는 라벨과 목록 밖에 있는 라벨을 붙일 수 있다고 본다
+✔ create 는 잘못된 버전 라벨·값 없는 --bump 를 막고 --repo 에는 자동으로 붙이지 않는다
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0

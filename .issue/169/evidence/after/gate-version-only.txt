@@ -1,0 +1,5 @@
+$ node issue-create.mjs create --dry-run --title t --body-file .issue/169/issue.md --label version:0.3.9 --skip-duplicate-review
+✗ 성격 라벨(--label)이 하나 이상 필요하다. 라벨 없는 이슈는 만들지 않는다.
+  쓸 수 있는 라벨: node issue-create.mjs labels
+  없으면 만들기:   node issue-create.mjs ensure-label <이름>   (사용자 승인 후)
+exit=2
