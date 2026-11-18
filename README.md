@@ -9,6 +9,52 @@
 `samsara`는 이슈를 **인(印)** 으로 다루는 이슈 온톨로지 하네스(Harness) 시스템입니다.
 기본 운영 모드에서 개발자는 변경 작업에 앞서 인을 맺고, 그 인에 계획·증거·검토·통합 기록을 잇습니다.
 
+현재 버전은 **v0.3.8** 입니다.
+
+---
+
+## 제0장 · 서장 (The First Seal)
+
+태초의 코드베이스는 고요했습니다.
+
+그러나 사람이 무언가를 원하는 순간 — 고쳐야 할 것, 만들어야 할 것, 되돌려야 할 것을 마음에 품는 순간 — 그 열망은 형체를 얻어 세상에 떨어집니다. 우리는 그것을 **이슈**라 부르고, 이 세계에서는 **인(印)** 이라 부릅니다.
+
+인을 맺지 않고 발동한 술법은 반드시 폭주합니다.
+이유를 남기지 않은 커밋, 근거 없는 수정, 아무도 모르는 배포. 그 모든 재앙은 **결인(結印)을 생략한 대가**입니다.
+
+`samsara`의 첫 번째 계율은 단 하나입니다.
+
+> **변경 작업이라면 먼저 인을 맺어라. 그 다음에 술법을 써라.**
+
+읽기 전용 조사, 새 저장소의 초기 뼈대 작업, 이미 연결된 이슈가 있는 작업은 새 인을 만들지 않습니다.
+설정이 `direct` 모드이거나 저장소 성숙도 게이트가 건너뛰기를 선택한 경우에도 원래 요청을 그대로 진행합니다.
+
+---
+
+## 워크플로우 사용 흐름 순서도
+
+스킬이 어떤 순서로 이어지는지 먼저 훑어 보면 이후 장이 읽기 쉬워집니다.
+
+```
+[준비]   gh-setup ─▶ github-issue-pr-convention
+         (gh 설치·인증)  (저장소 이슈·PR 관례 기록)
+
+[본류]   issue-create ─▶ issue-start ─▶ 검토·승인 ─▶ issue-end ─▶ issue-merge
+          (결인 · 寅)     (술법 발동)      (neji)       (해인)      (창조재생)
+                                                                    shikamaru
+                                                                    yamato
+                                                                    itachi
+
+[병렬]   herdr-orch ─▶ 이슈마다 tab 을 열어 issue-start 를 동시에 진행 ─▶ PR 을 모아 issue-merge
+
+[봉인]   issue-version ─▶ bump PR ─▶ (merge) ─▶ 태그 · 릴리즈
+          (결계 각인)
+```
+
+* **`gh-setup`** 과 **`github-issue-pr-convention`** 은 본류에 들어서기 전의 준비 단계입니다. 이미 준비되어 있으면 건너뜁니다.
+* **`herdr-orch`** 는 herdr 안에서만 동작하며, 독립 이슈를 여러 tab 으로 나눠 착수한 뒤 모인 PR 을 `issue-merge` 로 넘깁니다.
+* **`issue-version`** 은 이 흐름 밖에 있습니다. 이슈가 몇 개 잠들었든 상관없이, 릴리즈를 낼 시점에 독립적으로 부릅니다.
+
 ---
 
 ## 설치 (Installation)
@@ -17,11 +63,20 @@
 
 ### Claude Code
 
+터미널(bash)에서 먼저 설치합니다.
+
 ```bash
 # 1. samsara 저장소를 마켓플레이스로 등록합니다.
-/plugin marketplace add Mineru98/samsara
+claude plugin marketplace add Mineru98/samsara
 
 # 2. 등록한 마켓플레이스에서 samsara 플러그인을 설치합니다.
+claude plugin install samsara@samsara
+```
+
+이미 Claude Code 세션 안에 있다면 같은 작업을 슬래시 명령으로 실행할 수 있습니다.
+
+```
+/plugin marketplace add Mineru98/samsara
 /plugin install samsara@samsara
 ```
 
@@ -56,24 +111,6 @@ grok plugin install Mineru98/samsara --trust
 > Grok Build는 플러그인 마켓플레이스 기능이 비교적 최근에 도입되어 CLI 버전에 따라 세부 옵션이 달라질 수 있습니다. 위 명령이 동작하지 않으면 `grok plugin --help`로 최신 문법을 확인해 주세요.
 
 </details>
-
----
-
-## 제0장 · 서장 (The First Seal)
-
-태초의 코드베이스는 고요했습니다.
-
-그러나 사람이 무언가를 원하는 순간 — 고쳐야 할 것, 만들어야 할 것, 되돌려야 할 것을 마음에 품는 순간 — 그 열망은 형체를 얻어 세상에 떨어집니다. 우리는 그것을 **이슈**라 부르고, 이 세계에서는 **인(印)** 이라 부릅니다.
-
-인을 맺지 않고 발동한 술법은 반드시 폭주합니다.
-이유를 남기지 않은 커밋, 근거 없는 수정, 아무도 모르는 배포. 그 모든 재앙은 **결인(結印)을 생략한 대가**입니다.
-
-`samsara`의 첫 번째 계율은 단 하나입니다.
-
-> **변경 작업이라면 먼저 인을 맺어라. 그 다음에 술법을 써라.**
-
-읽기 전용 조사, 새 저장소의 초기 뼈대 작업, 이미 연결된 이슈가 있는 작업은 새 인을 만들지 않습니다.
-설정이 `direct` 모드이거나 저장소 성숙도 게이트가 건너뛰기를 선택한 경우에도 원래 요청을 그대로 진행합니다.
 
 ---
 
@@ -167,7 +204,7 @@ grok plugin install Mineru98/samsara --trust
 
 > **[설화]** 새로운 인을 세상에 세웁니다. 그러나 그 전에 반드시 명부를 뒤져야 합니다 — **이미 같은 얼굴의 인이 어딘가에서 숨 쉬고 있지는 않은가.** 중복된 인은 경락을 둘로 찢고 술법을 폭주시킵니다. 대조가 끝난 뒤에야 비로소 호랑이의 인이 맺힙니다.
 >
-> **[술식]** 중복을 확인한 뒤 이슈를 등록합니다.
+> **[술식]** 중복을 확인한 뒤 이슈를 등록합니다. 버전을 관리하는 저장소라면 대상 버전 라벨(`version:X.Y.Z`)을 함께 붙입니다.
 
 ### 2. `issue-start` — 술법 발동 (印術發動)
 
@@ -210,6 +247,10 @@ grok plugin install Mineru98/samsara --trust
 
 * `gh-setup` — GitHub CLI 설치·인증 상태를 확인합니다.
 * `github-issue-pr-convention` — 저장소의 이슈·PR 관례를 스캔해 기록합니다.
+
+### 여러 인을 동시에 발동하는 술식
+
+* `herdr-orch` — herdr 안에서 이슈마다 tab 을 열어 `issue-start` 를 병렬로 진행하고, 끝난 PR 을 모아 `issue-merge` 로 통합합니다. 오케스트레이터 pane 은 직접 코드를 고치지 않고 감시와 질문 대리, 종료, 통합 판단만 맡습니다.
 
 ---
 
@@ -262,23 +303,6 @@ grok plugin install Mineru98/samsara --trust
 <br clear="all" />
 
 네 명의 닌자는 Claude와 Codex 양쪽에 같은 이름으로 서 있습니다.
-
----
-
-## 제6장 · 술식의 흐름 (The Flow)
-
-```
-issue-create → issue-start → 검토·승인 → issue-end → issue-merge
- (결인 · 寅)    (술법 발동)    (neji)      (해인)      (창조재생)
-                                                      shikamaru
-                                                       yamato
-                                                       itachi
-
-                                          issue-version ─▶ bump PR ─▶ (merge) ─▶ 태그 · 릴리즈
-                                           (결계 각인)
-```
-
-* **`issue-version`** 은 이 흐름 밖에 있습니다. 이슈가 몇 개 잠들었든 상관없이, 릴리즈를 낼 시점에 독립적으로 부릅니다.
 
 ---
 
