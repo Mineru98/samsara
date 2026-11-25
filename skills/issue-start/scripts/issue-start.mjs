@@ -41,7 +41,7 @@ import {
   git, fail, must, repoRoot, currentBranch, isLinkedWorktree, detectRemote, detectBase,
   branchExists, remoteBranchExists, existingWorktreeFor, isIgnored,
   slugify, prefixFromLabels, parseIssueNumber, inferIssue,
-  issueDir, evidenceDir, evidenceRel, listEvidence, ensureIgnoreBlock,
+  issueDir, evidenceDir, evidenceRel, listEvidence, stageEvidence, ensureIgnoreBlock,
   mirrorEvidence, resolveWorktreePath, getWorktreeLayout, syncBaseCheckout, worktreeDisplayPath,
   setTerminalTitle, predecessorNumbers, isIssueDone, readProjectSettings, writeProjectSettings,
   getDefaultBaseBranch, setDefaultBaseBranch, WORKSPACE_DIR, LEGACY_WORKSPACE_DIR, LEGACY_EVIDENCE_DIR, WORKTREE_LAYOUTS,
@@ -512,7 +512,7 @@ function cmdEvidenceCommit(number, root) {
   const files = listEvidence(root, key);
   if (files.length === 0) fail(`증거 파일이 없습니다: ${evidenceRel(root, key)}`);
   ensureIgnoreBlock(root);
-  const add = git(['add', '-f', '--', ...files, '.gitignore'], { cwd: root });
+  const add = stageEvidence(root, key, files);
   if (add.code !== 0) fail(`git add 실패: ${add.err}`);
   if (git(['diff', '--cached', '--quiet'], { cwd: root }).code === 0) {
     console.log(JSON.stringify({ committed: false, reason: 'no staged change', files }, null, 2));

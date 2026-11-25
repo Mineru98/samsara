@@ -664,6 +664,7 @@ export function evidenceUrls({ root, key, issue, branch, mirrorRef, base }) {
       autoUploadError: uploaded.ok ? null : uploaded.reason,
     };
   });
+  const others = files.filter((p) => !isImageEvidence(p)).map((p) => ({ path: p, localPath: path.join(root, p), mirrorUrl: raw(ref, p) }));
   const pendingManual = manual ? images.filter((img) => !img.inlineUrl) : [];
 
   return {
@@ -683,5 +684,6 @@ export function evidenceUrls({ root, key, issue, branch, mirrorRef, base }) {
           + 'comment.md 의 ![설명](...) 에 그 URL 을 넣으세요. raw URL 은 이미지가 아닌 보조 링크 [파일명](auxUrl) 로만 남깁니다.'
         : 'private 저장소입니다. 모든 이미지를 gh-attach 로 자동 업로드해 inlineUrl 을 채웠습니다. 그대로 comment.md 의 ![설명](inlineUrl) 에 쓰세요.',
     images,
+    others,
   };
 }
