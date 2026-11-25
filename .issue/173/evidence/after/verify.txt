@@ -11,6 +11,9 @@ staged (git add -f, files):
   .issue/999/evidence/before/home.webp
   .issue/999/evidence/comment.md
 
+--- main 의 기존 증거 회귀 (.sh/.mjs/.py/.sha/.json/확장자 없음 포함)
+main 의 기존 증거 264개 중 목록에 남음 264개, 빠짐 0개
+
 --- node --test (skills/*/scripts, scripts)
 ℹ tests 116
 ℹ pass 116
