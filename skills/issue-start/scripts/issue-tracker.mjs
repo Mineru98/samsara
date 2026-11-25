@@ -31,7 +31,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import {
-  run, fail, detectBase, listEvidence, evidenceRel, repoSlugFromRemote, readIssueSettings,
+  run, fail, detectBase, listEvidence, isImageEvidence, evidenceRel, repoSlugFromRemote, readIssueSettings,
   isStatusLabel, resolveStatus, STATUS_LABELS,
 } from './issue-common.mjs';
 
@@ -642,7 +642,7 @@ export function evidenceUrls({ root, key, issue, branch, mirrorRef, base }) {
   // 자동으로 만들고, 없거나(로컬에 로그인된 브라우저가 없어) 실패하면 사람이 웹 UI로
   // 직접 올리는 기존 경로로 이미지별로 폴백한다.
   const manual = Boolean(repo.isPrivate);
-  const images = files.map((p) => {
+  const images = files.filter(isImageEvidence).map((p) => {
     const localPath = path.join(root, p);
     const entry = {
       path: p,

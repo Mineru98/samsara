@@ -512,7 +512,7 @@ function cmdEvidenceCommit(number, root) {
   const files = listEvidence(root, key);
   if (files.length === 0) fail(`증거 파일이 없습니다: ${evidenceRel(root, key)}`);
   ensureIgnoreBlock(root);
-  const add = git(['add', '-f', '--', evidenceRel(root, key), '.gitignore'], { cwd: root });
+  const add = git(['add', '-f', '--', ...files, '.gitignore'], { cwd: root });
   if (add.code !== 0) fail(`git add 실패: ${add.err}`);
   if (git(['diff', '--cached', '--quiet'], { cwd: root }).code === 0) {
     console.log(JSON.stringify({ committed: false, reason: 'no staged change', files }, null, 2));

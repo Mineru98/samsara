@@ -589,15 +589,34 @@ export function evidenceRel(root, key) {
   return path.relative(root, evidenceDir(root, key)).split(path.sep).join('/');
 }
 
+const IMAGE_EVIDENCE_EXT = new Set(['.webp', '.png', '.jpg', '.jpeg', '.gif']);
+const TEXT_EVIDENCE_EXT = new Set(['.txt', '.md']);
+
+/** 이미지 증거인지 본다. GitHub 첨부 업로드는 이 파일만 대상으로 한다. */
+export function isImageEvidence(file) {
+  return IMAGE_EVIDENCE_EXT.has(path.extname(file).toLowerCase());
+}
+
+/**
+ * 증거 폴더에서 업로드·커밋·미러 대상 파일을 모은다.
+ * 로그인 세션 파일(.auth.json, storage-state.json)이 섞이지 않도록 숨김 항목은 건너뛰고,
+ * 이미지·텍스트 확장자만 허용한다.
+ */
 export function listEvidence(root, key) {
   const base = evidenceDir(root, key);
   const files = [];
   const walk = (p) => {
     if (!existsSync(p)) return;
     for (const e of readdirSync(p, { withFileTypes: true })) {
+      if (e.name.startsWith('.')) continue;
       const full = path.join(p, e.name);
       if (e.isDirectory()) walk(full);
-      else files.push(path.relative(root, full).split(path.sep).join('/'));
+      else {
+        const ext = path.extname(e.name).toLowerCase();
+        if (IMAGE_EVIDENCE_EXT.has(ext) || TEXT_EVIDENCE_EXT.has(ext)) {
+          files.push(path.relative(root, full).split(path.sep).join('/'));
+        }
+      }
     }
   };
   walk(base);
@@ -813,7 +832,7 @@ export function mirrorEvidence({ root, key, issue, push = false, base: explicitB
     }
     ensureIgnoreBlock(tmp);
     git(['checkout', '-B', tmpBranch], { cwd: tmp });
-    const a = git(['add', '-f', '--', evidenceRel(root, key), '.gitignore'], { cwd: tmp });
+    const a = git(['add', '-f', '--', ...files, '.gitignore'], { cwd: tmp });
     if (a.code !== 0) throw new Error(`미러 add 실패: ${a.err}`);
 
     if (git(['diff', '--cached', '--quiet'], { cwd: tmp }).code !== 0) {
