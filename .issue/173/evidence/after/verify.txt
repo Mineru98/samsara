@@ -1,0 +1,21 @@
+listEvidence (4):
+  .issue/999/evidence/after/home.webp
+  .issue/999/evidence/before/bench.txt
+  .issue/999/evidence/before/home.webp
+  .issue/999/evidence/comment.md
+
+staged (git add -f, files):
+  .gitignore
+  .issue/999/evidence/after/home.webp
+  .issue/999/evidence/before/bench.txt
+  .issue/999/evidence/before/home.webp
+  .issue/999/evidence/comment.md
+
+--- node --test (skills/*/scripts, scripts)
+ℹ tests 116
+ℹ pass 116
+ℹ fail 0
+
+shared block: 4 copies match
+closure: 41/41 match
+capability bundle: 3 copies match

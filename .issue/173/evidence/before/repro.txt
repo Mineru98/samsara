@@ -1,0 +1,20 @@
+listEvidence (8):
+  .issue/999/evidence/.DS_Store
+  .issue/999/evidence/.auth.json
+  .issue/999/evidence/after/home.webp
+  .issue/999/evidence/before/.hidden.md
+  .issue/999/evidence/before/bench.txt
+  .issue/999/evidence/before/home.webp
+  .issue/999/evidence/comment.md
+  .issue/999/evidence/storage-state.json
+
+staged (git add -f, dir):
+  .gitignore
+  .issue/999/evidence/.DS_Store
+  .issue/999/evidence/.auth.json
+  .issue/999/evidence/after/home.webp
+  .issue/999/evidence/before/.hidden.md
+  .issue/999/evidence/before/bench.txt
+  .issue/999/evidence/before/home.webp
+  .issue/999/evidence/comment.md
+  .issue/999/evidence/storage-state.json
