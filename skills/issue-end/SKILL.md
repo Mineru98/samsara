@@ -26,6 +26,7 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
     <always>references/evidence-recheck.md — 증거 완결성 검사와 pure-tree 재캡처</always>
     <always>references/report-and-pr.md — 게시 상태 확인·조건부 보강·PR</always>
     <always>references/next-actions.md — 다음 행동 4지선다와 issue-merge 위임</always>
+    <always>references/visual-decision.md — 시각적 결정이 걸린 질문 직전에 읽는다: 시안 → 링크 본문 → AskUserQuestion</always>
   </routing>
 
   <subagents>
@@ -49,6 +50,7 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
     <rule>미러 push 뒤 메인 체크아웃 최신화를 시도한다. 막히면 사용자와 함께 정하고, 확인 없이 치워두거나 브랜치를 갈아타지 않는다.</rule>
     <rule>사용자에게 말을 걸 때는 — 전이 보고든 질문이든 — 현재 단계를 반드시 함께 밝힌다.
       본문이 5줄 미만이면 앞에, 5줄 이상이면 마지막 줄에 둔다. 형식은 `# 현재 단계 밝히기` 를 따른다.</rule>
+    <rule>AskUserQuestion 으로 정할 내용이 화면에서 어떻게 보이는지가 선택지를 가르는 시각적 결정이면, 말로만 설명하지 않는다. 먼저 `references/visual-decision.md` 대로 시안을 만들어 띄우고, 본문에 링크를 먼저 쓴 뒤 AskUserQuestion 을 호출한다. 질문·선택지에는 링크를 넣지 않는다.</rule>
   </hard-rules>
 
   <non-goals>

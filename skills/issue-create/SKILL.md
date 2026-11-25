@@ -30,6 +30,7 @@ description: 이미 굴러가는 저장소에서 코드를 바꾸는 요청이�
     <always>references/issue-draft.md — 초안 작성과 라벨 선택</always>
     <always>references/label-audit.md — 라벨 부착과 기존 이슈 라벨 점검</always>
     <always>references/create-and-handoff.md — 등록과 issue-start 인계</always>
+    <always>references/visual-decision.md — 시각적 결정이 걸린 질문 직전에 읽는다: 시안 → 링크 본문 → AskUserQuestion</always>
   </routing>
 
   <subagents>
@@ -59,6 +60,7 @@ description: 이미 굴러가는 저장소에서 코드를 바꾸는 요청이�
     <rule>상태 전환 실패는 흐름을 막지 않는다. 경고만 남기고 진행한 뒤 마무리 보고에 적는다.</rule>
     <rule>라벨을 새로 만들거나 기존 이슈의 라벨을 바꾸는 것은 사용자 승인 후에만 한다. `status:open` 자동 부착과 대상 버전 라벨 생성·부착은 예외다.</rule>
     <rule>이슈 상태 변경, 코멘트 작성, PR 생성을 하지 않는다.</rule>
+    <rule>AskUserQuestion 으로 정할 내용이 화면에서 어떻게 보이는지가 선택지를 가르는 시각적 결정이면, 말로만 설명하지 않는다. 먼저 `references/visual-decision.md` 대로 시안을 만들어 띄우고, 본문에 링크를 먼저 쓴 뒤 AskUserQuestion 을 호출한다. 질문·선택지에는 링크를 넣지 않는다.</rule>
   </hard-rules>
 
   <handoff>
