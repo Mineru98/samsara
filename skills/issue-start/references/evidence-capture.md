@@ -94,10 +94,11 @@ after 캡처에는 **변경 구간을 가리키는 `--box` 를 최소 하나** �
 ### 로그인이 필요한 화면
 
 ```bash
-npx playwright open --save-storage=.issue/59/evidence/.auth.json http://localhost:3000/login
-node <skill>/scripts/capture.mjs --storage .issue/59/evidence/.auth.json ...
+npx playwright open --save-storage=.issue/59/.auth.json http://localhost:3000/login
+node <skill>/scripts/capture.mjs --storage .issue/59/.auth.json ...
 ```
 
+세션 파일은 증거 폴더(`evidence/`) 밖에 둔다. 증거 폴더 안의 파일은 업로드·커밋·미러 대상이 될 수 있다.
 `.auth.json` 은 `.gitignore` 블록이 따로 막는다. 커밋되지 않는지 확인한다.
 
 ### webp 변환

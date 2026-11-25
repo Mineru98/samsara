@@ -38,7 +38,7 @@ import path from 'node:path';
 import process from 'node:process';
 import {
   git, fail, parseArgs, repoRoot, currentBranch, isLinkedWorktree, detectBase,
-  evidenceKey, evidenceDir, evidenceRel, listEvidence, ensureIgnoreBlock,
+  evidenceKey, evidenceDir, evidenceRel, listEvidence, stageEvidence, ensureIgnoreBlock,
   mirrorEvidence, listWorktrees, issueDir, WORKSPACE_DIR, syncBaseCheckout,
 } from './issue-common.mjs';
 import { createTracker, gitHost, evidenceUrls, setTrackerStatus } from './issue-tracker.mjs';
@@ -241,7 +241,7 @@ function cmdCommit(args) {
   if (files.length === 0) fail(`증거 파일이 없습니다: ${evidenceRel(root, key)}`);
 
   ensureIgnoreBlock(root);
-  const add = git(['add', '-f', '--', evidenceRel(root, key), '.gitignore'], { cwd: root });
+  const add = stageEvidence(root, key, files);
   if (add.code !== 0) fail(`git add 실패: ${add.err}`);
 
   if (git(['diff', '--cached', '--quiet'], { cwd: root }).code === 0) {
