@@ -11,12 +11,19 @@ staged (git add -f, files):
   .issue/999/evidence/before/home.webp
   .issue/999/evidence/comment.md
 
---- main 의 기존 증거 회귀 (.sh/.mjs/.py/.sha/.json/확장자 없음 포함)
-main 의 기존 증거 264개 중 목록에 남음 264개, 빠짐 0개
+--- verify-173.mjs (세션 파일 제외, 기존 증거 보존, 파일 단위 스테이징)
+ok   세션 파일(.auth.json, storage-state.json, cookies.json, my.auth.json)이 목록에 없다
+ok   정당한 증거(scenario.sh, comment.md, bench.txt, webp)는 목록에 있다
+ok   isImageEvidence 는 이미지만 true
+ok   파일 단위 git add -f 로 스테이징해도 세션 파일이 들어가지 않는다
+ok   저장소 HEAD 에 커밋된 기존 증거가 전부 목록에 남는다
+
+전부 통과
+exit=0
 
 --- node --test (skills/*/scripts, scripts)
-ℹ tests 116
-ℹ pass 116
+ℹ tests 117
+ℹ pass 117
 ℹ fail 0
 
 shared block: 4 copies match
