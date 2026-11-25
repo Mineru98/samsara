@@ -66,22 +66,28 @@ test('정상 이미지와 user-attachments 는 통과한다', () => {
  * 이슈 #173. 증거 폴더의 세션 파일이 업로드·커밋 대상에 섞이던 문제.
  */
 
-test('증거 목록은 숨김 파일과 세션 파일을 제외하고 이미지·텍스트만 돌려준다', () => {
+test('증거 목록은 숨김 파일과 세션 json 만 제외하고 기존 증거 형식은 남긴다', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'issue-173-'));
   try {
     const dir = path.join(root, '.issue/999/evidence');
     for (const f of [
-      '.DS_Store', '.auth.json', 'storage-state.json', 'cookies.json',
+      '.DS_Store', '.auth.json', 'storage-state.json', 'cookies.json', 'my.auth.json', 'login-session.json',
       'comment.md', 'after/home.webp', 'before/home.webp', 'before/bench.txt', 'before/.hidden.md',
+      'scenario.sh', 'probe-report.mjs', 'qa-lane/SUMMARY.json', 'fake/bin/herdr', 'author-notes.json',
     ]) {
       mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
       writeFileSync(path.join(dir, f), 'x');
     }
     assert.deepEqual(listEvidence(root, '999'), [
       '.issue/999/evidence/after/home.webp',
+      '.issue/999/evidence/author-notes.json',
       '.issue/999/evidence/before/bench.txt',
       '.issue/999/evidence/before/home.webp',
       '.issue/999/evidence/comment.md',
+      '.issue/999/evidence/fake/bin/herdr',
+      '.issue/999/evidence/probe-report.mjs',
+      '.issue/999/evidence/qa-lane/SUMMARY.json',
+      '.issue/999/evidence/scenario.sh',
     ]);
   } finally {
     rmSync(root, { recursive: true, force: true });

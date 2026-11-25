@@ -590,7 +590,8 @@ export function evidenceRel(root, key) {
 }
 
 const IMAGE_EVIDENCE_EXT = new Set(['.webp', '.png', '.jpg', '.jpeg', '.gif']);
-const TEXT_EVIDENCE_EXT = new Set(['.txt', '.md']);
+// storage-state.json, cookies.json, auth.json 처럼 로그인 세션·자격 증명을 담는 json 이름.
+const SESSION_JSON_NAME = /(^|[-_.])(auth|storage[-_]?state|session|cookies?|credentials?|secrets?|tokens?)([-_.]|$)/i;
 
 /** 이미지 증거인지 본다. GitHub 첨부 업로드는 이 파일만 대상으로 한다. */
 export function isImageEvidence(file) {
@@ -599,8 +600,8 @@ export function isImageEvidence(file) {
 
 /**
  * 증거 폴더에서 업로드·커밋·미러 대상 파일을 모은다.
- * 로그인 세션 파일(.auth.json, storage-state.json)이 섞이지 않도록 숨김 항목은 건너뛰고,
- * 이미지·텍스트 확장자만 허용한다.
+ * 로그인 세션 파일이 섞이지 않도록 숨김 항목(.auth.json 등)과 세션 이름의 json 은 건너뛴다.
+ * 재현 스크립트 같은 그 밖의 증거 파일은 그대로 남긴다.
  */
 export function listEvidence(root, key) {
   const base = evidenceDir(root, key);
@@ -611,12 +612,8 @@ export function listEvidence(root, key) {
       if (e.name.startsWith('.')) continue;
       const full = path.join(p, e.name);
       if (e.isDirectory()) walk(full);
-      else {
-        const ext = path.extname(e.name).toLowerCase();
-        if (IMAGE_EVIDENCE_EXT.has(ext) || TEXT_EVIDENCE_EXT.has(ext)) {
-          files.push(path.relative(root, full).split(path.sep).join('/'));
-        }
-      }
+      else if (path.extname(e.name).toLowerCase() === '.json' && SESSION_JSON_NAME.test(e.name)) continue;
+      else files.push(path.relative(root, full).split(path.sep).join('/'));
     }
   };
   walk(base);
