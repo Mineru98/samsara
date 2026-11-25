@@ -27,6 +27,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
     <always>references/merge-plan.md — 서브에이전트 팬아웃과 계획 수립·검토</always>
     <always>references/verify-and-close.md — merge · 통합 테스트 · 이슈 close</always>
     <always>references/next-actions.md — 통합 뒤 다음 행동 4지선다</always>
+    <always>references/visual-decision.md — 시각적 결정이 걸린 질문 직전에 읽는다: 시안 → 링크 본문 → AskUserQuestion</always>
   </routing>
 
   <subagents>
@@ -58,6 +59,7 @@ description: 여러 워크트리를 이슈별 증거 판정·충돌 해소·누�
     <rule>merge 는 승인받은 뒤에 한다. 여러 PR 을 묶어서 한 번에 승인받지 않는다.</rule>
     <rule>merge 는 승인받은 head 로 고정한다(`merge --pr <n> --head <sha>`). 스크립트 merge 가 실패하면 `gh pr merge` 를 직접 호출하지 않는다. `head-changed` 면 새 head 로 재검사하고 그 PR 승인을 다시 받는다.</rule>
     <rule>사용자에게 말을 걸 때는 — 전이 보고든 질문이든 — 현재 단계를 반드시 함께 밝힌다. `references/ask.md` 를 따른다.</rule>
+    <rule>AskUserQuestion 으로 정할 내용이 화면에서 어떻게 보이는지가 선택지를 가르는 시각적 결정이면, 말로만 설명하지 않는다. 먼저 `references/visual-decision.md` 대로 시안을 만들어 띄우고, 본문에 링크를 먼저 쓴 뒤 AskUserQuestion 을 호출한다. 질문·선택지에는 링크를 넣지 않는다.</rule>
   </hard-rules>
 
   <non-goals>

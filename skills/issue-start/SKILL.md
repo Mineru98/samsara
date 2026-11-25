@@ -36,6 +36,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
     <always>references/implementation.md — 구현과 무확인 커밋 규칙</always>
     <always>references/evidence-capture.md — 전후 캡처·바운딩 박스·미러 커밋·이슈 코멘트</always>
     <always>references/next-actions.md — 마무리 뒤 다음 행동 4지선다</always>
+    <always>references/visual-decision.md — 시각적 결정이 걸린 질문 직전에 읽는다: 시안 → 링크 본문 → AskUserQuestion</always>
   </routing>
 
   <subagents>
@@ -56,6 +57,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
     <rule>이슈 상태 변경, PR 생성, merge 를 하지 않는다. 각각 issue-end 와 issue-merge 의 몫이다.</rule>
     <rule>사용자에게 말을 걸 때는 — 전이 보고든 질문이든 — 현재 단계를 반드시 함께 밝힌다.
       본문이 5줄 미만이면 앞에, 5줄 이상이면 마지막 줄에 둔다. 형식은 `# 현재 단계 밝히기` 를 따른다.</rule>
+    <rule>AskUserQuestion 으로 정할 내용이 화면에서 어떻게 보이는지가 선택지를 가르는 시각적 결정이면, 말로만 설명하지 않는다. 먼저 `references/visual-decision.md` 대로 시안을 만들어 띄우고, 본문에 링크를 먼저 쓴 뒤 AskUserQuestion 을 호출한다. 질문·선택지에는 링크를 넣지 않는다.</rule>
   </hard-rules>
 
   <handoff>
