@@ -1,0 +1,19 @@
+$ node scripts/build-phase-capability-bundle.mjs --check
+closure: 41/41 match
+capability bundle: 3 copies match
+
+$ sh scripts/check-shared.sh
+shared block: 4 copies match
+
+$ node --test scripts/*.test.mjs skills/issue-start/scripts/*.test.mjs
+ℹ tests 23
+ℹ pass 23
+ℹ fail 0
+
+$ prototype-serve.sh (tailscale 경로)
+mode: tailscale
+dir:  /tmp/tmp.k2Cyy8NhHs
+port: 19400
+url:  https://mineru-ubuntu.tailf8126e.ts.net:19400/
+HTTP 200
+stopped: 19400
