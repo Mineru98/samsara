@@ -15,7 +15,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
-  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync,
+  mkdirSync, existsSync, readFileSync, writeFileSync, cpSync, readdirSync, rmSync, realpathSync, statSync,
 } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -589,19 +589,62 @@ export function evidenceRel(root, key) {
   return path.relative(root, evidenceDir(root, key)).split(path.sep).join('/');
 }
 
+const IMAGE_EVIDENCE_EXT = new Set(['.webp', '.png', '.jpg', '.jpeg', '.gif']);
+// 로그인 세션·자격 증명을 담는 json 이름의 끝말. token-usage.json 처럼 내용이 다른 증거가 걸리지 않게 끝말만 본다.
+const SESSION_JSON_STEM = /(^|[-_.])(auth|auth-?state|storage-?state|state|sessions?|cookies?|cookie-?jar|credentials?|creds?|secrets?|tokens?)$/i;
+const SESSION_JSON_MAX_BYTES = 5_000_000;
+
+/** 로그인 세션 json 인지 본다. 이름이 달라도 Playwright storageState 모양(cookies·origins 배열)이면 세션으로 본다. */
+function isSessionJson(full, name) {
+  const ext = path.extname(name);
+  if (ext.toLowerCase() !== '.json') return false;
+  if (SESSION_JSON_STEM.test(path.basename(name, ext))) return true;
+  try {
+    if (statSync(full).size > SESSION_JSON_MAX_BYTES) return false;
+    const body = JSON.parse(readFileSync(full, 'utf8'));
+    return Array.isArray(body?.cookies) || Array.isArray(body?.origins);
+  } catch {
+    return false;
+  }
+}
+
+/** 이미지 증거인지 본다. GitHub 첨부 업로드는 이 파일만 대상으로 한다. */
+export function isImageEvidence(file) {
+  return IMAGE_EVIDENCE_EXT.has(path.extname(file).toLowerCase());
+}
+
+/**
+ * 증거 폴더에서 업로드·커밋·미러 대상 파일을 모은다.
+ * 로그인 세션 파일이 섞이지 않도록 숨김 항목(.auth.json 등)과 세션 json 은 건너뛴다.
+ * 재현 스크립트 같은 그 밖의 증거 파일은 그대로 남긴다.
+ */
 export function listEvidence(root, key) {
   const base = evidenceDir(root, key);
   const files = [];
   const walk = (p) => {
     if (!existsSync(p)) return;
     for (const e of readdirSync(p, { withFileTypes: true })) {
+      if (e.name.startsWith('.')) continue;
       const full = path.join(p, e.name);
       if (e.isDirectory()) walk(full);
+      else if (isSessionJson(full, e.name)) continue;
       else files.push(path.relative(root, full).split(path.sep).join('/'));
     }
   };
   walk(base);
   return files.sort();
+}
+
+/**
+ * 증거 파일을 파일 단위로 강제 스테이징한다. 폴더 단위로 넣으면 .gitignore 의 세션 파일 제외가 무력화된다.
+ * 디스크에서 사라진 추적 중 증거 파일은 삭제로 스테이징한다(폴더 단위 add 가 하던 동작을 유지).
+ */
+export function stageEvidence(root, key, files, cwd = root) {
+  const add = git(['add', '-f', '--', ...files, '.gitignore'], { cwd });
+  if (add.code !== 0) return add;
+  const tracked = git(['ls-files', '-z', '--', evidenceRel(root, key)], { cwd }).out.split('\0');
+  const gone = tracked.filter((f) => f && !existsSync(path.join(cwd, f)));
+  return gone.length ? git(['rm', '--cached', '-q', '--', ...gone], { cwd }) : add;
 }
 
 /**
@@ -813,7 +856,7 @@ export function mirrorEvidence({ root, key, issue, push = false, base: explicitB
     }
     ensureIgnoreBlock(tmp);
     git(['checkout', '-B', tmpBranch], { cwd: tmp });
-    const a = git(['add', '-f', '--', evidenceRel(root, key), '.gitignore'], { cwd: tmp });
+    const a = git(['add', '-f', '--', ...files, '.gitignore'], { cwd: tmp });
     if (a.code !== 0) throw new Error(`미러 add 실패: ${a.err}`);
 
     if (git(['diff', '--cached', '--quiet'], { cwd: tmp }).code !== 0) {
@@ -1002,7 +1045,8 @@ export function evidenceUrls({ root, key, issue, branch, mirrorRef, base }) {
     note: repo.isPrivate
       ? 'private 저장소는 raw URL 이 <img> 로 렌더링되지 않습니다. 이미지를 웹 UI 로 직접 첨부하고 raw URL 은 보조 링크로만 남기세요.'
       : null,
-    images: files.map((p) => ({
+    others: files.filter((p) => !isImageEvidence(p)).map((p) => ({ path: p, localPath: path.join(root, p), mirrorUrl: raw(ref, p) })),
+    images: files.filter(isImageEvidence).map((p) => ({
       path: p,
       localPath: path.join(root, p),
       phase: p.includes('/before/') ? 'before' : p.includes('/after/') ? 'after' : 'other',
