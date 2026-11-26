@@ -4,6 +4,25 @@
 `context`의 `evidencePublished: true`는 로컬 증거와 원격 게시본이 blob 단위로 같다는 뜻이다.
 `false`일 때만 누락·변경 항목을 보강하고 재게시한다.
 
+## 리뷰 결과 확인
+
+증거보다 먼저 본다. `issue-start` 8.5단계가 남긴 `.issue/<번호>/evidence/review.json` 이 현재 코드에 대한 것인지 확인한다.
+
+```bash
+node <issue-review>/scripts/issue-review.mjs check --issue 59
+```
+
+```text
+exit 0   최신. STATUS=skipped 면 SKIP_REASON 을 마무리 보고의 리뷰 행에 옮긴다
+exit 3   리뷰 결과가 없다            → issue-review 스킬 실행
+exit 4   리뷰 뒤에 코드 커밋이 쌓였다  → issue-review 스킬 재실행
+```
+
+비교 기준은 HEAD 가 아니라 `.issue/` 밖을 건드린 마지막 커밋이다. 증거 커밋만 얹힌 정상 인계는 exit 0 이다.
+
+다시 돌린 리뷰가 critical / high 지적을 내면 고쳐서 커밋하고 `issue-review` 를 한 번 더 돌린다.
+이때는 코드가 바뀌었으므로 2절대로 after 를 다시 찍고, `review.json` 이 바뀌었으니 6~8단계의 재게시와 코멘트 갱신을 수행한다.
+
 ## 1. 완결성 검사
 
 `context` 출력의 `evidence` 블록을 본다.
