@@ -142,8 +142,10 @@ category   bug / security / performance / maintainability / test / style / docum
 
 ```bash
 node <issue-review>/scripts/issue-review.mjs record --issue {issue_number} \
-  --input .issue/{issue_number}/review-findings.json
+  --target <REVIEW_TARGET> --input .issue/{issue_number}/review-findings.json
 ```
+
+`--target` 에는 1절에서 받은 `REVIEW_TARGET` 을 그대로 넘긴다. 리뷰하는 사이에 코드 커밋이 끼었으면 exit 4 로 거부하므로 1절부터 다시 한다.
 
 `.issue/{issue_number}/evidence/review.json` 이 생긴다. 증거 폴더에 있으므로 증거 커밋·미러에 함께 실린다.
 출력의 `BLOCKING=` 이 critical + high 개수다. exit 2 면 입력 형식이나 커버리지 합이 틀린 것이니 서브에이전트에 고쳐 쓰게 한다.
@@ -176,5 +178,5 @@ node <issue-review>/scripts/issue-review.mjs check --issue {issue_number}
 ```text
 exit 0   최신. STATUS=reviewed 또는 skipped (건너뛴 기록도 통과한다. SKIP_REASON 을 보고에 옮긴다)
 exit 3   review.json 이 없다        → 1절부터 실행
-exit 4   리뷰 뒤에 코드가 바뀌었다    → 1절부터 다시 실행
+exit 4   리뷰 뒤에 코드가 바뀌었다    → 1절부터 다시 실행 (커밋되지 않은 코드 변경이 있어도 exit 4. 먼저 커밋한다)
 ```
