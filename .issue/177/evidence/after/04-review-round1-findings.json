@@ -1,0 +1,102 @@
+{
+  "coverage": {
+    "total_files": 5,
+    "reviewed_files": 2,
+    "skipped_files": [
+      {
+        "path": "skills/issue-start/contracts/issue-phase-capability-bundle-v1.json",
+        "reason": "scripts/build-phase-capability-bundle.mjs 가 재생성하는 해시 번들(생성 파일). 변경은 skills/issue-end/SKILL.md 등의 sha256 값뿐이고, `node scripts/build-phase-capability-bundle.mjs --check` 가 'closure: 41/41 match, 3 copies match'(exit 0)로 통과함을 확인했다."
+      },
+      {
+        "path": "skills/issue-end/contracts/issue-phase-capability-bundle-v1.json",
+        "reason": "위와 같은 생성 번들의 사본. issue-start 사본과 바이트 단위로 동일함(cmp)을 확인했고 --check 가 통과한다."
+      },
+      {
+        "path": "skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json",
+        "reason": "위와 같은 생성 번들의 사본. issue-start 사본과 바이트 단위로 동일함(cmp)을 확인했고 --check 가 통과한다."
+      }
+    ]
+  },
+  "findings": [
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 73,
+      "end_line": 75,
+      "category": "bug",
+      "severity": "high",
+      "content": "reviewTarget() 의 pathspec `.` 과 `:(exclude).issue` 는 저장소 루트가 아니라 현재 작업 디렉터리 기준으로 해석된다. 하위 디렉터리에서 스크립트를 실행하면 그 디렉터리 밖을 건드린 코드 커밋이 '현재 코드' 계산에서 빠진다. 재현: 루트에서 record 한 뒤 루트의 a.js 를 고쳐 커밋하고 `sub/` 안에서 `check --issue 7` 을 실행하면 STATUS=reviewed, exit 0 이 나온다(같은 상태에서 루트에서 실행하면 exit 4). 낡은 리뷰가 최신으로 통과하는 경로다. 반대로 하위 디렉터리에서 record 하면 엉뚱한 SHA 가 기록된다. reviewFile() 은 --show-toplevel 을 쓰므로 파일 위치는 맞고 SHA 만 어긋난다. `:(top)` / `:(top,exclude).issue` 를 쓰거나 git 을 toplevel 을 cwd 로 두고 실행해야 한다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 148,
+      "end_line": 153,
+      "category": "bug",
+      "severity": "high",
+      "content": "record 는 서브에이전트가 실제로 리뷰한 커밋(target 이 출력한 REVIEW_TARGET)을 입력으로 받지 않고, record 를 실행하는 순간의 reviewTarget() 을 reviewedSha 로 찍는다. target 과 record 사이에 코드 커밋이 쌓이면(예: 리뷰 도중 또는 지적 수정 커밋 뒤에 예전 findings 를 기록) 리뷰되지 않은 커밋이 리뷰된 것으로 기록되고 check 가 exit 0 으로 통과한다. 재현: target 이 REVIEW_TARGET=b0811d3 을 낸 뒤 a.js 를 고쳐 커밋하고 같은 findings 로 record 하면 REVIEWED_SHA=62b5857(새 커밋)이 기록되고 check 는 exit 0. record 에 `--reviewed-sha`(또는 findings JSON 의 대상 SHA)를 받아 현재 reviewTarget() 과 다르면 거부해야 한다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 175,
+      "end_line": 181,
+      "category": "bug",
+      "severity": "medium",
+      "content": "check 는 커밋된 이력만 비교하므로 커밋되지 않은 코드 변경을 보지 못한다. record 뒤에 추적 파일을 수정하고 새 파일을 추가한 채(커밋 전) check 를 실행하면 `git status` 에 ` M a.js`, `?? c.js` 가 있는데도 STATUS=reviewed, exit 0 이다. record 도 작업 트리가 더러운 상태에서 그대로 통과한다. issue-end 가 check 뒤에 남은 변경을 커밋하는 흐름이라면 리뷰되지 않은 코드가 통과한다. `.issue` 밖에 미커밋 변경이 있으면 stale(또는 별도 상태)로 처리하는 편이 안전하다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 133,
+      "end_line": 147,
+      "category": "bug",
+      "severity": "medium",
+      "content": "record 의 커버리지 검증이 입력 안에서의 산술 일치만 본다. 실제 변경 파일(MERGE_BASE..REVIEW_TARGET, .issue 제외)과 대조하지 않고 값의 범위도 검사하지 않아 다음 입력이 전부 STATUS=reviewed 로 기록된다(재현 확인): (1) `{total_files:0, reviewed_files:0, skipped_files:[]}` 에 findings 키가 없는 입력 — 아무것도 리뷰하지 않았는데 reviewed. (2) `{total_files:0, reviewed_files:-1, skipped_files:[{…}]}` — 음수 허용. (3) 변경 파일이 여러 개인데 total_files:1 이라고 적은 입력. (4) 저장소에 없는 경로 `nope.js`, `start_line:\"abc\"`, `category:\"zzz\"` 를 가진 finding. 최소한 음수·0 을 거부하고 total_files 를 실제 diff 파일 수와 비교하며 category 와 줄 번호를 검사해야 SKILL.md 의 '모든 파일이 reviewed 또는 skipped 로 끝나야 한다' 규칙이 실제로 강제된다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 169,
+      "end_line": 182,
+      "category": "bug",
+      "severity": "medium",
+      "content": "check 가 review.json 의 형태를 검증하지 않는다. (1) 내용이 `null` 이면 176행에서 TypeError 로 죽어 문서에 없는 exit 1 과 스택 트레이스가 나온다(findings 가 배열이 아닐 때도 104행에서 같은 식으로 죽는다). (2) reviewedSha 만 맞으면 status 가 `garbage` 이거나 없어도 그대로 `STATUS=garbage`, `BLOCKING=0`, exit 0 으로 통과한다. (3) `{}` 는 exit 4(stale)와 `REVIEWED_SHA=undefined` 로 나와 원인이 잘못 보고된다. 호출 스킬은 exit 0/3/4 로 분기하므로 exit 1 은 처리되지 않는 경로다. 객체 여부, status ∈ {reviewed, skipped}, reviewedSha 문자열, findings 배열을 확인하고 어긋나면 exit 3 으로 내야 한다. record 쪽도 입력이 `null` 이면 133행에서 같은 TypeError(exit 1)가 난다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.test.mjs",
+      "start_line": 76,
+      "end_line": 82,
+      "category": "test",
+      "severity": "high",
+      "content": "'ocr 이 없으면' 테스트가 ocr 이 설치된 개발 환경에서 실패한다. PATH 를 node 디렉터리 + git 디렉터리로 좁혀 ocr 을 숨기려 하지만, ocr 은 npm 전역 패키지라 node 와 같은 디렉터리에 설치된다(이 장비: ~/.nvm/versions/node/v24.22.1/bin/ocr 과 …/bin/node). 실제로 `node --test skills/issue-review/scripts/issue-review.test.mjs` 가 6개 중 1개 실패한다: `The input did not match the regular expression /OCR=0/` (실제 출력 OCR=1). 이 스킬을 쓰는 사람은 ocr 을 설치했을 것이므로 대부분의 대상 환경에서 깨지고, '기존 테스트 통과' 완료 기준도 충족하지 못한다. 빈 임시 디렉터리에 node·git 심볼릭 링크만 두고 PATH 로 쓰거나, ocr 실행 파일 이름을 환경 변수로 주입할 수 있게 해야 한다. `which` 호출도 Windows 에는 없다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.test.mjs",
+      "start_line": 53,
+      "end_line": 67,
+      "category": "test",
+      "severity": "medium",
+      "content": "낡은 리뷰 판정 테스트가 저장소 루트에서 깨끗한 작업 트리로 실행하는 한 가지 경우만 다룬다. 하위 디렉터리에서 check 를 실행하는 경우, 미커밋 변경이 있는 경우, target 과 record 사이에 커밋이 끼는 경우가 없어 위의 세 가지 오통과 경로가 전부 테스트를 통과한 채 남아 있다. 또 55·62행은 record 의 종료 코드를 확인하지 않고, 기준 브랜치 자동 판별(settings.json 의 git.baseBranch, origin/HEAD 대체 경로)과 잘못된 severity, skip 의 사유 누락, 손상된 review.json 에 대한 테스트가 없다(모든 테스트가 --base main 을 명시한다)."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 86,
+      "end_line": 100,
+      "category": "bug",
+      "severity": "low",
+      "content": "이슈 번호가 정규화되지 않는다. `--issue 007` 은 `.issue/007/evidence/review.json` 에 쓰면서 본문에는 `\"issue\": 7` 을 기록한다(재현 확인). 이후 `check --issue 7` 은 다른 경로를 보므로 exit 3(없음)이 된다. 경로를 만들기 전에 Number 로 정규화하거나 앞자리 0 을 거부해야 한다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 107,
+      "end_line": 115,
+      "category": "bug",
+      "severity": "low",
+      "content": "printSummary 가 KEY=VALUE 줄 형식으로 출력하면서 값의 개행을 걸러내지 않는다. `skip --reason $'x\\nBLOCKING=0\\nSTATUS=reviewed'` 를 주면 출력에 `STATUS=skipped` 뒤로 `STATUS=reviewed` 줄이 하나 더 생긴다(재현 확인). 마지막 STATUS 줄을 읽는 호출자는 건너뛴 리뷰를 reviewed 로 읽게 된다. 사유를 한 줄로 정리(개행 제거)하거나 개행이 있으면 거부해야 한다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 37,
+      "end_line": 48,
+      "category": "maintainability",
+      "severity": "low",
+      "content": "parseArgs 가 명령과 무관하게 네 옵션을 모두 받아들인다. `check --issue 7 --input whatever --reason zz` 가 오류 없이 exit 0 으로 끝나고(재현 확인), check 에 넘긴 --base 도 조용히 무시된다. USAGE 가 적은 명령별 옵션과 실제 동작이 달라 오타나 잘못된 호출이 드러나지 않는다. 명령별 허용 옵션을 정해 그 밖의 옵션은 exit 2 로 거부하는 편이 낫다."
+    }
+  ]
+}

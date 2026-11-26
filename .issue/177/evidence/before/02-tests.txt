@@ -1,0 +1,18 @@
+$ node scripts/build-phase-capability-bundle.mjs --check
+closure: 41/41 match
+capability bundle: 3 copies match
+$ sh scripts/check-shared.sh
+shared block: 4 copies match
+$ node --test scripts/*.test.mjs skills/*/scripts/*.test.mjs
+✔ bump --branch 는 release 브랜치를 만들고 pr --dry-run 이 통과한다 (159.897623ms)
+✔ pr 은 버전 소스가 목표 버전과 다르면 거부한다 (157.470187ms)
+✔ package-lock.json 은 루트 버전 두 곳만 올리고 의존성 버전은 그대로 둔다 (99.405417ms)
+✔ package-lock.json 의 두 버전 자리가 서로 다르면 files-inconsistent 로 본다 (95.90883ms)
+ℹ tests 117
+ℹ suites 0
+ℹ pass 117
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8381.045222

@@ -1,0 +1,21 @@
+$ ocr --version
+open-code-review v1.14.3 (f6379f71) linux/amd64
+$ node skills/issue-review/scripts/issue-review.mjs target
+BASE=main
+MERGE_BASE=df28bcee7dc5d71237ac69f5d586701b7d8e36fc
+REVIEW_TARGET=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+OCR=1
+
+$ ocr delegate preview --format json --from origin/main --to 36fec8d --exclude ".issue/**" | jq "{mode,total_files,reviewable_count,excluded_count,reviewable:[.reviewable_files[].path],excluded:[.excluded_files[]|{path,exclude_reason}]}"
+{"mode":"range","total_files":11,"reviewable_count":5,"excluded_count":6,"reviewable":["skills/issue-end/contracts/issue-phase-capability-bundle-v1.json","skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json","skills/issue-review/scripts/issue-review.mjs","skills/issue-review/scripts/issue-review.test.mjs","skills/issue-start/contracts/issue-phase-capability-bundle-v1.json"],"excluded":[{"path":"README.md","exclude_reason":"unsupported_ext"},{"path":"skills/issue-end/SKILL.md","exclude_reason":"unsupported_ext"},{"path":"skills/issue-end/references/evidence-recheck.md","exclude_reason":"unsupported_ext"},{"path":"skills/issue-review/SKILL.md","exclude_reason":"unsupported_ext"},{"path":"skills/issue-start/SKILL.md","exclude_reason":"unsupported_ext"},{"path":"skills/issue-start/references/implementation.md","exclude_reason":"unsupported_ext"}]}
+
+# 1차 리뷰(8129703) 지적 수
+{"high":3,"low":3,"medium":4}
+# 2차 리뷰(36fec8d) 확정
+$ node skills/issue-review/scripts/issue-review.mjs check --issue 177
+REVIEW_FILE=.issue/177/evidence/review.json
+STATUS=reviewed
+REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+FINDINGS=critical:0,high:0,medium:3,low:3
+BLOCKING=0
+exit=0

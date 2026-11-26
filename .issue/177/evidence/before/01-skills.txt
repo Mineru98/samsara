@@ -1,0 +1,12 @@
+$ ls skills
+gh-setup
+github-issue-pr-convention
+herdr-orch
+issue-create
+issue-end
+issue-merge
+issue-start
+issue-version
+
+$ grep -rn -E 'issue-review|8\.5단계|user-invocable' skills README.md | wc -l
+0

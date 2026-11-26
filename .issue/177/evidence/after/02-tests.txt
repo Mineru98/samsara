@@ -1,0 +1,23 @@
+$ node scripts/build-phase-capability-bundle.mjs --check
+closure: 41/41 match
+capability bundle: 3 copies match
+$ sh scripts/check-shared.sh
+shared block: 4 copies match
+$ node --test skills/issue-review/scripts/issue-review.test.mjs
+✔ record 뒤 check 는 통과하고 blocking 개수를 알린다 (139.944588ms)
+✔ 증거 커밋(.issue 만 변경)은 리뷰를 낡게 만들지 않는다 (144.290379ms)
+✔ 하위 디렉터리에서 실행해도 그 밖의 코드 커밋을 잡는다 (206.004736ms)
+✔ target 뒤에 커밋이 끼면 record 가 exit 4 로 거부한다 (85.28942ms)
+✔ 커밋되지 않은 코드 변경이 있으면 check 가 exit 4 다 (136.118556ms)
+✔ 형식이 맞지 않는 review.json 은 check 가 exit 3 이다 (114.183795ms)
+✔ 리뷰 뒤 코드 커밋이 쌓이면 check 가 exit 4 로 막는다 (151.913276ms)
+✔ 리뷰 결과가 없으면 check 가 exit 3 이다 (69.376233ms)
+✔ ocr 이 없으면 target 이 OCR=0 을 내고 skip 기록은 check 를 통과한다 (206.824878ms)
+✔ 커버리지 합이 맞지 않는 입력은 record 가 거부한다 (94.733323ms)
+ℹ tests 10
+ℹ pass 10
+ℹ fail 0
+$ node --test scripts/*.test.mjs skills/*/scripts/*.test.mjs
+ℹ tests 127
+ℹ pass 127
+ℹ fail 0
