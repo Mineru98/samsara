@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "issue": 177,
+  "mode": "delegate",
+  "status": "reviewed",
+  "base": "main",
+  "mergeBase": "df28bcee7dc5d71237ac69f5d586701b7d8e36fc",
+  "reviewedSha": "36fec8dc26b38e366e5bc4c63f0eb0d550da5f53",
+  "coverage": {
+    "total_files": 5,
+    "reviewed_files": 2,
+    "skipped_files": [
+      {
+        "path": "skills/issue-start/contracts/issue-phase-capability-bundle-v1.json",
+        "reason": "scripts/build-phase-capability-bundle.mjs 가 재생성하는 해시 번들(생성 파일). diff 는 한 줄짜리 JSON 의 sha256 값 변경뿐이고, 36fec8d 에서 `node scripts/build-phase-capability-bundle.mjs --check` 가 'closure: 41/41 match, 3 copies match'(exit 0)로 통과함을 확인했다."
+      },
+      {
+        "path": "skills/issue-end/contracts/issue-phase-capability-bundle-v1.json",
+        "reason": "같은 생성 번들의 사본. issue-start 사본과 바이트 단위로 동일함(cmp)을 확인했고 --check 가 통과한다."
+      },
+      {
+        "path": "skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json",
+        "reason": "같은 생성 번들의 사본. issue-start 사본과 바이트 단위로 동일함(cmp)을 확인했고 --check 가 통과한다."
+      }
+    ]
+  },
+  "findings": [
+    {
+      "path": "skills/issue-review/scripts/issue-review.test.mjs",
+      "start_line": 60,
+      "end_line": 68,
+      "category": "test",
+      "severity": "medium",
+      "content": "'하위 디렉터리에서 실행해도 그 밖의 코드 커밋을 잡는다' 테스트가 첫 리뷰에서 고친 pathspec 결함을 실제로는 지키지 못한다. 스크립트 사본에서 CODE_PATHS 를 수정 전 값 `['.', ':(exclude).issue']` 로 되돌려도 10개 테스트가 전부 통과한다(재현 확인). 원인: check 직전에 `sub/b.js` 커밋을 먼저 쌓기 때문에, cwd 기준 pathspec 으로도 sub 커밋이 '현재 코드'로 잡혀 기록된 SHA 와 달라지고 exit 4 가 나온다. 또 `git status` 쪽 pathspec 만 cwd 기준으로 되돌려도 전부 통과한다. 회귀를 잡으려면 (1) sub 안에는 아무 커밋도 없는 상태에서 루트 파일만 커밋한 뒤 sub 에서 check → exit 4, (2) 루트 파일을 커밋 없이 수정한 뒤 sub 에서 check → exit 4, (3) sub 에서 실행한 target/record 의 SHA 가 루트에서 실행한 값과 같음을 확인하는 단언이 필요하다. 현재 구현 자체는 세 경우 모두 올바르게 동작함을 직접 실행으로 확인했다(구현 결함이 아니라 테스트 공백)."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 192,
+      "end_line": 198,
+      "category": "bug",
+      "severity": "medium",
+      "content": "check 가 `.issue` 밖의 추적되지 않은 파일 하나만 있어도(코드가 아닌 메모·임시 파일 포함) STATUS=stale, exit 4 를 낸다. 재현: record 직후 `echo n > notes.txt` 만 하고 check 하면 UNCOMMITTED=1, exit 4. 이때 REVIEWED_SHA 와 CURRENT_SHA 는 같다. 보수적인 방향이라 낡은 리뷰가 통과하지는 않지만, 출력에는 개수(UNCOMMITTED=n)만 나오고 어떤 경로가 걸렸는지 나오지 않으며, 안내 문구는 '변경을 커밋하고 issue-review 를 다시 돌린다' 뿐이다. SKILL.md 의 exit 4 처리('1절부터 다시 실행')대로 리뷰를 다시 돌려도 파일이 남아 있는 한 같은 결과가 반복된다. 대상 저장소가 `.omc/` 같은 도구 상태 디렉터리나 로컬 메모를 .gitignore 에 넣지 않았다면 정상 사용 중에도 걸린다. 최소한 걸린 경로 목록(dirty 배열)을 출력하고, SHA 는 같은데 미커밋 변경만 있는 경우를 별도 메시지로 구분해야 호출 스킬이 '커밋 또는 정리' 를 판단할 수 있다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 144,
+      "end_line": 159,
+      "category": "bug",
+      "severity": "medium",
+      "content": "record 의 커버리지 검증이 여전히 입력 안에서의 산술 일치만 본다(첫 리뷰 지적 중 음수 거부만 반영됨). 실제 변경 파일 수(MERGE_BASE..REVIEW_TARGET, .issue 제외)와 대조하지 않아 다음 입력이 STATUS=reviewed, exit 0 으로 기록된다(재현 확인): (1) `{coverage:{total_files:0,reviewed_files:0,skipped_files:[]}}` 에 findings 키가 없는 입력 — 아무 파일도 리뷰하지 않았는데 reviewed. (2) 저장소에 없는 경로 `nope.js`, `category:\"zzz\"`, `start_line:\"abc\"` 를 가진 finding. 스크립트는 이미 mergeBase 와 대상 커밋을 알고 있으므로 `git diff --name-only` 개수와 total_files 를 비교하고 category·줄 번호를 검사하면 SKILL.md 의 '모든 파일이 reviewed 또는 skipped 로 끝나야 한다' 규칙이 실제로 강제된다. 입력을 리뷰 서브에이전트가 쓰는 내부 도구이고 잘못된 입력을 넣어야만 발생하므로 medium 이다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 131,
+      "end_line": 137,
+      "category": "bug",
+      "severity": "low",
+      "content": "record 와 skip 은 작업 트리가 더러워도 그대로 성공한다. 재현: 추적 파일 수정 + 새 파일 추가 상태에서 record → STATUS=reviewed, exit 0. 바로 뒤의 check 는 UNCOMMITTED=2, exit 4 로 막으므로 낡은 리뷰가 통과하지는 않지만, record 가 성공한 직후에 check 가 실패하는 어긋난 상태가 만들어지고 리뷰 한 번이 버려진다. check 와 같은 uncommittedCode() 검사를 record·skip 에도 두어 기록 시점에 거부하는 편이 일관된다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 135,
+      "end_line": 137,
+      "category": "bug",
+      "severity": "low",
+      "content": "record 의 --target 검증이 '해석되지 않는 값' 과 '코드가 바뀜' 을 구분하지 않는다. 재현: `--target deadbeef`(없는 객체)는 인자 오류(exit 2)가 아니라 '리뷰한 커밋(deadbeef) 뒤에 코드가 바뀌었다', exit 4 로 나온다. 또 증거 커밋이 HEAD 인 상태에서 `--target HEAD` 나 HEAD 의 SHA 를 넘기면 코드가 바뀌지 않았는데도 같은 메시지와 exit 4 가 나온다(REVIEW_TARGET 이 아닌 HEAD 를 넘긴 호출 실수). 호출 스킬은 exit 4 를 '1절부터 다시 리뷰' 로 처리하므로 불필요한 재리뷰로 이어진다. rev-parse 가 빈 값이면 exit 2 로, 넘긴 커밋이 현재 대상의 후손이면서 그 사이 변경이 .issue 뿐인 경우는 안내 문구를 달리하는 편이 낫다. 축약 SHA 는 정상 처리됨을 확인했다."
+    },
+    {
+      "path": "skills/issue-review/scripts/issue-review.mjs",
+      "start_line": 181,
+      "end_line": 190,
+      "category": "bug",
+      "severity": "low",
+      "content": "check 의 형식 검증이 status 와 reviewedSha 만 보고 findings 는 보지 않는다. review.json 을 손으로 고쳐 `findings` 가 배열이 아니거나(`\"x\"`) 원소가 null 이면 printSummary → countBySeverity 에서 TypeError 로 죽어 문서에 없는 exit 1 과 스택 트레이스가 나온다(재현 확인). 호출 스킬은 exit 0/3/4 로만 분기한다. record 가 쓴 파일에서는 발생하지 않으므로 low 다. 덧붙여 JSON 파싱 실패(185행)만 `STATUS=missing` 을 출력하지 않아 같은 exit 3 안에서 stdout 형식이 다르다."
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+$ ls skills
+gh-setup
+github-issue-pr-convention
+herdr-orch
+issue-create
+issue-end
+issue-merge
+issue-review
+issue-start
+issue-version
+
+$ head -5 skills/issue-review/SKILL.md | cut -c1-80
+---
+name: issue-review
+description: issue-start 8.5단계와 issue-end 2단계가 호출하는 내부 코드 리뷰 스킬입니다. ocr(open-cod
+user-invocable: false
+---
+
+$ grep -rn -E 'issue-review|8\.5단계|user-invocable' skills README.md | wc -l
+48
+
+$ grep -n -E 'issue-review|8\.5' skills/issue-start/SKILL.md skills/issue-end/SKILL.md README.md | cut -c1-150
+README.md:48:[내부]   issue-review ◀─ issue-start 가 구현 커밋 뒤에 호출 (코드 리뷰)
+README.md:58:* **`issue-review`** 는 사용자가 직접 부르지 않는 내부 스킬입니다(`user-invocable: false`). `issue-start` 와 `issue-end` 가 필요한 시점에 스스로 호출합니다.
+README.md:89:코드 리뷰 단계(`issue-review`)는 [Open Code Review](https://github.com/alibaba/open-code-review) 의 `ocr` CLI 를 사용합니다. 선택 사항이며, 없으면 리뷰를 건너뛰고 그 사실
+README.md:223:> **[술식]** 이슈를 분석하고 구현한 뒤, 코드 리뷰(`issue-review`)를 거쳐 증거를 게시합니다.
+README.md:229:> **[술식]** 승인된 작업에 대해 PR을 생성합니다. 그 전에 코드 리뷰 결과가 현재 코드에 대한 것인지 확인하고, 없거나 낡았으면 `issue-review` 를 다시 돌립니다.
+README.md:265:* `issue-review` — `ocr` CLI 의 delegation 모드로 리뷰 대상 파일과 규칙을 정하고, 구현 세션과 분리된 서브에이전트가 작업 브랜치의 변경을 검토합니다. 결과는 검토한 커밋과 함께 `.issue/<번호>/evide
+skills/issue-start/SKILL.md:37:    <always>`issue-review` 스킬 — 8.5단계 코드 리뷰. 구현 커밋 뒤, after 캡처 전에 부른다</always>
+skills/issue-start/SKILL.md:58:    <rule>구현 커밋 뒤에는 after 캡처 전에 `issue-review` 로 코드 리뷰를 거친다. 리뷰가 낸 수정은 after 캡처 전에 커밋해 증거가 최종 코드와 어긋나지 않게 한다.</rule>
+skills/issue-start/SKILL.md:115: 8.5 코드 리뷰
+skills/issue-start/SKILL.md:186:    N2 --> V[issue-review: 서브에이전트 코드 리뷰]
+skills/issue-start/SKILL.md:380:8.5 코드 리뷰 (issue-review)
+skills/issue-start/SKILL.md:463:## 8.5단계 — 코드 리뷰
+skills/issue-start/SKILL.md:465:구현 커밋이 끝나면 내부 스킬 `issue-review` 를 부른다. 이슈 번호와 `plan.md` 1절(이슈 요약·완료 기준)을 넘긴다.
+skills/issue-start/SKILL.md:466:리뷰는 구현을 한 이 세션이 아니라 `issue-review` 가 띄우는 별도 서브에이전트가 한다.
+skills/issue-start/SKILL.md:469:BLOCKING>0        critical / high 지적을 고치고 8단계 방식(guard → 커밋)으로 다시 커밋한 뒤 issue-review 를 한 번 더 부른다.
+skills/issue-start/SKILL.md:470:                  두 번째에도 남으면 issue-review 6절의 AskUserQuestion 으로 묻는다
+skills/issue-end/SKILL.md:27:    <branch name="리뷰 없음·낡음" when="2단계 `issue-review check` 가 exit 3 또는 4">`issue-review` 스킬 — 현재 코드를 다시 리뷰</branch>
+skills/issue-end/SKILL.md:44:    <rule>코드 리뷰 결과(`review.json`)가 없거나 리뷰 뒤에 코드가 바뀌었으면 PR 을 만들지 않는다. `issue-review` 를 다시 돌린 뒤에 넘어간다.</rule>
+skills/issue-end/SKILL.md:150:    C -- 정상 --> V{issue-review check: 리뷰가 현재 코드 기준?}
+skills/issue-end/SKILL.md:151:    V -- 없음 · 낡음 --> V1[issue-review 재실행 · 지적 수정] --> D
+skills/issue-end/SKILL.md:340:먼저 코드 리뷰가 현재 코드에 대한 것인지 확인한다. `<issue-review>` 는 `issue-review` 스킬 폴더다.
+skills/issue-end/SKILL.md:343:node <issue-review>/scripts/issue-review.mjs check --issue {issue_number}
+skills/issue-end/SKILL.md:346:exit 0 이면 그대로 진행한다. exit 3(리뷰 없음) 또는 exit 4(리뷰 뒤에 코드가 바뀜)면 `issue-review` 스킬을 다시 돌린 뒤에 넘어간다.
