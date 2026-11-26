@@ -34,6 +34,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
     <branch name="both" when="풀스택 이슈">두 레퍼런스를 모두 읽고 계획을 계층별로 나눈다</branch>
     <always>references/worktree.md — 배치 결정, 브랜치 이름 규칙, 워크트리 생성</always>
     <always>references/implementation.md — 구현과 무확인 커밋 규칙</always>
+    <always>`issue-review` 스킬 — 8.5단계 코드 리뷰. 구현 커밋 뒤, after 캡처 전에 부른다</always>
     <always>references/evidence-capture.md — 전후 캡처·바운딩 박스·미러 커밋·이슈 코멘트</always>
     <always>references/next-actions.md — 마무리 뒤 다음 행동 4지선다</always>
     <always>references/visual-decision.md — 시각적 결정이 걸린 질문 직전에 읽는다: 시안 → 링크 본문 → AskUserQuestion</always>
@@ -54,6 +55,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
     <rule>`report-check` 가 실패하면(exit ≠ 0) 이슈 코멘트를 게시하지 않는다. 고쳐서 통과시킨 뒤에만 게시한다.</rule>
     <rule>증거 이미지는 webp 로만 만들고, after 에는 변경 구간을 가리키는 바운딩 박스를 넣는다.</rule>
     <rule>첨부 이미지는 요약만 믿지 않고 Read 로 직접 열어본다.</rule>
+    <rule>구현 커밋 뒤에는 after 캡처 전에 `issue-review` 로 코드 리뷰를 거친다. 리뷰가 낸 수정은 after 캡처 전에 커밋해 증거가 최종 코드와 어긋나지 않게 한다.</rule>
     <rule>이슈 상태 변경, PR 생성, merge 를 하지 않는다. 각각 issue-end 와 issue-merge 의 몫이다.</rule>
     <rule>사용자에게 말을 걸 때는 — 전이 보고든 질문이든 — 현재 단계를 반드시 함께 밝힌다.
       본문이 5줄 미만이면 앞에, 5줄 이상이면 마지막 줄에 둔다. 형식은 `# 현재 단계 밝히기` 를 따른다.</rule>
@@ -110,6 +112,7 @@ description: GitHub 이슈 번호로 착수해 워크트리에서 구현·커밋
  6  before 증거 캡처
  7  구현
  8  작업 트리 커밋
+ 8.5 코드 리뷰
  9  after 증거 캡처
 10  증거 미러 커밋·푸시
 11  이슈 리포트 코멘트
@@ -179,8 +182,10 @@ flowchart TD
     M --> N{guard 통과?}
     N -- 아니오 --> N1[사용자 확인 후 커밋]
     N -- 예 --> N2[묻지 않고 커밋]
-    N1 --> O
-    N2 --> O[after 캡처 · 바운딩 박스 포함]
+    N1 --> V
+    N2 --> V[issue-review: 서브에이전트 코드 리뷰]
+    V -- critical·high 지적 --> V1[수정 후 다시 커밋 · 리뷰 1회 더] --> V
+    V -- 통과 또는 건너뜀 --> O[after 캡처 · 바운딩 박스 포함]
 
     O --> P[증거 커밋 + 브랜치 push]
     P --> Q[evidence-mirror --push: 기본 브랜치에 증거 커밋]
@@ -361,7 +366,7 @@ PR 은 트래커와 무관하게 GitHub 에 올라간다. Jira 를 쓰더라도 
 
 ## 1단계 — 체크리스트 생성
 
-TodoWrite 로 아래 13개를 만든다. **단계가 끝날 때마다 즉시 완료로 갱신한다.**
+TodoWrite 로 아래 14개를 만든다. **단계가 끝날 때마다 즉시 완료로 갱신한다.**
 
 ```text
 1.  인자 분기 및 전제 확인
@@ -372,6 +377,7 @@ TodoWrite 로 아래 13개를 만든다. **단계가 끝날 때마다 즉시 완
 6.  before 증거 캡처 (pure 상태)
 7.  구현
 8.  작업 트리 커밋
+8.5 코드 리뷰 (issue-review)
 9.  after 증거 캡처 (바운딩 박스 포함)
 10. 증거를 기본 브랜치에 미러 커밋·푸시
 11. 이슈에 전후 리포트 코멘트
@@ -454,6 +460,21 @@ node <skill>/scripts/issue-start.mjs guard --message "$msg" \
 
 `':!.issue'` 를 빼면 6단계에서 만든 before 증거가 구현 커밋에 섞여 리뷰에서 diff 가 읽히지 않는다. 증거는 10단계에서 따로 커밋한다.
 
+## 8.5단계 — 코드 리뷰
+
+구현 커밋이 끝나면 내부 스킬 `issue-review` 를 부른다. 이슈 번호와 `plan.md` 1절(이슈 요약·완료 기준)을 넘긴다.
+리뷰는 구현을 한 이 세션이 아니라 `issue-review` 가 띄우는 별도 서브에이전트가 한다.
+
+```text
+BLOCKING>0        critical / high 지적을 고치고 8단계 방식(guard → 커밋)으로 다시 커밋한 뒤 issue-review 를 한 번 더 부른다.
+                  두 번째에도 남으면 issue-review 6절의 AskUserQuestion 으로 묻는다
+BLOCKING=0        medium / low 지적은 고치지 않아도 된다. 11단계 comment.md 의 `## 남은 이슈` 에 옮긴다
+STATUS=skipped    ocr 미설치·리뷰 대상 0개 등. 흐름을 멈추지 않고 사유를 comment.md 의 `## 검증` 과 마무리 보고에 적는다
+```
+
+**after 캡처보다 먼저 끝낸다.** 리뷰 수정이 after 뒤에 들어가면 증거가 최종 코드와 달라진다.
+결과 파일 `.issue/{issue_number}/evidence/review.json` 은 10단계 증거 커밋에 함께 실리고, `issue-end` 가 PR 전에 최신 여부를 확인한다.
+
 ## 9단계 — after 캡처
 
 before 와 같은 URL·상태·뷰포트로 찍고, 변경 구간에 `--box` 를 넣는다. before 에도 같은 셀렉터로 박스를 그려 같은 눈높이에서 비교되게 한다.
@@ -512,6 +533,7 @@ node <skill>/scripts/issue-start.mjs sync-base
 | **브랜치** | \<이름\> |
 | **기본 브랜치** | \<base\> (\<판별 출처\>) |
 | **커밋** | \<구현 커밋\> + \<증거 커밋\> |
+| **리뷰** | \<reviewed: critical n / high n / medium n / low n\> 또는 \<skipped: 사유\> |
 | **증거** | before \<n\>장 / after \<n\>장 (박스 \<n\>개) |
 | **코멘트** | [리포트 보기](\<이슈 코멘트 URL\>) |
 | **동기화** | \<메인 최신화 결과 또는 건너뛴 사유\> |

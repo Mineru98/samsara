@@ -23,7 +23,8 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
 
   <routing>
     <always>references/context-triage.md — 상황 판단과 확인 질문</always>
-    <always>references/evidence-recheck.md — 증거 완결성 검사와 pure-tree 재캡처</always>
+    <always>references/evidence-recheck.md — 리뷰 결과 확인, 증거 완결성 검사와 pure-tree 재캡처</always>
+    <branch name="리뷰 없음·낡음" when="2단계 `issue-review check` 가 exit 3 또는 4">`issue-review` 스킬 — 현재 코드를 다시 리뷰</branch>
     <always>references/report-and-pr.md — 게시 상태 확인·조건부 보강·PR</always>
     <always>references/next-actions.md — 다음 행동 4지선다와 issue-merge 위임</always>
     <always>references/visual-decision.md — 시각적 결정이 걸린 질문 직전에 읽는다: 시안 → 링크 본문 → AskUserQuestion</always>
@@ -40,6 +41,7 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
     <rule>`evidencePublished: true` 면 증거 미러와 이슈 코멘트를 반복하지 않는다.</rule>
     <rule>`evidencePublished: false` 면 부족하거나 바뀐 증거를 보강·재게시한 뒤 PR 로 넘어간다.</rule>
     <rule>증거가 없으면 PR 을 만들지 않는다. 왜 만들 수 없는지 보고하고 멈춘다.</rule>
+    <rule>코드 리뷰 결과(`review.json`)가 없거나 리뷰 뒤에 코드가 바뀌었으면 PR 을 만들지 않는다. `issue-review` 를 다시 돌린 뒤에 넘어간다.</rule>
     <rule>merge 를 실행하지 않는다. 요청받으면 `issue-merge` 로 위임한다.</rule>
     <rule>워크트리를 삭제하지 않는다. 정리는 `issue-merge` 가 통합 후에 한다.</rule>
     <rule>사용자가 정해야 할 것은 전부 AskUserQuestion 으로 묻는다. 평문 질문으로 끝내지 않는다.</rule>
@@ -96,7 +98,7 @@ description: issue-start 작업을 마무리해 증거를 확정하고 PR 을 �
 
 ```text
  1  상황 판단
- 2  승인·증거 완결성 확인
+ 2  승인·리뷰·증거 완결성 확인
  3  before 재캡처 (pure-tree)
  4  after 재캡처·보강
  5  리포트 작성·보강
@@ -144,8 +146,10 @@ PR 생성은 그 다음에 따로 묻겠습니다.
 flowchart TD
     A[/"/issue-end"/] --> B[context: 워크트리·브랜치·이슈·PR·증거 상태]
     B --> C{상황 확인}
-    C -- 워크트리 아님 / 이슈 불명확 --> C1[AskUserQuestion] --> D
-    C -- 정상 --> D{evidenceComplete?}
+    C -- 워크트리 아님 / 이슈 불명확 --> C1[AskUserQuestion] --> V
+    C -- 정상 --> V{issue-review check: 리뷰가 현재 코드 기준?}
+    V -- 없음 · 낡음 --> V1[issue-review 재실행 · 지적 수정] --> D
+    V -- 최신 --> D{evidenceComplete?}
 
     D -- 아니오 --> E1[pure-tree: 변경 직전 워크트리]
     E1 --> E2[before 재캡처] --> E3[pure-tree --remove] --> F
@@ -315,7 +319,7 @@ TodoWrite 로 아래 11개를 만든다. private 저장소에서는 7.5 단계�
 
 ```text
 1.  상황 판단 (context)
-2.  검토 승인·증거 존재·완결성 확인
+2.  검토 승인·리뷰 결과·증거 존재·완결성 확인
 3.  누락 시 pure-tree 로 before 재캡처
 4.  필요 시 현재 커밋 상태로 after 재캡처·보강
 5.  필요 시 리포트 보강 (comment.md)
@@ -332,6 +336,15 @@ TodoWrite 로 아래 11개를 만든다. private 저장소에서는 7.5 단계�
 `false` 면 4~8단계가 PR 전 필수 복구 경로다.
 
 ## 2~4단계 — 증거 재확인
+
+먼저 코드 리뷰가 현재 코드에 대한 것인지 확인한다. `<issue-review>` 는 `issue-review` 스킬 폴더다.
+
+```bash
+node <issue-review>/scripts/issue-review.mjs check --issue {issue_number}
+```
+
+exit 0 이면 그대로 진행한다. exit 3(리뷰 없음) 또는 exit 4(리뷰 뒤에 코드가 바뀜)면 `issue-review` 스킬을 다시 돌린 뒤에 넘어간다.
+세부는 `references/evidence-recheck.md` 의 `리뷰 결과 확인`.
 
 `issue-start` 가 만든 증거와 게시본을 **재확인**한다.
 `evidenceComplete: false` 면 `pure-tree` 로 변경 직전 상태를 만들어 before 를 다시 찍는다.
@@ -369,6 +382,7 @@ node <skill>/scripts/issue-end.mjs status {issue_number} review
 | **브랜치** | \<이름\> |
 | **워크트리** | \<context 의 worktrees[].display 값\> |
 | **기본 브랜치** | \<base\> (\<판별 출처\>) |
+| **리뷰** | \<reviewed: critical n / high n / medium n / low n\> 또는 \<skipped: 사유\> |
 | **증거** | before \<n\>장 / after \<n\>장 (박스 \<n\>개) |
 | **미러** | \<mirrorRef\> (fallback 이면 그 사실 명시) |
 | **코멘트** | [리포트 보기](\<이슈 코멘트 URL\>) (신규 / 기존 갱신) |

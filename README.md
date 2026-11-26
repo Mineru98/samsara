@@ -45,6 +45,9 @@
                                                                     yamato
                                                                     itachi
 
+[내부]   issue-review ◀─ issue-start 가 구현 커밋 뒤에 호출 (코드 리뷰)
+                       ◀─ issue-end 가 PR 전에 호출 (리뷰가 현재 코드 기준인지 확인)
+
 [병렬]   herdr-orch ─▶ 이슈마다 tab 을 열어 issue-start 를 동시에 진행 ─▶ PR 을 모아 issue-merge
 
 [봉인]   issue-version ─▶ bump PR ─▶ (merge) ─▶ 태그 · 릴리즈
@@ -52,6 +55,7 @@
 ```
 
 * **`gh-setup`** 과 **`github-issue-pr-convention`** 은 본류에 들어서기 전의 준비 단계입니다. 이미 준비되어 있으면 건너뜁니다.
+* **`issue-review`** 는 사용자가 직접 부르지 않는 내부 스킬입니다(`user-invocable: false`). `issue-start` 와 `issue-end` 가 필요한 시점에 스스로 호출합니다.
 * **`herdr-orch`** 는 herdr 안에서만 동작하며, 독립 이슈를 여러 tab 으로 나눠 착수한 뒤 모인 PR 을 `issue-merge` 로 넘깁니다.
 * **`issue-version`** 은 이 흐름 밖에 있습니다. 이슈가 몇 개 잠들었든 상관없이, 릴리즈를 낼 시점에 독립적으로 부릅니다.
 
@@ -81,6 +85,12 @@ claude plugin install samsara@samsara
 ```
 
 설치가 끝나면 `issue-create`, `issue-start` 등 결인(結印) 스킬과 네 명의 감시자 에이전트(`neji-verifier` 등)가 바로 사용 가능합니다.
+
+코드 리뷰 단계(`issue-review`)는 [Open Code Review](https://github.com/alibaba/open-code-review) 의 `ocr` CLI 를 사용합니다. 선택 사항이며, 없으면 리뷰를 건너뛰고 그 사실을 리포트에 남깁니다. Git 2.41 이상이 필요하고, delegation 모드만 쓰므로 별도 API 키는 필요 없습니다.
+
+```bash
+npm install -g @alibaba-group/open-code-review
+```
 
 <details>
 <summary>Codex CLI에서 설치하기</summary>
@@ -210,13 +220,13 @@ grok plugin install Mineru98/samsara --trust
 
 > **[설화]** 맺어진 인에 차크라가 흘러 들어가고, 술자는 분신을 내어 자신만의 결계(워크트리) 안으로 들어섭니다. 그곳에서 문제의 기원을 꿰뚫어 보고, 손을 대고, 자신이 무엇을 했는지에 대한 **증거를 인의 표면에 새깁니다.** 증거 없는 술법은 아무도 믿지 않습니다.
 >
-> **[술식]** 이슈를 분석하고 구현한 뒤, 증거를 게시합니다.
+> **[술식]** 이슈를 분석하고 구현한 뒤, 코드 리뷰(`issue-review`)를 거쳐 증거를 게시합니다.
 
 ### 3. `issue-end` — 인의 해방 (解印)
 
 > **[설화]** 술자가 스스로 술법을 끝냈다고 선언할 수는 없습니다. 오직 **심판을 통과한 인만이** 풀려나 세상 앞에 자신의 결과를 내놓을 자격을 얻습니다. 여기서 인은 봉인의 형태를 벗고, 모두가 검토할 수 있는 하나의 제안(PR)이 됩니다.
 >
-> **[술식]** 승인된 작업에 대해 PR을 생성합니다.
+> **[술식]** 승인된 작업에 대해 PR을 생성합니다. 그 전에 코드 리뷰 결과가 현재 코드에 대한 것인지 확인하고, 없거나 낡았으면 `issue-review` 를 다시 돌립니다.
 
 ### 4. `issue-merge` — 창조재생 (創造再生)
 
@@ -247,6 +257,15 @@ grok plugin install Mineru98/samsara --trust
 
 * `gh-setup` — GitHub CLI 설치·인증 상태를 확인합니다.
 * `github-issue-pr-convention` — 저장소의 이슈·PR 관례를 스캔해 기록합니다.
+
+### 술법 안에서만 쓰이는 내부 술식
+
+사용자가 직접 부르지 않고, 본 술식이 필요한 시점에 스스로 호출합니다.
+
+* `issue-review` — `ocr` CLI 의 delegation 모드로 리뷰 대상 파일과 규칙을 정하고, 구현 세션과 분리된 서브에이전트가 작업 브랜치의 변경을 검토합니다. 결과는 검토한 커밋과 함께 `.issue/<번호>/evidence/review.json` 에 남습니다.
+  * `issue-start` 는 구현 커밋 뒤, after 증거를 찍기 전에 호출합니다. critical · high 지적은 고쳐서 다시 커밋한 뒤에 증거를 찍습니다.
+  * `issue-end` 는 PR 을 만들기 전에 리뷰 뒤로 코드가 바뀌지 않았는지 확인합니다.
+  * `ocr` 이 없거나 리뷰할 코드 파일이 없으면 건너뛰고 사유를 기록합니다. 흐름은 멈추지 않습니다.
 
 ### 여러 인을 동시에 발동하는 술식
 

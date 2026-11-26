@@ -91,4 +91,5 @@ git show --name-only --format= HEAD | grep '^\.issue/' && echo "증거가 섞였
 
 ## 6. 다음
 
-커밋이 끝나면 after 캡처로 넘어간다. `references/evidence-capture.md` 를 따른다.
+커밋이 끝나면 8.5단계 코드 리뷰(`issue-review` 스킬)를 거친다. 리뷰가 critical / high 지적을 내면 고쳐서 5절대로 다시 커밋한다.
+그 뒤에 after 캡처로 넘어간다. `references/evidence-capture.md` 를 따른다.
