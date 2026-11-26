@@ -1,4 +1,5 @@
-# 일회용 복제본에서 새 문서의 절차를 그대로 따라간 기록 (브랜치 feat/177-issue-review-skill, 3e9382e)
+# 스크립트가 명령과 출력을 함께 남긴 기록이다. 명령 줄은 실행한 인자를 다시 적은 것이고, 임시 경로는 실행마다 달라진다.
+# 일회용 복제본에서 새 문서의 절차를 그대로 따라간 기록 (브랜치 feat/177-issue-review-skill, 5fc3bb2)
 
 ## A. issue-end 2단계 — 리뷰 뒤에 코드 커밋이 쌓인 경우 (완료 기준 3)
 # skills/issue-end/SKILL.md 2~4단계: 먼저 issue-review check 를 돌린다
@@ -11,12 +12,12 @@ BLOCKING=0
 exit=0
 
 # 리뷰 뒤에 코드 커밋을 하나 얹는다
-4713419 test: 리뷰 뒤 추가 커밋
+c7bda2b test: 리뷰 뒤 추가 커밋
 
 $ node skills/issue-review/scripts/issue-review.mjs check --issue 177
 STATUS=stale
 REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
-CURRENT_SHA=47134198c9357adb73da4ab967faaa9bc61023e3
+CURRENT_SHA=c7bda2b383f7cfaf791e54dcb627a1e22d8cb681
 UNCOMMITTED=0
 ✗ 리뷰 뒤에 코드가 바뀌었다. 변경을 커밋하고 issue-review 를 다시 돌린다
 exit=4
@@ -25,7 +26,7 @@ exit=4
 $ node skills/issue-review/scripts/issue-review.mjs target --base main
 BASE=main
 MERGE_BASE=df28bcee7dc5d71237ac69f5d586701b7d8e36fc
-REVIEW_TARGET=47134198c9357adb73da4ab967faaa9bc61023e3
+REVIEW_TARGET=c7bda2b383f7cfaf791e54dcb627a1e22d8cb681
 OCR=1
 exit=0
 
@@ -34,8 +35,8 @@ $ ocr delegate preview --format json --from origin/main --to <REVIEW_TARGET> --e
 
 # 여기서 4절(서브에이전트 리뷰)이 다시 실행되어야 PR 로 넘어갈 수 있다. 재리뷰 자체는 이 복제본에서 반복하지 않았다.
 # 낡은 커밋을 --target 으로 넘겨 기존 결과를 재사용하려 하면 record 가 거부한다
-$ node skills/issue-review/scripts/issue-review.mjs record --issue 177 --target 36fec8dc26b38e366e5bc4c63f0eb0d550da5f53 --input /tmp/claude-1000/-home-mineru-Documents-Github-samsara/ab472b09-d563-413a-82c6-d19d9e4a4831/scratchpad/gate/empty.json --base main
-✗ 리뷰한 커밋(36fec8dc26b38e366e5bc4c63f0eb0d550da5f53) 뒤에 코드가 바뀌었다(현재 47134198c9357adb73da4ab967faaa9bc61023e3). 다시 리뷰한다
+$ node skills/issue-review/scripts/issue-review.mjs record --issue 177 --target 36fec8dc26b38e366e5bc4c63f0eb0d550da5f53 --input /tmp/claude-1000/-home-mineru-Documents-Github-samsara/ab472b09-d563-413a-82c6-d19d9e4a4831/scratchpad/run.v9dBya/empty.json --base main
+✗ 리뷰한 커밋(36fec8dc26b38e366e5bc4c63f0eb0d550da5f53) 뒤에 코드가 바뀌었다(현재 c7bda2b383f7cfaf791e54dcb627a1e22d8cb681). 다시 리뷰한다
 exit=4
 
 ## B. issue-review 1~2절 — ocr 이 PATH 에 없는 경우 (완료 기준 4)
@@ -51,7 +52,7 @@ OCR=0
 exit=0
 
 # OCR=0 → 2절의 질문에서 '이번만 건너뛰기' 를 고른 경우
-$ node skills/issue-review/scripts/issue-review.mjs skip --issue 177 --reason ocr 미설치 --base main
+$ node skills/issue-review/scripts/issue-review.mjs skip --issue 177 --reason "ocr 미설치" --base main
 REVIEW_FILE=.issue/177/evidence/review.json
 STATUS=skipped
 REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
