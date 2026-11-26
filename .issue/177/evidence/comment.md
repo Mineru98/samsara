@@ -51,7 +51,11 @@
 - `node scripts/build-phase-capability-bundle.mjs --check`, `sh scripts/check-shared.sh` 통과.
 - 리뷰 뒤에 코드 커밋이 쌓이면 `check` 가 exit 4, 증거 커밋만 쌓이면 exit 0, `ocr` 이 없으면 `OCR=0` 과 건너뜀 기록 후 exit 0 인 것을 테스트로 확인.
 - 코드 리뷰: reviewed. critical 0 / high 0 / medium 3 / low 3 (`review.json`).
-- 미측정: `issue-end` 를 실제로 돌려 2단계 관문이 동작하는지는 아직 확인하지 않았습니다. 이 이슈의 `issue-end` 실행 때 확인됩니다. Codex 런타임에서의 동작도 확인하지 않았습니다.
+- 새 문서의 절차를 일회용 복제본에서 그대로 따라간 기록 (`after/05-gate-walkthrough.txt`):
+  - `issue-end` 2단계. 리뷰 뒤에 코드 커밋을 하나 얹자 `check` 가 `STATUS=stale`, exit 4 로 재리뷰를 요구했습니다. 낡은 커밋을 `--target` 으로 넘겨 기존 결과를 재사용하려는 `record` 도 exit 4 로 거부했습니다.
+  - `ocr` 이 PATH 에 없는 경우. `target` 이 `OCR=0` 을 내고, `skip` 기록 뒤 `check` 가 `STATUS=skipped`, `SKIP_REASON=ocr 미설치`, exit 0 을 냈습니다. 마무리 보고의 리뷰 행은 `skipped: ocr 미설치` 로 채워집니다.
+  - 이 이슈의 실제 `issue-end` 실행에서는 증거 커밋이 얹힌 상태로 `check` 가 exit 0 을 냈습니다.
+- 한계: 설치된 플러그인(0.3.8)에는 새 단계가 없어서, 위 기록은 스킬이 자동으로 호출한 것이 아니라 새 문서의 명령을 사람이 따라 실행한 것입니다. 복제본에서 재리뷰(서브에이전트 검토) 자체는 반복하지 않았습니다. Codex 런타임에서의 동작도 확인하지 않았습니다.
 
 ## 남은 이슈
 

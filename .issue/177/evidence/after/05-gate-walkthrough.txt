@@ -1,0 +1,74 @@
+# 일회용 복제본에서 새 문서의 절차를 그대로 따라간 기록 (브랜치 feat/177-issue-review-skill, 3e9382e)
+
+## A. issue-end 2단계 — 리뷰 뒤에 코드 커밋이 쌓인 경우 (완료 기준 3)
+# skills/issue-end/SKILL.md 2~4단계: 먼저 issue-review check 를 돌린다
+$ node skills/issue-review/scripts/issue-review.mjs check --issue 177
+REVIEW_FILE=.issue/177/evidence/review.json
+STATUS=reviewed
+REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+FINDINGS=critical:0,high:0,medium:3,low:3
+BLOCKING=0
+exit=0
+
+# 리뷰 뒤에 코드 커밋을 하나 얹는다
+4713419 test: 리뷰 뒤 추가 커밋
+
+$ node skills/issue-review/scripts/issue-review.mjs check --issue 177
+STATUS=stale
+REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+CURRENT_SHA=47134198c9357adb73da4ab967faaa9bc61023e3
+UNCOMMITTED=0
+✗ 리뷰 뒤에 코드가 바뀌었다. 변경을 커밋하고 issue-review 를 다시 돌린다
+exit=4
+
+# exit 4 → 문서 지시: 'issue-review 스킬을 다시 돌린 뒤에 넘어간다'. issue-review 1절·3절까지 실행
+$ node skills/issue-review/scripts/issue-review.mjs target --base main
+BASE=main
+MERGE_BASE=df28bcee7dc5d71237ac69f5d586701b7d8e36fc
+REVIEW_TARGET=47134198c9357adb73da4ab967faaa9bc61023e3
+OCR=1
+exit=0
+
+$ ocr delegate preview --format json --from origin/main --to <REVIEW_TARGET> --exclude '.issue/**' | jq -c '{reviewable_count,reviewable:[.reviewable_files[].path]}'
+{"reviewable_count":5,"reviewable":["skills/issue-end/contracts/issue-phase-capability-bundle-v1.json","skills/issue-merge/contracts/issue-phase-capability-bundle-v1.json","skills/issue-review/scripts/issue-review.mjs","skills/issue-review/scripts/issue-review.test.mjs","skills/issue-start/contracts/issue-phase-capability-bundle-v1.json"]}
+
+# 여기서 4절(서브에이전트 리뷰)이 다시 실행되어야 PR 로 넘어갈 수 있다. 재리뷰 자체는 이 복제본에서 반복하지 않았다.
+# 낡은 커밋을 --target 으로 넘겨 기존 결과를 재사용하려 하면 record 가 거부한다
+$ node skills/issue-review/scripts/issue-review.mjs record --issue 177 --target 36fec8dc26b38e366e5bc4c63f0eb0d550da5f53 --input /tmp/claude-1000/-home-mineru-Documents-Github-samsara/ab472b09-d563-413a-82c6-d19d9e4a4831/scratchpad/gate/empty.json --base main
+✗ 리뷰한 커밋(36fec8dc26b38e366e5bc4c63f0eb0d550da5f53) 뒤에 코드가 바뀌었다(현재 47134198c9357adb73da4ab967faaa9bc61023e3). 다시 리뷰한다
+exit=4
+
+## B. issue-review 1~2절 — ocr 이 PATH 에 없는 경우 (완료 기준 4)
+# 아래 명령은 모두 PATH=<node 와 git 만 있는 디렉터리> 로 실행했다
+$ command -v ocr
+exit=1
+
+$ node skills/issue-review/scripts/issue-review.mjs target --base main
+BASE=main
+MERGE_BASE=df28bcee7dc5d71237ac69f5d586701b7d8e36fc
+REVIEW_TARGET=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+OCR=0
+exit=0
+
+# OCR=0 → 2절의 질문에서 '이번만 건너뛰기' 를 고른 경우
+$ node skills/issue-review/scripts/issue-review.mjs skip --issue 177 --reason ocr 미설치 --base main
+REVIEW_FILE=.issue/177/evidence/review.json
+STATUS=skipped
+REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+SKIP_REASON=ocr 미설치
+FINDINGS=critical:0,high:0,medium:0,low:0
+BLOCKING=0
+exit=0
+
+# issue-end 2단계 관문
+$ node skills/issue-review/scripts/issue-review.mjs check --issue 177
+REVIEW_FILE=.issue/177/evidence/review.json
+STATUS=skipped
+REVIEWED_SHA=36fec8dc26b38e366e5bc4c63f0eb0d550da5f53
+SKIP_REASON=ocr 미설치
+FINDINGS=critical:0,high:0,medium:0,low:0
+BLOCKING=0
+exit=0
+
+# 흐름은 멈추지 않는다(check exit 0). 마무리 보고의 리뷰 행은 SKILL.md 표 규칙에 따라 다음과 같이 채워진다
+| **리뷰** | skipped: ocr 미설치 |
