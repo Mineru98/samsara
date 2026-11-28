@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "issue": 180,
+  "mode": "delegate",
+  "status": "skipped",
+  "skipReason": "리뷰 대상 파일 0개 (SKILL.md 2개 모두 unsupported_ext 로 제외)",
+  "base": "main",
+  "mergeBase": "1ec5bff26e44ddba89ea34444dcdb7e96ee834eb",
+  "reviewedSha": "af24c52a0b6a8e70c55c01ce8e31f581f4bacd1f",
+  "findings": []
+}

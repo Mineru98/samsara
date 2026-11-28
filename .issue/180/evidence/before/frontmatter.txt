@@ -1,0 +1,12 @@
+== skills/gh-setup/SKILL.md
+---
+name: gh-setup
+description: gh 설치·로그인과 증거 업로드용 gh-attach 확장 설치
+---
+user-invocable: (unset → true)
+== skills/github-issue-pr-convention/SKILL.md
+---
+name: github-issue-pr-convention
+description: Scan issue/PR/branch rules into AGENTS.local.md/CLAUDE.local.md. Us
+---
+user-invocable: (unset → true)
