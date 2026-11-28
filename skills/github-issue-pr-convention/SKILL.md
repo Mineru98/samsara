@@ -1,6 +1,7 @@
 ---
 name: github-issue-pr-convention
 description: Scan issue/PR/branch rules into AGENTS.local.md/CLAUDE.local.md. Use when joining/forking/cloning a repo or asked how issues/PRs/branches are handled.
+user-invocable: false
 ---
 
 # Contribution Convention Scanner
